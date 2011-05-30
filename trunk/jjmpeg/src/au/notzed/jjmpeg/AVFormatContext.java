@@ -37,10 +37,10 @@ class AVFormatParameters {
  */
 abstract public class AVFormatContext extends AVFormatContextAbstract {
 
-	public final int AVSEEK_FLAG_BACKWARD = 1; ///< seek backward
-	public final int AVSEEK_FLAG_BYTE = 2; ///< seeking based on position in bytes
-	public final int AVSEEK_FLAG_ANY = 4; ///< seek to any frame, even non-keyframes
-	public final int AVSEEK_FLAG_FRAME = 8; ///< seeking based on frame number
+	public static final int AVSEEK_FLAG_BACKWARD = 1; ///< seek backward
+	public static final int AVSEEK_FLAG_BYTE = 2; ///< seeking based on position in bytes
+	public static final int AVSEEK_FLAG_ANY = 4; ///< seek to any frame, even non-keyframes
+	public static final int AVSEEK_FLAG_FRAME = 8; ///< seeking based on frame number
 
 	protected AVFormatContext(ByteBuffer p) {
 		super(p);
