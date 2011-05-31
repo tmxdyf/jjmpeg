@@ -31,7 +31,11 @@ abstract public class AVPacket extends AVPacketAbstract {
 	}
 
 	public static AVPacket create() {
-		return new AVPacket64(allocate());
+		if (AVNative.is64) {
+			return new AVPacket64(allocate());
+		} else {
+			return new AVPacket64(allocate());
+		}
 	}
 
 	@Override
@@ -45,7 +49,9 @@ abstract public class AVPacket extends AVPacketAbstract {
 	private native void free_packet(ByteBuffer p);
 	// ffmpeg allows packets to be allcoated on the stack
 	// need to allocate this explicitly
+
 	private static native ByteBuffer allocate();
+
 	private static native void free(ByteBuffer p);
 
 	public ByteBuffer getData() {

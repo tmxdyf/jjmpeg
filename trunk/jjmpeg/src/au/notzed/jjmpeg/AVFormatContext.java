@@ -47,7 +47,11 @@ abstract public class AVFormatContext extends AVFormatContextAbstract {
 	}
 
 	static AVFormatContext create(ByteBuffer p) {
-		return new AVFormatContext64(p);
+		if (AVNative.is64) {
+			return new AVFormatContext64(p);
+		} else {
+			return new AVFormatContext32(p);
+		}
 	}
 
 	static public AVFormatContext openInputFile(String name) {
@@ -88,6 +92,7 @@ abstract public class AVFormatContext extends AVFormatContextAbstract {
 
 		return res;
 	}
+
 	public int seekFrame(int stream_index, long timestamp, int flags) {
 		return seek_frame(p, stream_index, timestamp, flags);
 	}
