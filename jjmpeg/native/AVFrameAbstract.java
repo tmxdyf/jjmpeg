@@ -8,6 +8,6 @@ abstract class AVFrameAbstract {
 		this.p = p;
 		p.order(ByteOrder.nativeOrder());
 	}
-	abstract public int getlineSizeAt(int i);
-	protected final int dataOffset = 0;
+	abstract public int getLineSizeAt(int i);
+	abstract int getDataOffset();
 }

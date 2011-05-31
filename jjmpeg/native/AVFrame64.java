@@ -5,8 +5,12 @@ class AVFrame64 extends AVFrame {
 	AVFrame64(ByteBuffer p) {
 		super(p);
 	}
-	public int getlineSizeAt(int i) {
+	public int getLineSizeAt(int i) {
 		return p.getInt(32+i*4);
+	}
+
+	int getDataOffset() {
+		return 0;
 	}
 
 }
