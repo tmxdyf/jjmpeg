@@ -45,12 +45,12 @@ public abstract class AVFrame extends AVFrameAbstract {
 		if (index >= 4)
 			throw new ArrayIndexOutOfBoundsException();
 
-		int lineSize = getlineSizeAt(index);
+		int lineSize = getLineSizeAt(index);
 
 		// FIXME: take fmt into account somehow
 		if (index > 0) {
 			height /= 2;
 		}
-		return new AVPlane(AVNative.getPointerIndex(p, dataOffset, lineSize * height, index), lineSize, width, height);
+		return new AVPlane(AVNative.getPointerIndex(p, getDataOffset(), lineSize * height, index), lineSize, width, height);
 	}
 }
