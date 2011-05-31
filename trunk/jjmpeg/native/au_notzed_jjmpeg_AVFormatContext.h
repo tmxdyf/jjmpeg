@@ -7,6 +7,14 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+#undef au_notzed_jjmpeg_AVFormatContext_AVSEEK_FLAG_BACKWARD
+#define au_notzed_jjmpeg_AVFormatContext_AVSEEK_FLAG_BACKWARD 1L
+#undef au_notzed_jjmpeg_AVFormatContext_AVSEEK_FLAG_BYTE
+#define au_notzed_jjmpeg_AVFormatContext_AVSEEK_FLAG_BYTE 2L
+#undef au_notzed_jjmpeg_AVFormatContext_AVSEEK_FLAG_ANY
+#define au_notzed_jjmpeg_AVFormatContext_AVSEEK_FLAG_ANY 4L
+#undef au_notzed_jjmpeg_AVFormatContext_AVSEEK_FLAG_FRAME
+#define au_notzed_jjmpeg_AVFormatContext_AVSEEK_FLAG_FRAME 8L
 /*
  * Class:     au_notzed_jjmpeg_AVFormatContext
  * Method:    open_input_file

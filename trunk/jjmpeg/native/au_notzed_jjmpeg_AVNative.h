@@ -23,6 +23,14 @@ JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVNative_getPointer
 JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVNative_getPointerIndex
   (JNIEnv *, jclass, jobject, jint, jint, jint);
 
+/*
+ * Class:     au_notzed_jjmpeg_AVNative
+ * Method:    getPointerBits
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_AVNative_getPointerBits
+  (JNIEnv *, jclass);
+
 #ifdef __cplusplus
 }
 #endif
