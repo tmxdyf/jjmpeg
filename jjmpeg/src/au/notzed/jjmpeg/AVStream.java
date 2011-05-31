@@ -31,6 +31,10 @@ abstract public class AVStream extends AVStreamAbstract {
 	}
 
 	static AVStream create(ByteBuffer p) {
-		return new AVStream64(p);
+		if (AVNative.is64) {
+			return new AVStream64(p);
+		} else {
+			return new AVStream64(p);
+		}
 	}
 }

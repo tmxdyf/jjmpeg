@@ -40,7 +40,11 @@ abstract public class AVCodecContext extends AVCodecContextAbstract {
 	}
 
 	static AVCodecContext create(ByteBuffer p) {
-		return new AVCodecContext64(p);
+		if (AVNative.is64) {
+			return new AVCodecContext64(p);
+		} else {
+			return new AVCodecContext32(p);
+		}
 	}
 
 	static {
@@ -48,8 +52,10 @@ abstract public class AVCodecContext extends AVCodecContextAbstract {
 	}
 
 	private native int open(ByteBuffer context, ByteBuffer codec);
+
 	private native int decode_video(ByteBuffer p, ByteBuffer frame, ByteBuffer finished, ByteBuffer data);
 //
+
 	private static native void register_all();
 
 	public int open(AVCodec codec) {
@@ -70,7 +76,7 @@ abstract public class AVCodecContext extends AVCodecContextAbstract {
 			// FIXME: right exception
 			throw new RuntimeException("Error decoding video");
 		}
-		
+
 		return (fin.asIntBuffer().get(0) != 0);
 	}
 

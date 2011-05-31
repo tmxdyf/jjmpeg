@@ -31,7 +31,11 @@ public abstract class AVFrame extends AVFrameAbstract {
 	}
 
 	static public AVFrame create() {
-		return new AVFrame64(alloc_frame());
+		if (AVNative.is64) {
+			return new AVFrame64(alloc_frame());
+		} else {
+			return new AVFrame32(alloc_frame());
+		}
 	}
 
 	public void dispose() {
@@ -39,11 +43,13 @@ public abstract class AVFrame extends AVFrameAbstract {
 	}
 
 	native static ByteBuffer alloc_frame();
+
 	native static void free_frame(ByteBuffer bb);
 
 	public AVPlane getPlaneAt(int index, PixelFormat fmt, int width, int height) {
-		if (index >= 4)
+		if (index >= 4) {
 			throw new ArrayIndexOutOfBoundsException();
+		}
 
 		int lineSize = getLineSizeAt(index);
 
