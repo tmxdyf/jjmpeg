@@ -1,36 +1,36 @@
 // Auto-generated, editing would be pointless
 package au.notzed.jjmpeg;
 import java.nio.ByteBuffer;
-class AVCodecContext64 extends AVCodecContext {
-	AVCodecContext64(ByteBuffer p) {
+class AVCodecContext32 extends AVCodecContext {
+	AVCodecContext32(ByteBuffer p) {
 		super(p);
 	}
 	public int getWidth() {
-		return p.getInt(52);
+		return p.getInt(40);
 	}
 
 	public void setWidth(int val) {
-		p.putInt(52, val);
+		p.putInt(40, val);
 	}
 
 	public int getHeight() {
-		return p.getInt(56);
+		return p.getInt(44);
 	}
 
 	public void setHeight(int val) {
-		p.putInt(56, val);
+		p.putInt(44, val);
 	}
 
 	public PixelFormat getPixFmt() {
-		return PixelFormat.values()[p.getInt(64)+1];
+		return PixelFormat.values()[p.getInt(52)+1];
 	}
 
 	public int getCodecType() {
-		return p.getInt(264);
+		return p.getInt(220);
 	}
 
 	public int getCodecID() {
-		return p.getInt(268);
+		return p.getInt(224);
 	}
 
 }
