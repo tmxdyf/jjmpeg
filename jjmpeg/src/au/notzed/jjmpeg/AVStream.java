@@ -34,7 +34,7 @@ abstract public class AVStream extends AVStreamAbstract {
 		if (AVNative.is64) {
 			return new AVStream64(p);
 		} else {
-			return new AVStream64(p);
+			return new AVStream32(p);
 		}
 	}
 }

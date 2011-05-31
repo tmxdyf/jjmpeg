@@ -34,7 +34,7 @@ abstract public class AVPacket extends AVPacketAbstract {
 		if (AVNative.is64) {
 			return new AVPacket64(allocate());
 		} else {
-			return new AVPacket64(allocate());
+			return new AVPacket32(allocate());
 		}
 	}
 
