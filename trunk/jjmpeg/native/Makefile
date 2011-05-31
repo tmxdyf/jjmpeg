@@ -5,6 +5,8 @@ javah=$(JDK_HOME)/bin/javah
 CFLAGS=-I${JDK_JOME}/include -I/usr/include/ffmpeg -fPIC -Wall -g
 LIBS=-lavcodec -lavformat -lavutil
 
+libdir=$(shell uname -m)
+
 CLASSES=au.notzed.jjmpeg.AVFormatContext\
  au.notzed.jjmpeg.AVCodec\
  au.notzed.jjmpeg.AVCodecContext\
@@ -23,12 +25,15 @@ HEADERS=au_notzed_jjmpeg_AVCodecContext.h \
 
 WRAPPERS=AVCodecContextAbstract.java
 
-all: genoffsets libjjmpeg.so $(WRAPPERS)
+jjmpeg_lib=$(libdir)/libjjmpeg.so
+
+all: genoffsets $(jjmpeg_lib) $(WRAPPERS)
 
 $(WRAPPERS): genoffsets
 	./genoffsets
 
-libjjmpeg.so: jjmpeg.o
+$(jjmpeg_lib): jjmpeg.o
+	-mkdir -p $(libdir)
 	$(CC) -shared -Wl,-soname,libjjmpeg.so -o $@ $^ $(LIBS)
 
 jjmpeg.o: jjmpeg.c $(HEADERS)

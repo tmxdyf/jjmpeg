@@ -49,9 +49,16 @@ struct field {
 	char *sizeStr; // alternative for structs/pointers
 };
 
+// getter
 #define G 1
+// setter
 #define S 2
+// public
+#define P 4
 #define GS 3
+#define PG (P|G)
+#define PS (P|S)
+#define PGS (P|S|G)
 
 struct type {
 	char *name;
@@ -63,33 +70,33 @@ struct type {
 #define OFF(type, field) ((int)(long)(&((type *)NULL)->field))
 
 struct field avcodec_context_fields[] = {
-	{ "Width", "int", INT32, GS, OFF(AVCodecContext, width) },
-	{ "Height", "int", INT32, GS, OFF(AVCodecContext, height) },
-	{ "PixFmt", "PixelFormat", ENUM, G, OFF(AVCodecContext, pix_fmt), 1 },
-	{ "CodecType", "int", INT32, G, OFF(AVCodecContext, codec_type) },
-	{ "CodecID", "int", INT32, G, OFF(AVCodecContext, codec_id) },
+	{ "Width", "int", INT32, PGS, OFF(AVCodecContext, width) },
+	{ "Height", "int", INT32, PGS, OFF(AVCodecContext, height) },
+	{ "PixFmt", "PixelFormat", ENUM, PG, OFF(AVCodecContext, pix_fmt), 1 },
+	{ "CodecType", "int", INT32, PG, OFF(AVCodecContext, codec_type) },
+	{ "CodecID", "int", INT32, PG, OFF(AVCodecContext, codec_id) },
 };
 
 struct field avformat_context_fields[] = {
-	{ "NBStreams", "int", INT32, G, OFF(AVFormatContext, nb_streams) },
-	{ "Stream", "AVStream", PTR_INDEX, G, OFF(AVFormatContext, streams[0]), sizeof(AVStream) },
+	{ "NBStreams", "int", INT32, PG, OFF(AVFormatContext, nb_streams) },
+	{ "Stream", "AVStream", PTR_INDEX, PG, OFF(AVFormatContext, streams[0]), sizeof(AVStream) },
 };
 
 struct field avpacket_fields[] = {
-	{ "PTS", "long", INT64, G, OFF(AVPacket, pts) },
-	{ "DTS", "long", INT64, G, OFF(AVPacket, dts) },
-	{ "Size", "int", INT32, G, OFF(AVPacket, size) },
-	{ "StreamIndex", "int", INT32, G, OFF(AVPacket, stream_index) },
+	{ "PTS", "long", INT64, PG, OFF(AVPacket, pts) },
+	{ "DTS", "long", INT64, PG, OFF(AVPacket, dts) },
+	{ "Size", "int", INT32, PG, OFF(AVPacket, size) },
+	{ "StreamIndex", "int", INT32, PG, OFF(AVPacket, stream_index) },
 };
 
 struct field avframe_fields[] = {
-	{ "lineSize", "int", INT32_ARRAY, G, OFF(AVFrame, linesize) },
-	{ "dataOffset", "int", OFFSET, G, OFF(AVFrame, data) },
+	{ "LineSize", "int", INT32_ARRAY, PG, OFF(AVFrame, linesize) },
+	{ "DataOffset", "int", OFFSET, G, OFF(AVFrame, data) },
 };
 
 struct field avstream_fields[] = {
-	{ "Index", "int", INT32, G, OFF(AVStream, index) },
-	{ "Codec", "AVCodecContext", PTR, G, OFF(AVStream, codec), sizeof(AVCodecContext) },
+	{ "Index", "int", INT32, PG, OFF(AVStream, index) },
+	{ "Codec", "AVCodecContext", PTR, PG, OFF(AVStream, codec), sizeof(AVCodecContext) },
 };
 
 struct type types[] = {
@@ -131,17 +138,19 @@ int main(int argc, char **argv) {
 		for (j=0;j<nfields;j++) {
 			struct field *f = &t->fields[j];
 
-			if (f->ctype == OFFSET) {
-				continue;
-			}
-
 			if (f->flags & G) {
+				fprintf(out, "\t");
+				if (f->flags & P)
+					fprintf(out, "public ");
+
+				fprintf(out, "%s ", f->jtype);
+
 				if (f->ctype == PTR_INDEX) {
-					fprintf(out, "\tpublic %s get%sAt(int i) {\n", f->jtype, f->name);
+					fprintf(out, "get%sAt(int i) {\n", f->name);
 				} else if (f->ctype == INT32_ARRAY) {
-					fprintf(out, "\tpublic %s get%sAt(int i) {\n", f->jtype, f->name);
+					fprintf(out, "get%sAt(int i) {\n", f->name);
 				} else {
-					fprintf(out, "\tpublic %s get%s() {\n", f->jtype, f->name);
+					fprintf(out, "get%s() {\n", f->name);
 				}
 
 				switch (f->ctype) {
@@ -173,13 +182,19 @@ int main(int argc, char **argv) {
 					// FIXME: bounds cfheck
 					fprintf(out, "\t\treturn p.getInt(%d+i*4);\n", f->offset);
 					break;
+				case OFFSET:
+					fprintf(out, "\t\treturn %d;\n", f->offset);
+					break;
 				default:
 					break;
 				}
 				fprintf(out, "\t}\n\n");
 			}
 			if (f->flags & S) {
-				fprintf(out, "\tpublic void set%s(%s val) {\n", f->name, f->jtype);
+				fprintf(out, "\t");
+				if (f->flags & P)
+					fprintf(out, "public ");
+				fprintf(out, "void set%s(%s val) {\n", f->name, f->jtype);
 				switch (f->ctype) {
 				case INT8:
 					fprintf(out, "\t\tp.putByte(%d, val);\n", f->offset);
@@ -232,22 +247,27 @@ int main(int argc, char **argv) {
 		for (j=0;j<nfields;j++) {
 			struct field *f = &t->fields[j];
 
-			if (f->ctype == OFFSET) {
-				fprintf(out, "\tprotected final %s %s = %d;\n", f->jtype, f->name, f->offset);
-				continue;
-			}
-
 			if (f->flags & G) {
+				fprintf(out, "\tabstract ");
+				if (f->flags & P)
+					fprintf(out, "public ");
+				fprintf(out, "%s ", f->jtype);
+
 				if (f->ctype == PTR_INDEX) {
-					fprintf(out, "\tabstract public %s get%sAt(int i);\n", f->jtype, f->name);
+					fprintf(out, "get%sAt(int i);\n", f->name);
 				} else if (f->ctype == INT32_ARRAY) {
-					fprintf(out, "\tabstract public %s get%sAt(int i);\n", f->jtype, f->name);
+					fprintf(out, "get%sAt(int i);\n", f->name);
+				} else if (f->ctype == OFFSET) {
+					fprintf(out, "get%s();\n", f->name);
 				} else {
-					fprintf(out, "\tabstract public %s get%s();\n", f->jtype, f->name);
+					fprintf(out, "get%s();\n", f->name);
 				}
 			}
 			if (f->flags & S) {
-				fprintf(out, "\tabstract public void set%s(%s val);\n", f->name, f->jtype);
+				fprintf(out, "\tabstract ");
+				if (f->flags & P)
+					fprintf(out, "public ");
+				fprintf(out, "void set%s(%s val);\n", f->name, f->jtype);
 			}
 		}
 		
