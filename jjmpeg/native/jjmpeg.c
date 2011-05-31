@@ -42,6 +42,14 @@ JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVNative_getPointerIndex
 	return WRAP(((void **)base)[index], size);
 }
 
+/**
+ * Get size of pointer in bits.  i.e. 64 or 32.
+ */
+JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_AVNative_getPointerBits
+(JNIEnv *env, jclass jc) {
+	return sizeof(void *)*8;
+}
+
 /* ********************************************************************** */
 
 jobject JNICALL Java_au_notzed_jjmpeg_AVCodec_find_1encoder

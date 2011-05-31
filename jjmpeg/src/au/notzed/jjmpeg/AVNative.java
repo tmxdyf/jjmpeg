@@ -25,7 +25,13 @@ import java.nio.ByteBuffer;
  * @author notzed
  */
 public class AVNative {
+	static final boolean is64;
+	static {
+		System.loadLibrary("jjmpeg");
+		is64 = getPointerBits() == 64;
+	}
+
 	static native ByteBuffer getPointer(ByteBuffer base, int offset, int size);
 	static native ByteBuffer getPointerIndex(ByteBuffer base, int offset, int size, int index);
-
+	static native int getPointerBits();
 }
