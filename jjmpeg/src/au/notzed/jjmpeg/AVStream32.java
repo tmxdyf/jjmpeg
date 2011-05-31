@@ -1,8 +1,8 @@
 // Auto-generated, editing would be pointless
 package au.notzed.jjmpeg;
 import java.nio.ByteBuffer;
-class AVStream64 extends AVStream {
-	AVStream64(ByteBuffer p) {
+class AVStream32 extends AVStream {
+	AVStream32(ByteBuffer p) {
 		super(p);
 	}
 	public int getIndex() {
@@ -10,7 +10,7 @@ class AVStream64 extends AVStream {
 	}
 
 	public AVCodecContext getCodec() {
-		return AVCodecContext.create(AVNative.getPointer(p, 8, 1080));
+		return AVCodecContext.create(AVNative.getPointer(p, 8, 924));
 	}
 
 }

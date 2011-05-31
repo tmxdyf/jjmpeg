@@ -1,8 +1,8 @@
 // Auto-generated, editing would be pointless
 package au.notzed.jjmpeg;
 import java.nio.ByteBuffer;
-class AVPacket64 extends AVPacket {
-	AVPacket64(ByteBuffer p) {
+class AVPacket32 extends AVPacket {
+	AVPacket32(ByteBuffer p) {
 		super(p);
 	}
 	public long getPTS() {
@@ -14,11 +14,11 @@ class AVPacket64 extends AVPacket {
 	}
 
 	public int getSize() {
-		return p.getInt(24);
+		return p.getInt(20);
 	}
 
 	public int getStreamIndex() {
-		return p.getInt(28);
+		return p.getInt(24);
 	}
 
 }
