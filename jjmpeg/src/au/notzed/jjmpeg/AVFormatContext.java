@@ -73,11 +73,17 @@ abstract public class AVFormatContext extends AVFormatContextAbstract {
 
 	static native ByteBuffer open_input_file(String name, ByteBuffer fmt, int buf_size, ByteBuffer fmtParameters, ByteBuffer error_ptr);
 
+	native void close_input_file(ByteBuffer p);
+
 	native int seek_frame(ByteBuffer p, int stream_index, long timestamp, int flags);
 
 	native int find_stream_info(ByteBuffer p);
 
 	native int read_frame(ByteBuffer p, ByteBuffer packet);
+
+	public void closeInputFile() {
+		close_input_file(p);
+	}
 
 	public int findStreamInfo() {
 		return find_stream_info(p);

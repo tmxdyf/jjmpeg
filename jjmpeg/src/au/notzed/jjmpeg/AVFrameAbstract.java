@@ -2,7 +2,7 @@
 package au.notzed.jjmpeg;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-abstract class AVFrameAbstract {
+abstract class AVFrameAbstract extends AVNative {
 	final ByteBuffer p;
 	AVFrameAbstract(ByteBuffer p) {
 		this.p = p;

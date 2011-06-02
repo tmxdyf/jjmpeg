@@ -25,6 +25,14 @@ JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVFormatContext_open_1input_1fil
 
 /*
  * Class:     au_notzed_jjmpeg_AVFormatContext
+ * Method:    close_input_file
+ * Signature: (Ljava/nio/ByteBuffer;)V
+ */
+JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_AVFormatContext_close_1input_1file
+  (JNIEnv *, jobject, jobject);
+
+/*
+ * Class:     au_notzed_jjmpeg_AVFormatContext
  * Method:    seek_frame
  * Signature: (Ljava/nio/ByteBuffer;IJI)I
  */
