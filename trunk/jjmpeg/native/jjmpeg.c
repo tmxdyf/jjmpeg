@@ -137,6 +137,13 @@ JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVFormatContext_open_1input_1fil
 	return res;
 }
 
+JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_AVFormatContext_close_1input_1file
+(JNIEnv *env, jobject o, jobject jcontext) {
+	AVFormatContext *context = ADDR(jcontext);
+
+	av_close_input_file(context);
+}
+
 JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_AVFormatContext_seek_1frame
 (JNIEnv *env, jobject o, jobject jcontext, jint stream_index, jlong timestamp, jint flags) {
 	AVFormatContext *context = ADDR(jcontext);

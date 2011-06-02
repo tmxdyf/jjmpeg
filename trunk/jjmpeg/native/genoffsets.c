@@ -31,6 +31,7 @@ enum ctype {
 	INT16,
 	INT32,
 	INT64,
+	BOOL32,
 	PTR,
 	PTR_INDEX,
 	ENUM,
@@ -92,6 +93,7 @@ struct field avpacket_fields[] = {
 struct field avframe_fields[] = {
 	{ "LineSize", "int", INT32_ARRAY, PG, OFF(AVFrame, linesize) },
 	{ "DataOffset", "int", OFFSET, G, OFF(AVFrame, data) },
+	{ "KeyFrame", "boolean", BOOL32, PG, OFF(AVFrame, key_frame) },
 };
 
 struct field avstream_fields[] = {
@@ -149,6 +151,8 @@ int main(int argc, char **argv) {
 					fprintf(out, "get%sAt(int i) {\n", f->name);
 				} else if (f->ctype == INT32_ARRAY) {
 					fprintf(out, "get%sAt(int i) {\n", f->name);
+				} else if (f->ctype == BOOL32) {
+					fprintf(out, "is%s() {\n", f->name);
 				} else {
 					fprintf(out, "get%s() {\n", f->name);
 				}
@@ -165,6 +169,9 @@ int main(int argc, char **argv) {
 					break;
 				case INT64:
 					fprintf(out, "\t\treturn p.getLong(%d);\n", f->offset);
+					break;
+				case BOOL32:
+					fprintf(out, "\t\treturn p.getInt(%d) != 0;\n", f->offset);
 					break;
 				case PTR:
 					fprintf(out, "\t\treturn %s.create(%s.getPointer(p, %d, %d));\n", f->jtype, rootClass, f->offset, f->size);
@@ -259,6 +266,8 @@ int main(int argc, char **argv) {
 					fprintf(out, "get%sAt(int i);\n", f->name);
 				} else if (f->ctype == OFFSET) {
 					fprintf(out, "get%s();\n", f->name);
+				} else if (f->ctype == BOOL32) {
+					fprintf(out, "is%s();\n", f->name);
 				} else {
 					fprintf(out, "get%s();\n", f->name);
 				}
