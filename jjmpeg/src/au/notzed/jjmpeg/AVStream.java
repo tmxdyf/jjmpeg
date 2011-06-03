@@ -24,17 +24,13 @@ import java.nio.ByteBuffer;
  *
  * @author notzed
  */
-abstract public class AVStream extends AVStreamAbstract {
+public class AVStream extends AVStreamAbstract {
 
 	protected AVStream(ByteBuffer p) {
 		super(p);
 	}
 
 	static AVStream create(ByteBuffer p) {
-		if (AVNative.is64) {
-			return new AVStream64(p);
-		} else {
-			return new AVStream32(p);
-		}
+		 return new AVStream(p);
 	}
 }

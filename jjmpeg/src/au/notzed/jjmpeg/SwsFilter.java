@@ -21,22 +21,16 @@ package au.notzed.jjmpeg;
 import java.nio.ByteBuffer;
 
 /**
- *
+ * Dummy object for binding.
  * @author notzed
  */
-public class AVCodec extends AVCodecAbstract {
+public class SwsFilter extends SwsFilterAbstract {
 
-	AVCodec(ByteBuffer p) {
+	protected SwsFilter(ByteBuffer p) {
 		super(p);
 	}
 
-	static public AVCodec create(ByteBuffer p) {
-		if (p == null)
-			return null;
-		return new AVCodec(p);
-	}
-
-	static public AVCodec findEncoder(CodecID id) {
-		return AVCodec.create(_find_encoder(id.toC()));
+	static SwsFilter create(ByteBuffer p) {
+		return new SwsFilter(p);
 	}
 }

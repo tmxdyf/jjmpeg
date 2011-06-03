@@ -24,39 +24,46 @@ import java.nio.ByteBuffer;
  *
  * @author notzed
  */
-public abstract class AVFrame extends AVFrameAbstract {
+public class AVFrame extends AVFrameAbstract {
+
+	private boolean allocatedFrames = false;
 
 	protected AVFrame(ByteBuffer p) {
 		super(p);
 	}
 
+	native ByteBuffer getPlaneAt(int index, int pixelFormat, int width, int height);
+
+	static public AVFrame create(ByteBuffer p) {
+		return new AVFrame(p);
+	}
+
 	static public AVFrame create() {
-		if (AVNative.is64) {
-			return new AVFrame64(alloc_frame());
-		} else {
-			return new AVFrame32(alloc_frame());
+		return allocFrame();
+	}
+
+	static public AVFrame create(PixelFormat fmt, int width, int height) {
+		AVFrame f = create();
+		int res = f.alloc(fmt.toC(), width, height);
+		
+		if (res != 0) {
+			throw new ExceptionInInitializerError("Unable to allocate bitplanes");
 		}
+		System.out.println("allocated new frame ok");
+		f.allocatedFrames = true;
+		
+		return f;
 	}
 
 	public void dispose() {
-		free_frame(p);
+		if (allocatedFrames)
+			free();
+		AVFormatContext._free(p);
 	}
 
-	native static ByteBuffer alloc_frame();
-
-	native static void free_frame(ByteBuffer bb);
-
 	public AVPlane getPlaneAt(int index, PixelFormat fmt, int width, int height) {
-		if (index >= 4) {
-			throw new ArrayIndexOutOfBoundsException();
-		}
-
 		int lineSize = getLineSizeAt(index);
 
-		// FIXME: take fmt into account somehow
-		if (index > 0) {
-			height /= 2;
-		}
-		return new AVPlane(AVNative.getPointerIndex(p, getDataOffset(), lineSize * height, index), lineSize, width, height);
+		return new AVPlane(getPlaneAt(index, fmt.toC(fmt), width, height), lineSize, width, height);
 	}
 }

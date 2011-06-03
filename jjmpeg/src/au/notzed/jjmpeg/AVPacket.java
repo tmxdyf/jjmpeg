@@ -24,18 +24,14 @@ import java.nio.ByteBuffer;
  *
  * @author notzed
  */
-abstract public class AVPacket extends AVPacketAbstract {
+public class AVPacket extends AVPacketAbstract {
 
 	AVPacket(ByteBuffer p) {
 		super(p);
 	}
 
 	public static AVPacket create() {
-		if (AVNative.is64) {
-			return new AVPacket64(allocate());
-		} else {
-			return new AVPacket32(allocate());
-		}
+		return new AVPacket(allocate());
 	}
 
 	@Override
@@ -46,22 +42,11 @@ abstract public class AVPacket extends AVPacketAbstract {
 
 	private native ByteBuffer get_data(ByteBuffer p);
 
-	private native void free_packet(ByteBuffer p);
-	// ffmpeg allows packets to be allcoated on the stack
-	// need to allocate this explicitly
-
 	private static native ByteBuffer allocate();
 
 	private static native void free(ByteBuffer p);
 
 	public ByteBuffer getData() {
 		return get_data(p);
-	}
-
-	/**
-	 * Free resources associated with packet, but not the packet itself.
-	 */
-	public void freePacket() {
-		free_packet(p);
 	}
 }

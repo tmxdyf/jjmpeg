@@ -35,7 +35,7 @@ class AVFormatParameters {
  *
  * @author notzed
  */
-abstract public class AVFormatContext extends AVFormatContextAbstract {
+public class AVFormatContext extends AVFormatContextAbstract {
 
 	public static final int AVSEEK_FLAG_BACKWARD = 1; ///< seek backward
 	public static final int AVSEEK_FLAG_BYTE = 2; ///< seeking based on position in bytes
@@ -47,11 +47,7 @@ abstract public class AVFormatContext extends AVFormatContextAbstract {
 	}
 
 	static AVFormatContext create(ByteBuffer p) {
-		if (AVNative.is64) {
-			return new AVFormatContext64(p);
-		} else {
-			return new AVFormatContext32(p);
-		}
+		return new AVFormatContext(p);
 	}
 
 	static public AVFormatContext openInputFile(String name) {
@@ -73,33 +69,14 @@ abstract public class AVFormatContext extends AVFormatContextAbstract {
 
 	static native ByteBuffer open_input_file(String name, ByteBuffer fmt, int buf_size, ByteBuffer fmtParameters, ByteBuffer error_ptr);
 
-	native void close_input_file(ByteBuffer p);
-
-	native int seek_frame(ByteBuffer p, int stream_index, long timestamp, int flags);
-
-	native int find_stream_info(ByteBuffer p);
-
-	native int read_frame(ByteBuffer p, ByteBuffer packet);
-
-	public void closeInputFile() {
-		close_input_file(p);
-	}
-
-	public int findStreamInfo() {
-		return find_stream_info(p);
-	}
-
+	@Override
 	public int readFrame(AVPacket packet) {
-		int res = read_frame(p, packet.p);
+		int res = super.readFrame(packet);
 
 		if (res != 0) {
 			System.out.printf("error reading frame %d\n", res);
 		}
 
 		return res;
-	}
-
-	public int seekFrame(int stream_index, long timestamp, int flags) {
-		return seek_frame(p, stream_index, timestamp, flags);
 	}
 }
