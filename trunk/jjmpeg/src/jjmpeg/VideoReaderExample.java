@@ -1,3 +1,10 @@
+/*
+ * Based on avcodec_sample.0.5.0.c
+ *
+ * http://web.me.com/dhoerl/Home/Tech_Blog/Entries/2009/1/22_Revised_avcodec_sample.c.html
+ *
+ * Presumably in public domain.
+ */
 package jjmpeg;
 
 import au.notzed.jjmpeg.AVCodec;
@@ -8,12 +15,15 @@ import au.notzed.jjmpeg.AVPacket;
 import au.notzed.jjmpeg.AVPlane;
 import au.notzed.jjmpeg.AVStream;
 import au.notzed.jjmpeg.PixelFormat;
+import au.notzed.jjmpeg.exception.AVDecodingError;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  *
  * @author notzed
  */
-public class Main {
+public class VideoReaderExample {
 
 	/**
 	 * @param args the command line arguments
@@ -21,7 +31,7 @@ public class Main {
 	public static void main(String[] args) {
 		String name = "/home/notzed/Videos/mike0.avi";
 
-		AVCodecContext.registerAll();
+		AVFormatContext.registerAll();
 		AVFormatContext format = AVFormatContext.openInputFile(name);
 
 		if (format.findStreamInfo() < 0) {
@@ -76,7 +86,7 @@ public class Main {
 		int height = codecContext.getHeight();
 		int width = codecContext.getWidth();
 		PixelFormat fmt = codecContext.getPixFmt();
-		
+
 		// read some frames
 		int count = 0;
 		while (format.readFrame(packet) >= 0) {
@@ -94,6 +104,8 @@ public class Main {
 						count++;
 					}
 				}
+			} catch (AVDecodingError ex) {
+				Logger.getLogger(VideoReaderExample.class.getName()).log(Level.SEVERE, null, ex);
 			} finally {
 				packet.freePacket();
 			}

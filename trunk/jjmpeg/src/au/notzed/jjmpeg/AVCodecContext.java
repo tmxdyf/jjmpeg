@@ -18,14 +18,17 @@
  */
 package au.notzed.jjmpeg;
 
+import au.notzed.jjmpeg.exception.AVDecodingError;
+import au.notzed.jjmpeg.exception.AVEncodingError;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.IntBuffer;
 
 /**
  *
  * @author notzed
  */
-abstract public class AVCodecContext extends AVCodecContextAbstract {
+public class AVCodecContext extends AVCodecContextAbstract {
 
 	public static final int AVMEDIA_TYPE_UNKNOWN = -1;
 	public static final int AVMEDIA_TYPE_VIDEO = 0;
@@ -35,52 +38,57 @@ abstract public class AVCodecContext extends AVCodecContextAbstract {
 	public static final int AVMEDIA_TYPE_ATTACHMENT = 4;
 	public static final int AVMEDIA_TYPE_NB = 5;
 
+	private IntBuffer fin = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder()).asIntBuffer();
+
 	protected AVCodecContext(ByteBuffer p) {
 		super(p);
 	}
 
 	static AVCodecContext create(ByteBuffer p) {
-		if (AVNative.is64) {
-			return new AVCodecContext64(p);
-		} else {
-			return new AVCodecContext32(p);
-		}
+		return new AVCodecContext(p);
 	}
 
-	static {
-		System.loadLibrary("jjmpeg");
+	public void dispose() {
+		AVFormatContext._free(p);
 	}
 
-	private native int open(ByteBuffer context, ByteBuffer codec);
-
-	private native int decode_video(ByteBuffer p, ByteBuffer frame, ByteBuffer finished, ByteBuffer data);
-//
-
-	private static native void register_all();
-
-	public int open(AVCodec codec) {
+	/**
+	 * Returns true if decoding frame complete.
+	 * @param frame
+	 * @param packet
+	 * @return
+	 * @throws AVDecodingError
+	 */
+	public boolean decodeVideo(AVFrame frame, AVPacket packet) throws AVDecodingError {
 		int res;
 
-		res = open(p, codec.p);
-
-		return res;
-	}
-
-	public boolean decodeVideo(AVFrame frame, AVPacket packet) {
-		ByteBuffer fin = ByteBuffer.allocateDirect(8).order(ByteOrder.nativeOrder());
-		int res;
-
-		res = decode_video(p, frame.p, fin, packet.p);
-
+		res = _decode_video2(frame.p, fin, packet.p);
 		if (res < 0) {
-			// FIXME: right exception
-			throw new RuntimeException("Error decoding video");
+			throw new AVDecodingError(-res);
 		}
 
-		return (fin.asIntBuffer().get(0) != 0);
+		return (fin.get(0) != 0);
 	}
 
-	public static void registerAll() {
-		register_all();
+	/**
+	 * Encode video, writing result to buf.
+	 *
+	 * Note that it always writes to the start of the buffer, ignoring the position and limit.
+	 * @param buf
+	 * @param pict Picture to encode, use null to flush encoded frames.
+	 * @return number of bytes written.  When 0 with a null picture, encoding is complete.
+	 * @throws au.notzed.jjmpeg.exception.AVEncodingError
+	 */
+	public int encodeVideo(ByteBuffer buf, AVFrame pict) throws AVEncodingError {
+		int buf_size = buf.capacity();
+		int len = _encode_video(buf, buf_size, pict != null ? pict.p : null);
+
+		if (len >= 0) {
+			buf.limit(len);
+			buf.position(0);
+			return len;
+		} else {
+			throw new AVEncodingError(-len);
+		}
 	}
 }

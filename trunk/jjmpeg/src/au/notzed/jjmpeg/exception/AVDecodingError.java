@@ -16,27 +16,16 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with jjmpeg.  If not, see <http://www.gnu.org/licenses/>.
  */
-package au.notzed.jjmpeg;
-
-import java.nio.ByteBuffer;
+package au.notzed.jjmpeg.exception;
 
 /**
  *
  * @author notzed
  */
-public class AVCodec extends AVCodecAbstract {
+public class AVDecodingError extends AVException {
+	public int errid;
 
-	AVCodec(ByteBuffer p) {
-		super(p);
-	}
-
-	static public AVCodec create(ByteBuffer p) {
-		if (p == null)
-			return null;
-		return new AVCodec(p);
-	}
-
-	static public AVCodec findEncoder(CodecID id) {
-		return AVCodec.create(_find_encoder(id.toC()));
+	public AVDecodingError(int errid) {
+		this.errid = errid;
 	}
 }
