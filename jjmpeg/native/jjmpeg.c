@@ -30,9 +30,15 @@ static ByteIOContext *(*dav_alloc_put_byte)(
 static int (*dsws_scale)(struct SwsContext *context, const uint8_t* const srcSlice[], const int srcStride[],
 			 int srcSliceY, int srcSliceH, uint8_t* const dst[], const int dstStride[]);
 
+static int64_t (*dav_rescale_q)(int64_t a, AVRational bq, AVRational cq);
+static void * (*dav_malloc)(int size);
+static void (*dav_free)(void *mem);
+
 #define CALLDL(x) (*d ## x)
+#define MAPDL(x, lib) if ((d ## x = dlsym(lib, #x)) == NULL) return 0
 #else
 #define CALLDL(x) x
+#define MAPDL(x, lib)
 #endif
 
 static jmethodID byteio_readPacket;
@@ -58,6 +64,10 @@ static int init_local(JNIEnv *env) {
 	dsws_scale = dlsym(swscale_lib, "sws_scale");
 	if (dsws_scale == NULL) return 0;
 
+	MAPDL(av_rescale_q, avutil_lib);
+
+	MAPDL(av_malloc, avutil_lib);
+	MAPDL(av_free, avutil_lib);
 #else
 #endif
 
@@ -97,6 +107,18 @@ JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVNative_getPointerIndex
         return WRAP(((void **)base)[index], size);
 }
 
+JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVNative__1malloc
+(JNIEnv *env, jclass jc, jint size) {
+	jobject res = WRAP(CALLDL(av_malloc)(size), size);
+	return res;
+}
+
+JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_AVNative__1free
+(JNIEnv *env, jclass jc, jobject jmem) {
+        void * mem = ADDR(jmem);
+
+        (*dav_free)(mem);
+}
 /* ********************************************************************** */
 
 JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVFormatContext_open_1input_1file
@@ -139,17 +161,20 @@ JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVFrame_getPlaneAt(JNIEnv *env, 
 /* ********************************************************************** */
 
 // TODO: this isn't needed, decode-video just uses the packet directly
-JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVPacket_get_1data
-(JNIEnv *env, jobject jo, jobject jpacket) {
-	jobject jptr = (*env)->GetObjectField(env, jo, field_p);
-	AVPacket *packet = ADDR(jptr);
+//JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVPacket_get_1data
+//(JNIEnv *env, jobject jo, jobject jpacket) {
+//	jobject jptr = (*env)->GetObjectField(env, jo, field_p);
+//	AVPacket *packet = ADDR(jptr);
 
-	return WRAP(packet->data, packet->size);
-}
+//	return WRAP(packet->data, packet->size);
+//}
 
 JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVPacket_allocate
 (JNIEnv *env, jclass hc) {
 	AVPacket *packet = malloc(sizeof(AVPacket));
+
+	if (packet != NULL)
+		av_init_packet(packet);
 
 	return WRAP(packet, sizeof(AVPacket));
 }
@@ -159,6 +184,21 @@ JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_AVPacket_free
 	AVPacket *packet = ADDR(jpacket);
 
 	free(packet);
+}
+
+JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_AVAudioPacket_consume
+(JNIEnv *env, jobject jo, jint len) {
+	jobject jptr = (*env)->GetObjectField(env, jo, field_p);
+	AVPacket *packet = ADDR(jptr);
+
+	//printf("consume, packet = %p  data = %p, size = %d\n", packet, packet->data, packet->size); fflush(stdout);
+
+	len = packet->size < len ? packet->size : len;
+
+	packet->data += len;
+	packet->size -= len;
+
+	return packet->size;
 }
 
 /* ********************************************************************** */
@@ -173,6 +213,19 @@ JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_SwsContext__1scale (JNIEnv *env, jo
 	res = CALLDL(sws_scale)(sws, (const uint8_t * const *)src->data, src->linesize,
 				srcSliceY, srcSliceH,
 				dst->data, dst->linesize);
+
+	return res;
+}
+
+/* ********************************************************************** */
+
+// our rescale_q takes pointer arguments
+JNIEXPORT jlong JNICALL Java_au_notzed_jjmpeg_AVRational_jj_1rescale_1q (JNIEnv *env, jclass jc, jlong ja, jobject jbq, jobject jcq) {
+	AVRational *bqp = ADDR(jbq);
+	AVRational *cqp = ADDR(jcq);
+	jlong res;
+
+	res = CALLDL(av_rescale_q)(ja, *bqp, *cqp);
 
 	return res;
 }

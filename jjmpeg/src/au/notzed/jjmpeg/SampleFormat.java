@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011 Michael Zucchi
+ * copyright (c) 2001 Fabrice Bellard
  *
  * This file is part of jjmpeg, a java binding to ffmpeg's libraries.
  *
@@ -18,36 +18,44 @@
  */
 package au.notzed.jjmpeg;
 
-import java.nio.ByteBuffer;
-
 /**
  *
  * @author notzed
  */
-public class AVPacket extends AVPacketAbstract {
+public enum SampleFormat {
 
-	AVPacket(ByteBuffer p) {
-		super(p);
+	SAMPLE_FMT_NONE,
+	/**
+	 * unsigned 8 bits
+	 */
+	SAMPLE_FMT_U8,
+	/**
+	 * signed 16 bits
+	 */
+	SAMPLE_FMT_S16,
+	/**
+	 * signed 32 bits
+	 */
+	SAMPLE_FMT_S32,
+	/**
+	 * float
+	 */
+	SAMPLE_FMT_FLT,
+	/**
+	 *  double
+	 */
+	SAMPLE_FMT_DBL;
+	//  SAMPLE_FMT_NB;               ///< Number of sample formats. DO NOT USE if dynamically linking to libavcodec
+
+	public static SampleFormat fromC(int fmtid) {
+		return values()[fmtid + 1];
 	}
 
-	public static AVPacket create() {
-		return new AVPacket(allocate());
+	public static int toC(SampleFormat p) {
+		return p.ordinal() - 1;
 	}
 
-	@Override
-	protected void finalize() throws Throwable {
-		super.finalize();
-		free(p);
+	public int toC() {
+		return ordinal() - 1;
 	}
-
-	//private native ByteBuffer get_data(ByteBuffer p);
-
-	protected static native ByteBuffer allocate();
-
-	protected static native void free(ByteBuffer p);
-
-
-	//public ByteBuffer getData() {
-	//	return get_data(p);
-	//}
-}
+};

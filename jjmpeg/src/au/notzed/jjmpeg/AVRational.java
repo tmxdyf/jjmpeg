@@ -18,7 +18,10 @@
  */
 package au.notzed.jjmpeg;
 
+import java.math.BigInteger;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.LongBuffer;
 
 /**
  *
@@ -31,6 +34,63 @@ public class AVRational extends AVRationalAbstract {
 	}
 
 	static AVRational create(ByteBuffer p) {
-		 return new AVRational(p);
+		return new AVRational(p);
+	}
+
+	static AVRational create(int num, int den) {
+		// since it's so simple we can create this ourselves
+		ByteBuffer b = ByteBuffer.allocateDirect(8).order(ByteOrder.nativeOrder());
+		b.asIntBuffer().put(num).put(den).rewind();
+		return create(b);
+	}
+	public static final AVRational AV_TIME_BASE_Q = create(1, 1000000);
+
+	// perhapd implement this locally instead?
+	static native long jj_rescale_q(long a, ByteBuffer bq, ByteBuffer cq);
+//	/usr/include/ffmpeg/libavutil/mathematics.h:int64_t av_rescale_q(int64_t a, AVRational bq, AVRational cq) av_const;
+
+	public double q2d() {
+		return getNum() / (double) getDen();
+	}
+
+	static public long rescaleQ(long a, AVRational bq, AVRational cq) {
+		return jj_rescale_q(a, bq.p, cq.p);
+	}
+
+	/**
+	 * Perform v * (num * s) / den
+	 * @param v
+	 * @param s
+	 * @return
+	 */
+	public long scale(long v, int s) {
+		return starSlash(v, (long)getNum() * (long)s, getDen());
+	}
+
+	/**
+	 * Performs A * B / C, where A * B is treated as 128 bit
+	 * @param a
+	 * @param b
+	 * @param c
+	 * @return
+	 */
+	static public long starSlash(long a, long b, long c) {
+		// lazy today .. just use BigInteger, even if it's SAF
+		byte[] longBytes = new byte[8];
+		LongBuffer lb = ByteBuffer.wrap(longBytes).asLongBuffer();
+
+		lb.put(0, a);
+		BigInteger A = new BigInteger(longBytes);
+		lb.put(0, b);
+		BigInteger B = new BigInteger(longBytes);
+		lb.put(0, c);
+		BigInteger C = new BigInteger(longBytes);
+
+		long res = A.multiply(B).divide(C).longValue();
+
+		System.out.printf("%d * %d / %d = %d  ? %d  ? %d\n", a, b, c, res, a * b / c, a * b);
+		System.out.printf("%d * %d / %d = %d\n", A.longValue(), B.longValue(), C.longValue(), res);
+
+		return res;
 	}
 }

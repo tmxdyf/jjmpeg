@@ -21,11 +21,6 @@ package au.notzed.jjmpeg;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
-class AVInputFormat {
-
-	ByteBuffer struct;
-}
-
 class AVFormatParameters {
 
 	ByteBuffer struct;
@@ -58,7 +53,7 @@ public class AVFormatContext extends AVFormatContextAbstract {
 		ByteBuffer res = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder());
 		ByteBuffer context;
 
-		context = open_input_file(name, fmt != null ? fmt.struct : null, buf_size, ap != null ? ap.struct : null, res);
+		context = open_input_file(name, fmt != null ? fmt.p : null, buf_size, ap != null ? ap.struct : null, res);
 		if (context == null) {
 			// throw new AVFormatException based on error id
 			throw new RuntimeException("failed");
@@ -73,8 +68,17 @@ public class AVFormatContext extends AVFormatContextAbstract {
 	public int readFrame(AVPacket packet) {
 		int res = super.readFrame(packet);
 
-		if (res != 0) {
-			System.out.printf("error reading frame %d\n", res);
+		if (res < 0) {
+			switch (res) {
+				case -32: // EPIPE
+					// the superclass binding makes this a pain , not sure how to fix
+			//		throw new AVIOException(-res);
+				case -1: // EOF
+					break;
+				default:
+					System.out.printf("some error reading frame %d\n", res);
+					break;
+			}
 		}
 
 		return res;

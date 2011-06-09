@@ -66,4 +66,8 @@ public class AVFrame extends AVFrameAbstract {
 
 		return new AVPlane(getPlaneAt(index, fmt.toC(fmt), width, height), lineSize, width, height);
 	}
+
+	public boolean isKeyFrame() {
+		return getKeyFrame() != 0;
+	}
 }
