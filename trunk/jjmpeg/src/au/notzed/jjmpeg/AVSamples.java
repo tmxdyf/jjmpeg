@@ -19,44 +19,35 @@
 package au.notzed.jjmpeg;
 
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
+import java.nio.ShortBuffer;
 
 /**
- *
+ * Holder for audio samples memory, which has some specific memory
+ * allocation requirements.
  * @author notzed
  */
-abstract public class AVNative {
+public class AVSamples extends AVNative {
 
-	final ByteBuffer p;
+	ShortBuffer s;
 
-	protected AVNative(ByteBuffer p) {
-		this.p = p;
-		p.order(ByteOrder.nativeOrder());
+	public AVSamples() {
+		super(_malloc(AVCodecContext.AVCODEC_MAX_AUDIO_FRAME_SIZE * 2));
+		s = p.asShortBuffer();
 	}
-	static final boolean is64;
 
-	static {
-		int bits;
+	public ByteBuffer getBuffer() {
+		return p;
+	}
 
-		System.loadLibrary("jjmpeg");
-		bits = getPointerBits();
+	public ShortBuffer getSamples() {
+		return s;
+	}
 
-		if (bits == 0) {
-			throw new UnsatisfiedLinkError("Unable to open jjmpeg");
+	@Override
+	protected void finalize() throws Throwable {
+		super.finalize();
+		if (p != null) {
+			_free(p);
 		}
-		is64 = bits == 64;
-
-		// may as well do these here i guess?
-		AVCodecContext.init();
-		AVFormatContext.registerAll();
 	}
-
-	static native ByteBuffer getPointer(ByteBuffer base, int offset, int size);
-
-	static native ByteBuffer getPointerIndex(ByteBuffer base, int offset, int size, int index);
-
-	static native int getPointerBits();
-
-	static native ByteBuffer _malloc(int size);
-	static native void _free(ByteBuffer mem);
 }

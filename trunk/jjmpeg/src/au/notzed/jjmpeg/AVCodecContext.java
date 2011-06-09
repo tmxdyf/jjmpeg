@@ -23,6 +23,7 @@ import au.notzed.jjmpeg.exception.AVEncodingError;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.IntBuffer;
+import java.nio.ShortBuffer;
 
 /**
  *
@@ -37,7 +38,11 @@ public class AVCodecContext extends AVCodecContextAbstract {
 	public static final int AVMEDIA_TYPE_SUBTITLE = 3;
 	public static final int AVMEDIA_TYPE_ATTACHMENT = 4;
 	public static final int AVMEDIA_TYPE_NB = 5;
-
+//
+	public static final long AV_TIME_BASE = 1000000;
+	public static final long AV_NOPTS_VALUE = (0x8000000000000000L);
+	public static final int AVCODEC_MAX_AUDIO_FRAME_SIZE = 192000; // 1 second of 48khz 32bit audio
+	//
 	private IntBuffer fin = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder()).asIntBuffer();
 
 	protected AVCodecContext(ByteBuffer p) {
@@ -90,5 +95,37 @@ public class AVCodecContext extends AVCodecContextAbstract {
 		} else {
 			throw new AVEncodingError(-len);
 		}
+	}
+
+	/**
+	 * Decode an audio packet.
+	 *
+	 * @param samples on output the limit will be set to the number of short samples stored
+	 * @param packet
+	 * @return number of bytes written to samples
+	 * @throws AVDecodingError
+	 */
+	public int decodeAudio(AVSamples samples, AVAudioPacket packet) throws AVDecodingError {
+		int data = 0;
+		ShortBuffer s = samples.getSamples();
+		
+		while (data == 0 && packet.getSize() > 0) {
+			int res = 0;
+
+			fin.put(0, s.capacity());
+			res = _decode_audio3(s, fin, packet.p);
+			if (res < 0) {
+				throw new AVDecodingError(-res);
+			}
+			data = fin.get(0);
+			packet.consume(res);
+		}
+
+		samples.getBuffer().position(0);
+		samples.getBuffer().limit(data);
+		s.position(0);
+		s.limit(data/2);
+
+		return data;
 	}
 }

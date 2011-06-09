@@ -19,44 +19,18 @@
 package au.notzed.jjmpeg;
 
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 
 /**
  *
  * @author notzed
  */
-abstract public class AVNative {
+public class AVInputFormat extends AVInputFormatAbstract {
 
-	final ByteBuffer p;
-
-	protected AVNative(ByteBuffer p) {
-		this.p = p;
-		p.order(ByteOrder.nativeOrder());
-	}
-	static final boolean is64;
-
-	static {
-		int bits;
-
-		System.loadLibrary("jjmpeg");
-		bits = getPointerBits();
-
-		if (bits == 0) {
-			throw new UnsatisfiedLinkError("Unable to open jjmpeg");
-		}
-		is64 = bits == 64;
-
-		// may as well do these here i guess?
-		AVCodecContext.init();
-		AVFormatContext.registerAll();
+	protected AVInputFormat(ByteBuffer p) {
+		super(p);
 	}
 
-	static native ByteBuffer getPointer(ByteBuffer base, int offset, int size);
-
-	static native ByteBuffer getPointerIndex(ByteBuffer base, int offset, int size, int index);
-
-	static native int getPointerBits();
-
-	static native ByteBuffer _malloc(int size);
-	static native void _free(ByteBuffer mem);
+	static AVInputFormat create(ByteBuffer p) {
+		 return new AVInputFormat(p);
+	}
 }

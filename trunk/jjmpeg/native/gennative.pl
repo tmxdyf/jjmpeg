@@ -33,6 +33,7 @@ open IN,"native.conf";
     "void" => "void",
 
     "int *" => "IntBuffer",
+    "int16_t *" => "ShortBuffer",
     "uint8_t *" => "ByteBuffer",
     "const char *" => "String",
     "const double *" => "DoubleBuffer"
@@ -292,6 +293,7 @@ if ($dodl) {
     # output constructor (dlopen stuff)
     print <<END;
 
+static void *avutil_lib;
 static void *avcodec_lib;
 static void *avformat_lib;
 static void *swscale_lib;
@@ -302,6 +304,8 @@ JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_AVNative_getPointerBits
 (JNIEnv *env, jclass jc) {
 \tavcodec_lib = dlopen("libavcodec.so", RTLD_LAZY|RTLD_GLOBAL);
 \tif(avcodec_lib == NULL) return 0;
+\tavutil_lib = dlopen("libavutil.so", RTLD_LAZY|RTLD_GLOBAL);
+\tif(avutil_lib == NULL) return 0;
 \tavformat_lib = dlopen("libavformat.so", RTLD_LAZY|RTLD_GLOBAL);
 \tif(avformat_lib == NULL) return 0;
 \tswscale_lib = dlopen("libswscale.so", RTLD_LAZY|RTLD_GLOBAL);
@@ -374,6 +378,8 @@ foreach $classinfo (@classes) {
 		if ($opt =~ m/r/) {
 		    print "&";
 		}
+	    } elsif ($fi{ntype} eq "jstring") {
+		print "WRAPSTR(";
 	    }
 	    print "cptr->$fi{name}";
 	    if ($ind) {
@@ -381,6 +387,8 @@ foreach $classinfo (@classes) {
 	    }
 	    if ($fi{ntype} eq "jobject") {
 		print ", sizeof($fi{type}))";
+	    } elsif ($fi{ntype} eq "jstring") {
+		print ")";
 	    }
 	    print ";\n}\n\n";
 	}
@@ -509,6 +517,7 @@ open STDOUT, ">AVAbstract.java";
     print <<END;
 package au.notzed.jjmpeg;
 import java.nio.ByteBuffer;
+import java.nio.ShortBuffer;
 import java.nio.IntBuffer;
 import java.nio.DoubleBuffer;
 

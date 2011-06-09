@@ -11,6 +11,7 @@
 #define RSTR(jp, cp) ((*env)->ReleaseStringUTFChars(env, jp, cp))
 
 #define WRAP(cp, clen) ((*env)->NewDirectByteBuffer(env, cp, clen));
+#define WRAPSTR(js) ((*env)->NewStringUTF(env, js));
 
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>

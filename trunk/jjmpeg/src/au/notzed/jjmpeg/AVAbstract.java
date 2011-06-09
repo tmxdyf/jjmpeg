@@ -3,6 +3,7 @@
 
 package au.notzed.jjmpeg;
 import java.nio.ByteBuffer;
+import java.nio.ShortBuffer;
 import java.nio.IntBuffer;
 import java.nio.DoubleBuffer;
 
@@ -22,6 +23,18 @@ abstract class AVCodecContextAbstract extends AVNative {
 	private native int _setPixFmt(int val);
 	public  void setPixFmt(PixelFormat val) {
 		_setPixFmt(val.toC());
+	}
+	public native int getSampleRate();
+	public native int setSampleRate(int val);
+	public native int getChannels();
+	public native int setChannels(int val);
+	private native int _getSampleFmt();
+	public  SampleFormat getSampleFmt() {
+		return SampleFormat.values()[_getSampleFmt()+1];
+	}
+	private native int _setSampleFmt(int val);
+	public  void setSampleFmt(SampleFormat val) {
+		_setSampleFmt(val.toC());
 	}
 	public native int getCodecType();
 	public native int getCodecID();
@@ -44,6 +57,8 @@ abstract class AVCodecContextAbstract extends AVNative {
 	native int _close();
 	native int _decode_video2(ByteBuffer picture, IntBuffer got_picture_ptr, ByteBuffer avpkt);
 	native int _encode_video(ByteBuffer buf, int buf_size, ByteBuffer pict);
+	native int _decode_audio3(ShortBuffer samples, IntBuffer frame_size_ptr, ByteBuffer avpkt);
+	native void _flush_buffers();
 	static native ByteBuffer _alloc_context();
 	static native void _init();
 	// Public Methods
@@ -56,6 +71,9 @@ abstract class AVCodecContextAbstract extends AVNative {
 	public int encodeVideo(ByteBuffer buf, int buf_size, AVFrame pict) {
 		return _encode_video(buf, buf_size, pict.p);
 	}
+	public void flushBuffers() {
+		_flush_buffers();
+	}
 	static public AVCodecContext allocContext() {
 		return AVCodecContext.create(_alloc_context());
 	}
@@ -63,23 +81,58 @@ abstract class AVCodecContextAbstract extends AVNative {
 		_init();
 	}
 }
+abstract class AVCodecAbstract extends AVNative {
+	protected AVCodecAbstract(ByteBuffer p) {
+		super(p);
+	}
+	// Fields
+	public native String getName();
+	// Native Methods
+	static native ByteBuffer _find_encoder(int id);
+	static native ByteBuffer _find_decoder(int id);
+	static native ByteBuffer _find_encoder_by_name(String name);
+	// Public Methods
+	static public AVCodec findEncoder(int id) {
+		return AVCodec.create(_find_encoder(id));
+	}
+	static public AVCodec findDecoder(int id) {
+		return AVCodec.create(_find_decoder(id));
+	}
+	static public AVCodec findEncoderByName(String name) {
+		return AVCodec.create(_find_encoder_by_name(name));
+	}
+}
 abstract class AVFormatContextAbstract extends AVNative {
 	protected AVFormatContextAbstract(ByteBuffer p) {
 		super(p);
 	}
 	// Fields
+	private native ByteBuffer _getInputFormat();
+	public  AVInputFormat getInputFormat() {
+		return AVInputFormat.create(_getInputFormat());
+	}
+	private native ByteBuffer _getOutputFormat();
+	public  AVOutputFormat getOutputFormat() {
+		return AVOutputFormat.create(_getOutputFormat());
+	}
 	public native int getNBStreams();
 	private native ByteBuffer _getStreamAt(int index);
 	public  AVStream getStreamAt(int index) {
 		return AVStream.create(_getStreamAt(index));
 	}
+	public native long getStartTime();
+	public native long getDuration();
+	public native long getFileSize();
+	public native int getBitRate();
+	public native int getFlags();
+	public native int setFlags(int val);
 	// Native Methods
 	native void _close_input_file();
 	native int _seek_frame(int stream_index, long timestamp, int flags);
 	native int _read_frame(ByteBuffer pkt);
 	native int _find_stream_info();
 	static native void _register_all();
-	static native void _free(ByteBuffer mem);
+	native int _seek_file(int stream_index, long min_ts, long ts, long max_ts, int flags);
 	// Public Methods
 	public void closeInputFile() {
 		_close_input_file();
@@ -96,38 +149,45 @@ abstract class AVFormatContextAbstract extends AVNative {
 	static public void registerAll() {
 		_register_all();
 	}
+	public int seekFile(int stream_index, long min_ts, long ts, long max_ts, int flags) {
+		return _seek_file(stream_index, min_ts, ts, max_ts, flags);
+	}
 }
-abstract class AVCodecAbstract extends AVNative {
-	protected AVCodecAbstract(ByteBuffer p) {
+abstract class AVInputFormatAbstract extends AVNative {
+	protected AVInputFormatAbstract(ByteBuffer p) {
 		super(p);
 	}
 	// Fields
+	public native String getName();
+	public native String getLongName();
 	// Native Methods
-	static native ByteBuffer _find_encoder(int id);
-	static native ByteBuffer _find_decoder(int id);
-	static native ByteBuffer _find_encoder_by_name(String name);
 	// Public Methods
-	static public AVCodec findEncoder(int id) {
-		return AVCodec.create(_find_encoder(id));
+}
+abstract class AVOutputFormatAbstract extends AVNative {
+	protected AVOutputFormatAbstract(ByteBuffer p) {
+		super(p);
 	}
-	static public AVCodec findDecoder(int id) {
-		return AVCodec.create(_find_decoder(id));
-	}
-	static public AVCodec findEncoderByName(String name) {
-		return AVCodec.create(_find_encoder_by_name(name));
-	}
+	// Fields
+	public native String getName();
+	public native String getLongName();
+	public native String getMimeType();
+	public native String getExtensions();
+	// Native Methods
+	// Public Methods
 }
 abstract class AVPacketAbstract extends AVNative {
 	protected AVPacketAbstract(ByteBuffer p) {
 		super(p);
 	}
 	// Fields
-	public native int getPTS();
-	public native int setPTS(int val);
-	public native int getDTS();
-	public native int setDTS(int val);
+	public native long getPTS();
+	public native long setPTS(long val);
+	public native long getDTS();
+	public native long setDTS(long val);
 	public native int getSize();
 	public native int getStreamIndex();
+	public native long getPos();
+	public native int getFlags();
 	// Native Methods
 	native void _free_packet();
 	// Public Methods
@@ -142,6 +202,10 @@ abstract class AVFrameAbstract extends AVNative {
 	// Fields
 	public native int getLineSizeAt(int index);
 	public native int getKeyFrame();
+	public native long getPTS();
+	public native long setPTS(long val);
+	public native int getDisplayPictureNumber();
+	public native int getCodedPictureNumber();
 	// Native Methods
 	static native ByteBuffer _alloc_frame();
 	native int _alloc(int pix_fmt, int width, int height);
@@ -166,6 +230,17 @@ abstract class AVStreamAbstract extends AVNative {
 	private native ByteBuffer _getCodec();
 	public  AVCodecContext getCodec() {
 		return AVCodecContext.create(_getCodec());
+	}
+	public native long getNBFrames();
+	public native long getStartTime();
+	public native long getDuration();
+	private native ByteBuffer _getRFrameRate();
+	public  AVRational getRFrameRate() {
+		return AVRational.create(_getRFrameRate());
+	}
+	private native ByteBuffer _getTimeBase();
+	public  AVRational getTimeBase() {
+		return AVRational.create(_getTimeBase());
 	}
 	// Native Methods
 	// Public Methods
