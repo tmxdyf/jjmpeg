@@ -88,8 +88,8 @@ public class AVRational extends AVRationalAbstract {
 
 		long res = A.multiply(B).divide(C).longValue();
 
-		System.out.printf("%d * %d / %d = %d  ? %d  ? %d\n", a, b, c, res, a * b / c, a * b);
-		System.out.printf("%d * %d / %d = %d\n", A.longValue(), B.longValue(), C.longValue(), res);
+		//System.out.printf("%d * %d / %d = %d  ? %d  ? %d\n", a, b, c, res, a * b / c, a * b);
+		//System.out.printf("%d * %d / %d = %d\n", A.longValue(), B.longValue(), C.longValue(), res);
 
 		return res;
 	}

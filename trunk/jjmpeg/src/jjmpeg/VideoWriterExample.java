@@ -108,7 +108,7 @@ public class VideoWriterExample {
 
 			// for yuv conversion of rgb input
 			AVFrame rgb = AVFrame.create(PixelFormat.PIX_FMT_BGR24, width, height);
-			SwsContext sws = SwsContext.getContext(width, height, PixelFormat.PIX_FMT_BGR24, width, height, PixelFormat.PIX_FMT_YUV420P, SwsContext.SWS_X);
+			SwsContext sws = SwsContext.create(width, height, PixelFormat.PIX_FMT_BGR24, width, height, PixelFormat.PIX_FMT_YUV420P, SwsContext.SWS_X);
 			AVPlane rgbPlane = rgb.getPlaneAt(0, PixelFormat.PIX_FMT_BGR24, width, height);
 
 			int i;

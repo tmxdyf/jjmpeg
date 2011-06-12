@@ -16,6 +16,8 @@ open IN,"native.conf";
     "int8_t" => "jbyte",
     "char" => "jbyte",
     "void" => "void",
+    "double" => "double",
+    "float" => "float",
 
     "const char *" => "jstring"
     );
@@ -31,11 +33,14 @@ open IN,"native.conf";
     "int8_t" => "byte",
     "char" => "byte",
     "void" => "void",
+    "double" => "double",
+    "float" => "float",
 
     "int *" => "IntBuffer",
     "int16_t *" => "ShortBuffer",
     "uint8_t *" => "ByteBuffer",
     "const char *" => "String",
+    "const int16_t *" => "ShortBuffer",
     "const double *" => "DoubleBuffer"
     );
 
@@ -216,6 +221,7 @@ while (<IN>) {
 
 		    my %argdata = {};
 		    my $deref = 0;
+		    my $deenum = 0;
 
 		    $argdata{type} = $type;
 		    $argdata{name} = $name;
@@ -240,6 +246,12 @@ while (<IN>) {
 			if ($cjtype{$1} ne "") {
 			    $dofunc = 0;
 			}
+		    } elsif ($type =~ m/^enum (.*)$/) {
+			$argdata{ntype} = "jint";
+			$argdata{jtype} = $1;
+			$argdata{jntype} = "int";
+			$argdata{nname} = "$name";
+			$deenum = 1;
 		    } else {
 			$argdata{ntype} = $cntype{$type};
 			$argdata{jtype} = $cjtype{$type};
@@ -248,6 +260,7 @@ while (<IN>) {
 		    }
 
 		    $argdata{deref} = $deref;
+		    $argdata{deenum} = $deenum;
 
 		    push @arginfo, \%argdata;
 		}
@@ -652,6 +665,9 @@ END
 		%ai = %{$argdata};
 		print ", " if $count > 0;
 		print "$ai{name}";
+		if ($ai{deenum}) {
+		    print ".toC()";
+		}
 		if ($ai{deref}) {
 		    print ".p";
 		}

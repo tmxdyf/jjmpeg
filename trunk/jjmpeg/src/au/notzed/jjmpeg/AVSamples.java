@@ -29,7 +29,7 @@ import java.nio.ShortBuffer;
 public class AVSamples extends AVNative {
 
 	ShortBuffer s;
-
+	
 	public AVSamples() {
 		super(_malloc(AVCodecContext.AVCODEC_MAX_AUDIO_FRAME_SIZE * 2));
 		s = p.asShortBuffer();
@@ -43,11 +43,19 @@ public class AVSamples extends AVNative {
 		return s;
 	}
 
+	public void dispose() {
+		//if (p != null) {
+		_free(p);
+		//p = null;
+		//}
+	}
+
 	@Override
 	protected void finalize() throws Throwable {
 		super.finalize();
-		if (p != null) {
-			_free(p);
-		}
+		// ??
+		//if (p != null) {
+		//	_free(p);
+		//}
 	}
 }

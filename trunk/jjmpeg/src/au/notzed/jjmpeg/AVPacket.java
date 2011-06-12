@@ -38,6 +38,7 @@ public class AVPacket extends AVPacketAbstract {
 	protected void finalize() throws Throwable {
 		super.finalize();
 		free(p);
+		System.out.println("packet finalise");
 	}
 
 	//private native ByteBuffer get_data(ByteBuffer p);
