@@ -248,7 +248,7 @@ public class VideoFileChooser extends JFileChooser {
 					final BufferedImage loaded = new BufferedImage(width, height, BufferedImage.TYPE_3BYTE_BGR);
 					final AVFrame iconFrame = AVFrame.create(PixelFormat.PIX_FMT_BGR24, w, h);
 
-					final SwsContext scale = SwsContext.getContext(width, height, fmt, w, h, PixelFormat.PIX_FMT_BGR24, SwsContext.SWS_BILINEAR);
+					final SwsContext scale = SwsContext.create(width, height, fmt, w, h, PixelFormat.PIX_FMT_BGR24, SwsContext.SWS_BILINEAR);
 
 
 					// preview video until cancelled

@@ -36,6 +36,8 @@ abstract class AVCodecContextAbstract extends AVNative {
 	public  void setSampleFmt(SampleFormat val) {
 		_setSampleFmt(val.toC());
 	}
+	public native int setFrameSize(int val);
+	public native int getFrameNumber();
 	public native int getCodecType();
 	public native int getCodecID();
 	public native int getBitRate();
@@ -52,12 +54,21 @@ abstract class AVCodecContextAbstract extends AVNative {
 	public native int setTimeBase_num(int val);
 	public native int getTimeBase_den();
 	public native int setTimeBase_den(int val);
+	public native int getStrictStdCompliance();
+	public native int setStrictStdCompliance(int val);
+	public native int getErrorRecognition();
+	public native int setErrorRecognition(int val);
+	public native int getIdctAlgo();
+	public native int setIdctAlgo(int val);
+	public native int getErrorConcealment();
+	public native int setErrorConcealment(int val);
 	// Native Methods
 	native int _open(ByteBuffer codec);
 	native int _close();
 	native int _decode_video2(ByteBuffer picture, IntBuffer got_picture_ptr, ByteBuffer avpkt);
 	native int _encode_video(ByteBuffer buf, int buf_size, ByteBuffer pict);
 	native int _decode_audio3(ShortBuffer samples, IntBuffer frame_size_ptr, ByteBuffer avpkt);
+	native int _encode_audio(ByteBuffer buf, int buf_size, ShortBuffer samples);
 	native void _flush_buffers();
 	static native ByteBuffer _alloc_context();
 	static native void _init();
@@ -70,6 +81,9 @@ abstract class AVCodecContextAbstract extends AVNative {
 	}
 	public int encodeVideo(ByteBuffer buf, int buf_size, AVFrame pict) {
 		return _encode_video(buf, buf_size, pict.p);
+	}
+	public int encodeAudio(ByteBuffer buf, int buf_size, ShortBuffer samples) {
+		return _encode_audio(buf, buf_size, samples);
 	}
 	public void flushBuffers() {
 		_flush_buffers();
@@ -274,8 +288,8 @@ abstract class SwsContextAbstract extends AVNative {
 	static native ByteBuffer _getContext(int srcW, int srcH, int srcFormat, int dstW, int dstH, int dstFormat, int flags, ByteBuffer srcFilter, ByteBuffer dstFilter, DoubleBuffer param);
 	native void _freeContext();
 	// Public Methods
-	static public SwsContext getContext(int srcW, int srcH, int srcFormat, int dstW, int dstH, int dstFormat, int flags, SwsFilter srcFilter, SwsFilter dstFilter, DoubleBuffer param) {
-		return SwsContext.create(_getContext(srcW, srcH, srcFormat, dstW, dstH, dstFormat, flags, srcFilter.p, dstFilter.p, param));
+	static public SwsContext getContext(int srcW, int srcH, PixelFormat srcFormat, int dstW, int dstH, PixelFormat dstFormat, int flags, SwsFilter srcFilter, SwsFilter dstFilter, DoubleBuffer param) {
+		return SwsContext.create(_getContext(srcW, srcH, srcFormat.toC(), dstW, dstH, dstFormat.toC(), flags, srcFilter.p, dstFilter.p, param));
 	}
 	public void freeContext() {
 		_freeContext();
@@ -288,4 +302,21 @@ abstract class SwsFilterAbstract extends AVNative {
 	// Fields
 	// Native Methods
 	// Public Methods
+}
+abstract class ReSampleContextAbstract extends AVNative {
+	protected ReSampleContextAbstract(ByteBuffer p) {
+		super(p);
+	}
+	// Fields
+	// Native Methods
+	static native ByteBuffer _resample_init(int output_channels, int input_channels, int output_rate, int input_rate, int sample_fmt_out, int sample_fmt_in, int filter_length, int log2_phase_count, int linear, double cutoff);
+	native int _resample(ShortBuffer output, ShortBuffer input, int nb_samples);
+	native void _resample_close();
+	// Public Methods
+	static public ReSampleContext resampleInit(int output_channels, int input_channels, int output_rate, int input_rate, SampleFormat sample_fmt_out, SampleFormat sample_fmt_in, int filter_length, int log2_phase_count, int linear, double cutoff) {
+		return ReSampleContext.create(_resample_init(output_channels, input_channels, output_rate, input_rate, sample_fmt_out.toC(), sample_fmt_in.toC(), filter_length, log2_phase_count, linear, cutoff));
+	}
+	public void resampleClose() {
+		_resample_close();
+	}
 }

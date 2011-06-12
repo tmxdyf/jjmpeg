@@ -112,7 +112,7 @@ public class AVCodecContext extends AVCodecContextAbstract {
 		while (data == 0 && packet.getSize() > 0) {
 			int res = 0;
 
-			fin.put(0, s.capacity());
+			fin.put(0, samples.p.capacity());
 			res = _decode_audio3(s, fin, packet.p);
 			if (res < 0) {
 				throw new AVDecodingError(-res);

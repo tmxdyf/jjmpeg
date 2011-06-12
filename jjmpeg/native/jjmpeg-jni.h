@@ -24,3 +24,9 @@ struct SwsContext {
 	int dummy;
 };
 typedef struct SwsContext SwsContext;
+
+// same for ReSampleContext
+struct ReSampleContext {
+	int dummy;
+};
+//typedef struct ReSampleContext ReSampleContext;

@@ -49,7 +49,6 @@ public class AVFrame extends AVFrameAbstract {
 		if (res != 0) {
 			throw new ExceptionInInitializerError("Unable to allocate bitplanes");
 		}
-		System.out.println("allocated new frame ok");
 		f.allocatedFrames = true;
 		
 		return f;

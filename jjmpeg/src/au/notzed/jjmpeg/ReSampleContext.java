@@ -25,39 +25,23 @@ import java.nio.ByteBuffer;
  * Used to convert between formats and optionally scale at the same time.
  * @author notzed
  */
-public class SwsContext extends SwsContextAbstract {
+public class ReSampleContext extends ReSampleContextAbstract {
 
-	public static final int SWS_FAST_BILINEAR = 1;
-	public static final int SWS_BILINEAR = 2;
-	public static final int SWS_BICUBIC = 4;
-	public static final int SWS_X = 8;
-	public static final int SWS_POINT = 0x10;
-	public static final int SWS_AREA = 0x20;
-	public static final int SWS_BICUBLIN = 0x40;
-	public static final int SWS_GAUSS = 0x80;
-	public static final int SWS_SINC = 0x100;
-	public static final int SWS_LANCZOS = 0x200;
-	public static final int SWS_SPLINE = 0x400;
-
-	protected SwsContext(ByteBuffer p) {
+	protected ReSampleContext(ByteBuffer p) {
 		super(p);
 	}
 
 	native int _scale(ByteBuffer srcFrame, int srcSliceY, int srcSliceH, ByteBuffer dstFrame);
 
-	static SwsContext create(ByteBuffer p) {
-		return new SwsContext(p);
+	static ReSampleContext create(ByteBuffer p) {
+		return new ReSampleContext(p);
 	}
 
-	static public SwsContext create(int srcW, int srcH, PixelFormat srcFormat, int dstW, int dstH, PixelFormat dstFormat, int flags) {
-		return SwsContext.create(_getContext(srcW, srcH, srcFormat.toC(), dstW, dstH, dstFormat.toC(), flags, null, null, null));
+	static public ReSampleContext create(int output_channels, int input_channels, int output_rate, int input_rate, SampleFormat sample_fmt_out, SampleFormat sample_fmt_in, int filter_length, int log2_phase_count, int linear, double cutoff) {
+		return ReSampleContext.create(_resample_init(output_channels, input_channels, output_rate, input_rate, sample_fmt_out.toC(), sample_fmt_in.toC(), filter_length, log2_phase_count, linear, cutoff));
 	}
 
-	public int scale(AVFrame src, int srcSliceY, int srcSliceH, AVFrame dst) {
-		return _scale(src.p, srcSliceY, srcSliceH, dst.p);
-	}
-
-	public void dispose() {
-		freeContext();
+	public void close() {
+		resampleClose();
 	}
 }
