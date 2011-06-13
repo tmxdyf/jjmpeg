@@ -1,5 +1,4 @@
 
-
 Code Generation
 ---------------
 
@@ -14,6 +13,10 @@ This creates:
 
 jjmpeg-jni.c is in turn included in jjmpeg.c, which defines the hand-rolled
 native calls.
+
+The jjdvb binding currently works in a similar way, although uses the
+gendvb.pl script and native-dvb.conf file.  It generates jjdvb-jni.c
+and DVBAbstract.java.
 
 Generator Configuration
 -----------------------
@@ -44,12 +47,13 @@ c type,name,flags[,java name[,offset]]
   i - indexed (array)
   e - enum
   o - object (should be set for any pointer types)
+  r - object must be referenced (i.e. is a struct and must be converted to a pointer)
 
  java name if provided is used instead of the c name - for
- when the c->java name conversion isn't consistent/desirable.
+ when the c->java name conversion isn't consistent/desirable (e.g. union reference)
 
  offset is required for enum types, and indicates how far from
- '0' the first enum is.  enum types only support contigous ranges.
+ '0' the first enum is.  enum types only support contigous ranges. 
 
 methods then follow, and are indicated by the optional keyword 'methods'.
 
