@@ -26,10 +26,12 @@ HEADERS=au_notzed_jjmpeg_AVCodecContext.h \
  au_notzed_jjmpeg_AVStream.h
 
 WRAPPERS=AVAbstract.java jjmpeg-jni.c
+WRAPPERS_DVB=DVBAbstract.java jjdvb-jni.c
 
 jjmpeg_lib=$(libdir)/libjjmpeg.so
+jjdvb_lib=$(libdir)/libjjdvb.so
 
-all: $(jjmpeg_lib) $(WRAPPERS)
+all: $(jjmpeg_lib) $(WRAPPERS) $(jjdvb_lib) $(WRAPPERS_DVB)
 
 $(WRAPPERS): gennative.pl native.conf
 	./gennative.pl
@@ -46,3 +48,16 @@ $(HEADERS):
 ../dist/jjmpeg.jar:
 	( cd .. ; ant )
 
+
+
+
+HEADERS_DVB=
+
+$(WRAPPERS_DVB): gendvb.pl native-dvb.conf
+	./gendvb.pl
+
+$(jjdvb_lib): jjdvb.o
+	-mkdir -p $(libdir)
+	$(CC) -shared -Wl,-soname,libjjdvb.so -o $@ $^ $(LIBS)
+
+jjdvb.o: jjdvb.c $(HEADERS_DVB) jjdvb-jni.c jjdvb-jni.h
