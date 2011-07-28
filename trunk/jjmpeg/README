@@ -24,13 +24,13 @@ jjdvb is in very early stages of development and is untested.  Most of
 the binding is just a copy of the C header #defines and enums since
 the interface is through ioctl's.
 
-Only GNU/Linux systems are supported, although jjmpeg should
-be easy enough to port.
+In addition to the native GNU/Linux support, a window-64-bit build
+is possible using a mingw-w64 cross compiler.
 
 USING
 -----
 
-The library native/<platform>/libjjmpeg.so must be in the
+The library native/<platform>/[lib]jjmpeg.[so|dll] must be in the
 LD_LIBRARY_PATH to use jjmpeg.
 
 Similarly native/<platform>/libjjdvb.so for using the classes
@@ -77,6 +77,15 @@ jjmpeg is hosted on google code at the following url:
 
 A log of development activity and thoughts:
  http://a-hackers-craic.blogspot.com/search/label/jjmpeg
+
+Cross compiler for windows builds:
+ http://sourceforge.net/projects/mingw-w64/files/mingw-w64/mingw-w64-snapshot/
+
+FFMPEG builds for windows:
+ http://ffmpeg.zeranoe.com/builds/
+
+ You need the dev packages to (re)compile the native library, otherwise
+ you just need the shared version.
 
 LICENSE
 -------
