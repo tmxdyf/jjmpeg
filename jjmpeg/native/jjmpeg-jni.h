@@ -2,8 +2,24 @@
  * Global includes
  */
 
-#include <dlfcn.h>
 #include <jni.h>
+
+#ifdef WIN64
+#  include <windows.h>
+
+#define _TOSTR(x) #x
+#define TOSTR(x) _TOSTR(x)
+
+#  define DLOPEN(x, lib, ver) do { x = LoadLibrary(lib "-"  _TOSTR(ver) ".dll"); if (x == NULL) { printf("cannot open %s\n",  lib "-" TOSTR(ver) ".dll"); return 1; } } while(0)
+#  define CALLDL(x) (*d ## x)
+#  define MAPDL(x, lib) do { if ((d ## x = (void *)GetProcAddress(lib, #x)) == NULL) { printf("cannot resolve %s\n", #x); fflush(stdout); return 1; } } while(0)
+#else
+#  include <dlfcn.h>
+
+#  define DLOPEN(x, lib, ver) x = dlopen(lib ".so", RTLD_LAZY|RTLD_GLOBAL); if (x == NULL) return 0
+#  define CALLDL(x) (*d ## x)
+#  define MAPDL(x, lib) if ((d ## x = dlsym(lib, #x)) == NULL) return 0
+#endif
 
 #define ADDR(jp) (jp != NULL ? (*env)->GetDirectBufferAddress(env, jp) : NULL)
 #define SIZE(jp) (jp != NULL ? (*env)->GetDirectBufferCapacity(env, jp) : 0)
@@ -15,6 +31,7 @@
 
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
+#include <libavutil/avutil.h>
 
 static int init_local(JNIEnv *env);
 
@@ -30,3 +47,10 @@ struct ReSampleContext {
 	int dummy;
 };
 //typedef struct ReSampleContext ReSampleContext;
+
+
+/**  Library handles */
+static void *avutil_lib;
+static void *avcodec_lib;
+static void *avformat_lib;
+static void *swscale_lib;

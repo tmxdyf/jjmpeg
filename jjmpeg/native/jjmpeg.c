@@ -5,12 +5,6 @@
 
 #include "jjmpeg-jni.c"
 
-#define USEDL
-
-#ifdef USEDL
-//static int (*dav_open_input_stream)(AVFormatContext **ic_ptr,
-//				    ByteIOContext *pb, const char *filename,
-//				    AVInputFormat *fmt, AVFormatParameters *ap);
 static int (*dav_open_input_file)(AVFormatContext **ic_ptr, const char *filename,
 				  AVInputFormat *fmt,
 				  int buf_size,
@@ -33,13 +27,7 @@ static int (*dsws_scale)(struct SwsContext *context, const uint8_t* const srcSli
 static int64_t (*dav_rescale_q)(int64_t a, AVRational bq, AVRational cq);
 static void * (*dav_malloc)(int size);
 static void (*dav_free)(void *mem);
-
-#define CALLDL(x) (*d ## x)
-#define MAPDL(x, lib) if ((d ## x = dlsym(lib, #x)) == NULL) return 0
-#else
-#define CALLDL(x) x
-#define MAPDL(x, lib)
-#endif
+static void (*dav_init_packet)(AVPacket *);
 
 static jmethodID byteio_readPacket;
 static jmethodID byteio_writePacket;
@@ -49,27 +37,20 @@ static jmethodID byteio_seek;
 
 static int init_local(JNIEnv *env) {
 
-#ifdef USEDL
-	//*(void **)(&dav_open_input_file) = dlsym(avformat_lib, "av_open_input_file");
-	dav_open_input_file = dlsym(avformat_lib, "av_open_input_file");
-	if (dav_open_input_file == NULL) return -1;
+	DLOPEN(avcodec_lib, "avcodec", LIBAVCODEC_VERSION_MAJOR);
+	DLOPEN(avutil_lib, "avutil", LIBAVUTIL_VERSION_MAJOR);
+	DLOPEN(avformat_lib, "avformat", LIBAVFORMAT_VERSION_MAJOR);
+	DLOPEN(swscale_lib, "swscale", LIBSWSCALE_VERSION_MAJOR);
 
-	dav_alloc_put_byte = dlsym(avformat_lib, "av_alloc_put_byte");
-	if (dav_alloc_put_byte == NULL) return 0;
-
-	//*(void **)(&davcodec_encode_video) = dlsym(avcodec_lib, "avcodec_encode_video");
-	davcodec_encode_video = dlsym(avcodec_lib, "avcodec_encode_video");
-	if (davcodec_encode_video == NULL) return 0;
-
-	dsws_scale = dlsym(swscale_lib, "sws_scale");
-	if (dsws_scale == NULL) return 0;
+	MAPDL(av_open_input_file, avformat_lib);
+	MAPDL(av_alloc_put_byte, avformat_lib);
+	MAPDL(avcodec_encode_video, avcodec_lib);
+	MAPDL(av_init_packet, avcodec_lib);
+	MAPDL(sws_scale, swscale_lib);
 
 	MAPDL(av_rescale_q, avutil_lib);
-
 	MAPDL(av_malloc, avutil_lib);
 	MAPDL(av_free, avutil_lib);
-#else
-#endif
 
 	jclass byteioclass = (*env)->FindClass(env, "au/notzed/jjmpeg/ByteIOContext");
 	if (byteioclass == NULL)
@@ -174,7 +155,7 @@ JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVPacket_allocate
 	AVPacket *packet = malloc(sizeof(AVPacket));
 
 	if (packet != NULL)
-		av_init_packet(packet);
+		CALLDL(av_init_packet)(packet);
 
 	return WRAP(packet, sizeof(AVPacket));
 }

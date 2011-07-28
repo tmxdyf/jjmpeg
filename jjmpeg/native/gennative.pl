@@ -315,14 +315,7 @@ static jfieldID field_p;
 
 JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_AVNative_getPointerBits
 (JNIEnv *env, jclass jc) {
-\tavcodec_lib = dlopen("libavcodec.so", RTLD_LAZY|RTLD_GLOBAL);
-\tif(avcodec_lib == NULL) return 0;
-\tavutil_lib = dlopen("libavutil.so", RTLD_LAZY|RTLD_GLOBAL);
-\tif(avutil_lib == NULL) return 0;
-\tavformat_lib = dlopen("libavformat.so", RTLD_LAZY|RTLD_GLOBAL);
-\tif(avformat_lib == NULL) return 0;
-\tswscale_lib = dlopen("libswscale.so", RTLD_LAZY|RTLD_GLOBAL);
-\tif(swscale_lib == NULL) return 0;
+\tif (init_local(env) != 0) return 0;
 
 END
     foreach $classinfo (@classes) {
@@ -335,15 +328,15 @@ END
 
 	    # man dlopen says to do this hacked up shit because of c99, but gcc whines rightly about it
 	    #print "\t*(void **)(&${dlsymprefix}$mi{name}) = dlsym($mi{library}_lib, \"$mi{name}\");\n";
-	    print "\t${dlsymprefix}$mi{name} = dlsym($mi{library}_lib, \"$mi{name}\");\n";
-	    print "\tif (${dlsymprefix}$mi{name} == NULL) return 0;\n";
+	    #print "\t${dlsymprefix}$mi{name} = dlsym($mi{library}_lib, \"$mi{name}\");\n";
+	    #print "\tif (${dlsymprefix}$mi{name} == NULL) return 0;\n";
+	    printf "\tMAPDL($mi{name}, $mi{library}_lib);\n";
 	}
     }
 
 print "\n";
     print "\tfield_p = (*env)->GetFieldID(env, jc, \"p\", \"Ljava/nio/ByteBuffer;\");\n";
 print "\tif (field_p == NULL) return 0;\n";
-print "\tif (init_local(env) != 0) return 0;\n";
 print "\n";
     print "\treturn sizeof(void *)*8;\n";
     print "}\n";
