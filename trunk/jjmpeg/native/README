@@ -18,6 +18,17 @@ The jjdvb binding currently works in a similar way, although uses the
 gendvb.pl script and native-dvb.conf file.  It generates jjdvb-jni.c
 and DVBAbstract.java.
 
+Compiling
+---------
+
+This is still work in progress - there is a sub-directory for each architecture
+and the same code is re-compiled for each.  It assumes cross-compilers are
+available and in the path for the given platform, and if not they are simply
+ignored during the build.
+
+Currently the linux directory only compiles using the native system compiler -
+i.e. whether it is 64 or 32 bit depends on where it is executed.
+
 Generator Configuration
 -----------------------
 

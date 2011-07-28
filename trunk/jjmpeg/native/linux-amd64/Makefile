@@ -1,9 +1,20 @@
 
+# compiler prefix for cross compiling linux x86-64
+CROSS=
+
+CC=$(CROSS)gcc
+AR=$(CROSS)ar
+LD=$(CROSS)ld
+
 JDK_HOME=/usr/java/latest
 javah=$(JDK_HOME)/bin/javah
 
-CFLAGS=-I$(JDK_HOME)/include -I$(JDK_HOME)/include/linux -I/usr/include/ffmpeg -fPIC -Wall -O2
+JNI_CFLAGS=-I$(JJMPEG)/jni -I$(JJMPEG)/jni/linux -D_JNI_IMPLEMENTATION_
+CFLAGS=$(JNI_CFLAGS) -I/usr/include/ffmpeg -fPIC -Wall -O2
 LIBS=#-lavcodec -lavformat -lavutil
+
+JJMPEG=..
+VPATH=$(JJMPEG)
 
 CLASSES=au.notzed.jjmpeg.AVFormatContext\
  au.notzed.jjmpeg.AVCodec\
@@ -26,31 +37,23 @@ HEADERS=au_notzed_jjmpeg_AVCodecContext.h \
 WRAPPERS=AVAbstract.java jjmpeg-jni.c
 WRAPPERS_DVB=DVBAbstract.java jjdvb-jni.c
 
-SUBDIRS=linux-amd64 win-amd64
+jjmpeg_lib=libjjmpeg.so
+jjdvb_lib=libjjdvb.so
 
-all: $(WRAPPERS) $(WRAPPERS_DVB) $(HEADERS) $(HEADERS_DVB) subdirs
+all: $(jjmpeg_lib) $(jjdvb_lib)
 
-subdirs:
-	for name in $(SUBDIRS) ; do \
-	  ( cd $$name && $(MAKE) ); \
-	done
+$(jjmpeg_lib): jjmpeg.o
+	$(CC) -shared -Wl,-soname,libjjmpeg.so -o $@ $^ $(LIBS)
 
-$(WRAPPERS): gennative.pl native.conf
-	./gennative.pl
+jjmpeg.o: jjmpeg.c $(HEADERS) jjmpeg-jni.c jjmpeg-jni.h
 
-$(HEADERS):
-	$(javah) -classpath ../dist/jjmpeg.jar $(CLASSES)
+$(jjdvb_lib): jjdvb.o
+	$(CC) -shared -Wl,-soname,libjjdvb.so -o $@ $^ $(LIBS)
 
-../dist/jjmpeg.jar:
-	( cd .. ; ant )
-
-
-HEADERS_DVB=
-
-$(WRAPPERS_DVB): gendvb.pl native-dvb.conf
-	./gendvb.pl
+jjdvb.o: jjdvb.c $(HEADERS_DVB) jjdvb-jni.c jjdvb-jni.h
 
 clean:
-	for name in $(SUBDIRS) ; do \
-	  ( cd $$name && $(MAKE) $@ ); \
-	done
+	-rm jjdvb.o
+	-rm jjmpeg.o
+	-rm $(jjdvb_lib)
+	-rm $(jjmpeg_lib)
