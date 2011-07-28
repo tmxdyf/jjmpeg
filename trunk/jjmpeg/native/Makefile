@@ -26,7 +26,7 @@ HEADERS=au_notzed_jjmpeg_AVCodecContext.h \
 WRAPPERS=AVAbstract.java jjmpeg-jni.c
 WRAPPERS_DVB=DVBAbstract.java jjdvb-jni.c
 
-SUBDIRS=linux-amd64 win-amd64
+SUBDIRS=linux-amd64 linux-32 win-amd64
 
 all: $(WRAPPERS) $(WRAPPERS_DVB) $(HEADERS) $(HEADERS_DVB) subdirs
 

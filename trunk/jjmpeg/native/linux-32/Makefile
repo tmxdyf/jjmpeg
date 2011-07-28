@@ -1,5 +1,5 @@
 
-# compiler prefix for cross compiling linux x86-64
+# compiler prefix for cross compiling linux 32 bit
 CROSS=
 
 CC=$(CROSS)gcc
@@ -9,12 +9,10 @@ LD=$(CROSS)ld
 JDK_HOME=/usr/java/latest
 javah=$(JDK_HOME)/bin/javah
 
-ARCH=-m64
-
 JNI_CFLAGS=-I$(JJMPEG)/jni -I$(JJMPEG)/jni/linux -D_JNI_IMPLEMENTATION_
-CFLAGS=$(JNI_CFLAGS) -I/usr/include/ffmpeg -fPIC -Wall -O2 $(ARCH)
-LDFLAGS=$(ARCH)
-LIBS=#-lavcodec -lavformat -lavutil
+CFLAGS=$(JNI_CFLAGS) -I/usr/include/ffmpeg -fPIC -Wall -O2 -m32
+LIBS=
+LDFLAGS=-m32
 
 JJMPEG=..
 VPATH=$(JJMPEG)
@@ -30,12 +28,12 @@ all: $(jjmpeg_lib) $(jjdvb_lib)
 $(jjmpeg_lib): jjmpeg.o
 	$(CC) $(LDFLAGS) -shared -Wl,-soname,libjjmpeg.so -o $@ $^ $(LIBS)
 
-jjmpeg.o: jjmpeg.c $(HEADERS) jjmpeg-jni.c jjmpeg-jni.h
+jjmpeg.o: jjmpeg.c jjmpeg-jni.c jjmpeg-jni.h
 
 $(jjdvb_lib): jjdvb.o
 	$(CC) $(LDFLAGS) -shared -Wl,-soname,libjjdvb.so -o $@ $^ $(LIBS)
 
-jjdvb.o: jjdvb.c $(HEADERS_DVB) jjdvb-jni.c jjdvb-jni.h
+jjdvb.o: jjdvb.c jjdvb-jni.c jjdvb-jni.h
 
 clean:
 	-rm jjdvb.o

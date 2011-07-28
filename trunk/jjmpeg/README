@@ -15,8 +15,8 @@ STATUS
 This is still work in progress, although there is enough functionality
 to implement a media player and some recording ability.
 
-The 64 bit library is up-to-date although the 32 bit library should
-be simple to build on a 32 bit platform.
+As i'm now using a cross compilation environment, all libraries should
+be up-to-date as of each build.  This includes the windows 64-bit build.
 
 What API is there closely follows libavformat and libavcodec.
 

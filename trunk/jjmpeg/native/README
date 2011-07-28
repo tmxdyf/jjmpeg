@@ -26,8 +26,11 @@ and the same code is re-compiled for each.  It assumes cross-compilers are
 available and in the path for the given platform, and if not they are simply
 ignored during the build.
 
-Currently the linux directory only compiles using the native system compiler -
-i.e. whether it is 64 or 32 bit depends on where it is executed.
+For linux, it should compile for the native-sized architecture, and if the appropriate
+development libraries are included for the other size, they should also build.
+
+For example on Fedora AMD-64, installing glibc-devel.i686 and libgcc.i686 should
+suffice.
 
 Generator Configuration
 -----------------------
