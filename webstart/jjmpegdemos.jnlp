@@ -1,25 +1,22 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<jnlp href="jjmpegdemos.jnlp" spec="1.0+">
-    <information>
-        <title>jjmpegdemos</title>
-        <vendor>notzed</vendor>
-        <homepage href=""/>
-        <description>jjmpegdemos</description>
-        <description kind="short">jjmpegdemos</description>
-        
-        
-    </information>
-    <update check="always"/>
-    <security>
-<all-permissions/>
-</security>
-    <resources>
-        <j2se version="1.6+"/>
-        <jar href="jjmpegdemos.jar" main="true"/>
-        <extension name="joal" href="http://jogamp.org/deployment/webstart/joal.jnlp" />
-        <extension name="jjmpeg" href="http://jjmpeg.googlecode.com/svn/webstart/jjmpeg.jnlp"/>
-    </resources>
-    <application-desc main-class="jjmpegdemos.Main">
-        
-    </application-desc>
+<jnlp codebase="http://jjmpeg.googlecode.com/svn/webstart" href="jjmpegdemos.jnlp" spec="1.0+">
+  <information>
+    <title>jjmpeg demo application</title>
+    <vendor>Michael Zucchi</vendor>
+    <homepage href="http://code.google.com/p/jjmpeg/"/>
+    <description>jjmpeg demo application</description>
+    <description kind="short">jjmpeg demo application</description>
+  </information>
+  <update check="always"/>
+  <security>
+    <all-permissions/>
+  </security>
+  <resources>
+    <j2se version="1.6+"/>
+    <jar href="jjmpegdemos.jar" main="true"/>
+    <extension name="joal" href="http://jogamp.org/deployment/webstart/joal.jnlp" />
+    <extension name="jjmpeg" href="http://jjmpeg.googlecode.com/svn/webstart/jjmpeg.jnlp"/>
+  </resources>
+  <application-desc main-class="jjmpegdemos.Main">
+  </application-desc>
 </jnlp>
