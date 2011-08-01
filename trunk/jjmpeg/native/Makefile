@@ -28,12 +28,7 @@ WRAPPERS_DVB=DVBAbstract.java jjdvb-jni.c
 
 SUBDIRS=linux-amd64 linux-32 win-amd64
 
-all: $(WRAPPERS) $(WRAPPERS_DVB) $(HEADERS) $(HEADERS_DVB) subdirs
-
-subdirs:
-	for name in $(SUBDIRS) ; do \
-	  ( cd $$name && $(MAKE) ); \
-	done
+all: $(WRAPPERS) $(WRAPPERS_DVB) $(HEADERS) $(HEADERS_DVB)
 
 $(WRAPPERS): gennative.pl native.conf
 	./gennative.pl
@@ -50,7 +45,7 @@ HEADERS_DVB=
 $(WRAPPERS_DVB): gendvb.pl native-dvb.conf
 	./gendvb.pl
 
-clean:
+clean all webstart:
 	for name in $(SUBDIRS) ; do \
 	  ( cd $$name && $(MAKE) $@ ); \
 	done

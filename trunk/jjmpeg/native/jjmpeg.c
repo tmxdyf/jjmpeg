@@ -59,7 +59,7 @@ static int init_local(JNIEnv *env) {
 	byteio_writePacket = (*env)->GetMethodID(env, byteioclass, "writePacket", "(Ljava/nio/ByteBuffer;)I");
 	byteio_seek = (*env)->GetMethodID(env, byteioclass, "seek", "(JI)J");
 
-	return 0;
+	return 1;
 }
 
 /* ********************************************************************** */
