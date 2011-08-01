@@ -13,7 +13,7 @@
         <all-permissions/>
     </security>
     <resources>
-        <jar href="jocl.jar" />
+        <jar href="jmpeg.jar" />
     </resources>
     <resources os="Windows" arch="x86">
         <nativelib href = "jjmpeg-natives-windows-i586.jar" />
