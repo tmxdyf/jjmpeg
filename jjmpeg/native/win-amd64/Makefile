@@ -29,6 +29,21 @@ $(jjmpeg_dll): jjmpeg.o
 
 jjmpeg.o: $(JJMPEG)/jjmpeg.c $(JJMPEG)/jjmpeg-jni.c $(JJMPEG)/jjmpeg-jni.h
 
+# webstart jars
+JDK_HOME=/usr/java/latest
+jjmpeg_jar=jjmpeg-natives-windows-amd64.jar
+
+webstart: $(jjmpeg_jar)
+
+jar=$(JDK_HOME)/bin/jar
+jarsigner=$(JDK_HOME)/bin/jarsigner
+keystore=../../webstart/jjmpeg.jks
+keypass=jjmpegpass
+
+$(jjmpeg_jar): $(jjmpeg_dll)
+	$(jar) cf $(jjmpeg_jar) $(jjmpeg_dll)
+	$(jarsigner) -keystore $(keystore) -storepass $(keypass) -keypass $(keypass) $(jjmpeg_jar) jjmpeg
+
 clean:
 	-rm $(jjmpeg_dll)
 	-rm jjmpeg.o

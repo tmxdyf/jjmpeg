@@ -35,6 +35,21 @@ $(jjdvb_lib): jjdvb.o
 
 jjdvb.o: jjdvb.c jjdvb-jni.c jjdvb-jni.h
 
+# webstart jars
+jjmpeg_jar=jjmpeg-natives-linux-i586.jar
+
+webstart: $(jjmpeg_jar)
+
+jar=$(JDK_HOME)/bin/jar
+jarsigner=$(JDK_HOME)/bin/jarsigner
+keystore=../../webstart/jjmpeg.jks
+keypass=jjmpegpass
+
+$(jjmpeg_jar): $(jjmpeg_lib)
+	$(jar) cf $(jjmpeg_jar) $(jjmpeg_lib)
+	$(jarsigner) -keystore $(keystore) -storepass $(keypass) -keypass $(keypass) $(jjmpeg_jar) jjmpeg
+
+
 clean:
 	-rm jjdvb.o
 	-rm jjmpeg.o

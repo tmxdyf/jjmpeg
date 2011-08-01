@@ -315,7 +315,7 @@ static jfieldID field_p;
 
 JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_AVNative_getPointerBits
 (JNIEnv *env, jclass jc) {
-\tif (init_local(env) != 0) return 0;
+\tif (init_local(env) == 0) return 0;
 
 END
     foreach $classinfo (@classes) {

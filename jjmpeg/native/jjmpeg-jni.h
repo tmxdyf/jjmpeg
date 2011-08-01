@@ -10,15 +10,15 @@
 #define _TOSTR(x) #x
 #define TOSTR(x) _TOSTR(x)
 
-#  define DLOPEN(x, lib, ver) do { x = LoadLibrary(lib "-"  _TOSTR(ver) ".dll"); if (x == NULL) { printf("cannot open %s\n",  lib "-" TOSTR(ver) ".dll"); return 1; } } while(0)
+#  define DLOPEN(x, lib, ver) do { x = LoadLibrary(lib "-"  _TOSTR(ver) ".dll"); if (x == NULL) { fprintf(stderr, "cannot open %s\n",  lib "-" TOSTR(ver) ".dll"); fflush(stderr); return 0; } } while(0)
 #  define CALLDL(x) (*d ## x)
-#  define MAPDL(x, lib) do { if ((d ## x = (void *)GetProcAddress(lib, #x)) == NULL) { printf("cannot resolve %s\n", #x); fflush(stdout); return 1; } } while(0)
+#  define MAPDL(x, lib) do { if ((d ## x = (void *)GetProcAddress(lib, #x)) == NULL) { fprintf(stderr, "cannot resolve %s\n", #x); fflush(stderr); return 0; } } while(0)
 #else
 #  include <dlfcn.h>
 
-#  define DLOPEN(x, lib, ver) x = dlopen(lib ".so", RTLD_LAZY|RTLD_GLOBAL); if (x == NULL) return 0
+#  define DLOPEN(x, lib, ver) x = dlopen("lib" lib ".so", RTLD_LAZY|RTLD_GLOBAL); do { if (x == NULL) { fprintf(stderr, "cannot open %s\n", lib ".so"); fflush(stderr); return 0; } } while (0)
 #  define CALLDL(x) (*d ## x)
-#  define MAPDL(x, lib) if ((d ## x = dlsym(lib, #x)) == NULL) return 0
+#  define MAPDL(x, lib) do { if ((d ## x = dlsym(lib, #x)) == NULL) { fprintf(stderr, "cannot resolve %s\n", #x); fflush(stderr); return 0; } } while (0)
 #endif
 
 #define ADDR(jp) (jp != NULL ? (*env)->GetDirectBufferAddress(env, jp) : NULL)
