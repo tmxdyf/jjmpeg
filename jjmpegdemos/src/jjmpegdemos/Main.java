@@ -6,14 +6,12 @@ package jjmpegdemos;
 
 import java.awt.event.ActionEvent;
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.swing.AbstractAction;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 
@@ -49,7 +47,21 @@ public class Main {
 				jp.add(new JButton(new AbstractAction("Audio Player") {
 
 					public void actionPerformed(ActionEvent e) {
-						AudioPlayer.main(new String[0]);
+						try {
+							AudioPlayer.main(new String[0]);
+						} catch (Throwable ex) {
+							JOptionPane.showMessageDialog(null, ex);
+						}
+					}
+				}));
+				jp.add(new JButton(new AbstractAction("Title Creator") {
+
+					public void actionPerformed(ActionEvent e) {
+						try {
+							TitleWriter.main(new String[0]);
+						} catch (Throwable ex) {
+							JOptionPane.showMessageDialog(null, ex);
+						}
 					}
 				}));
 

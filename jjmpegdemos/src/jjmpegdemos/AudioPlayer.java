@@ -16,6 +16,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.JOptionPane;
 
 /**
  * Plays a music file, or the first audio track of multimedia.
@@ -209,7 +210,10 @@ public class AudioPlayer {
 				} catch (FileNotFoundException ex) {
 					Logger.getLogger(AudioPlayer.class.getName()).log(Level.SEVERE, null, ex);
 				}
+				System.exit(0);
 			}
 		}).start();
+		JOptionPane.showMessageDialog(null, "Playing " + file, "Simple Audio Player", JOptionPane.INFORMATION_MESSAGE);
+		System.exit(0);
 	}
 }
