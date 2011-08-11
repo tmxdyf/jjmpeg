@@ -4,6 +4,7 @@
  */
 package jjmpegdemos;
 
+import au.notzed.jjmpeg.mediaplayer.MediaPlayer;
 import java.awt.event.ActionEvent;
 import java.io.File;
 import javax.swing.AbstractAction;
@@ -59,6 +60,16 @@ public class Main {
 					public void actionPerformed(ActionEvent e) {
 						try {
 							TitleWriter.main(new String[0]);
+						} catch (Throwable ex) {
+							JOptionPane.showMessageDialog(null, ex);
+						}
+					}
+				}));
+				jp.add(new JButton(new AbstractAction("Media Player") {
+
+					public void actionPerformed(ActionEvent e) {
+						try {
+							MediaPlayer.main(new String[0]);
 						} catch (Throwable ex) {
 							JOptionPane.showMessageDialog(null, ex);
 						}
