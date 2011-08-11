@@ -49,6 +49,11 @@ public class AVFormatContext extends AVFormatContextAbstract {
 		return openInputFile(name, null, 0, null);
 	}
 
+	static public AVFormatContext openInputStream(ByteIOContext pb, String name) {
+		return openInputStream(pb, name, null, null);
+	}
+
+	// TODO: this stuff has been deprecated in newer libavformat
 	static AVFormatContext openInputFile(String name, AVInputFormat fmt, int buf_size, AVFormatParameters ap) {
 		ByteBuffer res = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder());
 		ByteBuffer context;
@@ -61,9 +66,36 @@ public class AVFormatContext extends AVFormatContextAbstract {
 
 		return create(context);
 	}
+	
+	// TODO: this stuff has been deprecated in newer libavformat
+	/**
+	 * Open an input stream from a byteiocontext.
+	 * 
+	 * THIS IS BROKEN AND WILL NOT WORK
+	 * 
+	 * @param ioc
+	 * @param name
+	 * @param fmt
+	 * @param ap
+	 * @return 
+	 */
+	static AVFormatContext openInputStream(ByteIOContext ioc, String name, AVInputFormat fmt, AVFormatParameters ap) {
+		ByteBuffer res = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder());
+		ByteBuffer context;
+
+		System.out.println("open input stream");
+		context = open_input_stream(ioc.p, name, fmt != null ? fmt.p : null, ap != null ? ap.struct : null, res);
+		if (context == null) {
+			// throw new AVFormatException based on error id
+			throw new RuntimeException("failed");
+		}
+
+		return create(context);
+	}
 
 	static native ByteBuffer open_input_file(String name, ByteBuffer fmt, int buf_size, ByteBuffer fmtParameters, ByteBuffer error_ptr);
-
+	static native ByteBuffer open_input_stream(ByteBuffer pb, String name, ByteBuffer fmt, ByteBuffer fmtPArameters, ByteBuffer error_ptr);
+	
 	@Override
 	public int readFrame(AVPacket packet) {
 		int res = super.readFrame(packet);
