@@ -5,10 +5,17 @@
 
 #include "jjmpeg-jni.c"
 
+#define d(x) x; fflush(stdout)
+
 static int (*dav_open_input_file)(AVFormatContext **ic_ptr, const char *filename,
 				  AVInputFormat *fmt,
 				  int buf_size,
 				  AVFormatParameters *ap);
+
+static int (*dav_open_input_stream)(AVFormatContext **ic_ptr,
+				    ByteIOContext *pb, const char *filename,
+				    AVInputFormat *fmt,
+				    AVFormatParameters *ap);
 
 static int (*davcodec_encode_video)(AVCodecContext *avctx, uint8_t *buf, int buf_size, AVFrame *pict);
 
@@ -43,6 +50,7 @@ static int init_local(JNIEnv *env) {
 	DLOPEN(swscale_lib, "swscale", LIBSWSCALE_VERSION_MAJOR);
 
 	MAPDL(av_open_input_file, avformat_lib);
+	MAPDL(av_open_input_stream, avformat_lib);
 	MAPDL(av_alloc_put_byte, avformat_lib);
 	MAPDL(avcodec_encode_video, avcodec_lib);
 	MAPDL(av_init_packet, avcodec_lib);
@@ -102,6 +110,7 @@ JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_AVNative__1free
 }
 /* ********************************************************************** */
 
+// TODO: depdrecated in newer libavformat
 JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVFormatContext_open_1input_1file
 (JNIEnv *env, jclass jc, jstring jname, jobject jfmt, jint buf_size, jobject jap, jobject jerror_buf) {
 	const char *name = STR(jname);
@@ -112,6 +121,30 @@ JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVFormatContext_open_1input_1fil
 	jobject res = NULL;
 
 	resp[0] = CALLDL(av_open_input_file)(&context, name, fmt, buf_size, ap);
+
+	if (resp[0] == 0) {
+		res = WRAP(context, sizeof(*context));
+	}
+
+	RSTR(jname, name);
+
+	return res;
+}
+
+// TODO: depdrecated in newer libavformat
+JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVFormatContext_open_1input_1stream
+(JNIEnv *env, jclass jc, jobject jpb, jstring jname, jobject jfmt, jobject jap, jobject jerror_buf) {
+	ByteIOContext *pb = ADDR(jpb);
+	const char *name = STR(jname);
+	AVFormatContext *context;
+	int *resp = ADDR(jerror_buf);
+	AVInputFormat *fmt = ADDR(jfmt);
+	AVFormatParameters *ap = ADDR(jap);
+	jobject res = NULL;
+
+	d(printf("open input stream  pb=%p name=%s fmt=%p ap=%p\n", pb, name, fmt, ap));
+	resp[0] = CALLDL(av_open_input_stream)(&context, pb, name, fmt, ap);
+	d(printf("open input stream = %d\n", resp[0]));
 
 	if (resp[0] == 0) {
 		res = WRAP(context, sizeof(*context));
@@ -226,6 +259,9 @@ struct byteio_data {
 
 static int ByteIOContext_readPacket(void *opaque, uint8_t *buf, int buf_size) {
 	struct byteio_data *bd = opaque;
+
+	d(printf("iocontext.readPacket()\n"));
+
 	if (bd == NULL)
 		return -1;
 
@@ -238,6 +274,8 @@ static int ByteIOContext_readPacket(void *opaque, uint8_t *buf, int buf_size) {
 
 static int ByteIOContext_writePacket(void *opaque, uint8_t *buf, int buf_size) {
 	struct byteio_data *bd = opaque;
+
+	d(printf("iocontext.writePacket()\n"));
 
 	if (bd == NULL)
 		return -1;
@@ -252,6 +290,8 @@ static int ByteIOContext_writePacket(void *opaque, uint8_t *buf, int buf_size) {
 static int64_t ByteIOContext_seek(void *opaque, int64_t offset, int whence) {
 	struct byteio_data *bd = opaque;
 
+	d(printf("iocontext.seek()\n"));
+
 	if (bd == NULL)
 		return -1;
 
@@ -264,10 +304,15 @@ static int64_t ByteIOContext_seek(void *opaque, int64_t offset, int whence) {
 JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_ByteIOContext_create_1put_1byte (JNIEnv *env, jclass jc, jobject buffer, jint write_flag) {
 	unsigned char *buf = ADDR(buffer);
 	int buf_size = SIZE(buffer);	
+
+	d(printf("iocontext.createPutByte(%p, %d)\n", buf, buf_size));
+
 	ByteIOContext *res = CALLDL(av_alloc_put_byte)(buf, buf_size, write_flag, NULL,
 						       ByteIOContext_readPacket,
 						       ByteIOContext_writePacket,
 						       ByteIOContext_seek);
+
+	d(printf(" = %p\n", res));
 
 	return WRAP(res, sizeof(*res));
 }
@@ -276,6 +321,8 @@ JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_ByteIOContext_bind (JNIEnv *env, jo
 	jobject jptr = (*env)->GetObjectField(env, jo, field_p);
 	ByteIOContext *cptr = ADDR(jptr);
 	struct byteio_data *bd;
+
+	d(printf("iocontext.bind()\n"));
 
 	bd = malloc(sizeof(*bd));
 	if (bd == NULL) {
@@ -292,6 +339,8 @@ JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_ByteIOContext_unbind (JNIEnv *env, 
 	jobject jptr = (*env)->GetObjectField(env, jo, field_p);
 	ByteIOContext *cptr = ADDR(jptr);
 	struct byteio_data *bd = cptr->opaque;
+
+	d(printf("iocontext.unbind()\n"));
 
 	(*env)->DeleteGlobalRef(env, bd->jo);
 

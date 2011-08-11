@@ -142,6 +142,7 @@ abstract class AVFormatContextAbstract extends AVNative {
 	public native int setFlags(int val);
 	// Native Methods
 	native void _close_input_file();
+	native void _close_input_stream();
 	native int _seek_frame(int stream_index, long timestamp, int flags);
 	native int _read_frame(ByteBuffer pkt);
 	native int _find_stream_info();
@@ -150,6 +151,9 @@ abstract class AVFormatContextAbstract extends AVNative {
 	// Public Methods
 	public void closeInputFile() {
 		_close_input_file();
+	}
+	public void closeInputStream() {
+		_close_input_stream();
 	}
 	public int seekFrame(int stream_index, long timestamp, int flags) {
 		return _seek_frame(stream_index, timestamp, flags);

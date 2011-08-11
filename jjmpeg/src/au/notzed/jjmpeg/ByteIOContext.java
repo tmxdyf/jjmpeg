@@ -25,10 +25,9 @@ import java.nio.ByteBuffer;
  * Wrapper for ByteIOContext - allows custom streams to
  * be implemented from java.
  *
- * Not yet tested.
+ * Or should, if it wasn't busted.
  * 
- * TODO: probably another class which allows read/write from
- * C byteiocontext's instead?
+ * TODO: This is now deprecated in libavformat.  Should i just rename it?
  * @author notzed
  */
 public abstract class ByteIOContext extends ByteIOContextAbstract {
