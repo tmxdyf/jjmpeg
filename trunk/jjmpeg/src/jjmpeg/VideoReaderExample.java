@@ -16,6 +16,7 @@ import au.notzed.jjmpeg.AVPlane;
 import au.notzed.jjmpeg.AVStream;
 import au.notzed.jjmpeg.PixelFormat;
 import au.notzed.jjmpeg.exception.AVDecodingError;
+import au.notzed.jjmpeg.exception.AVIOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -28,7 +29,7 @@ public class VideoReaderExample {
 	/**
 	 * @param args the command line arguments
 	 */
-	public static void main(String[] args) {
+	public static void main(String[] args) throws AVIOException {
 		String name = "/home/notzed/Videos/mike0.avi";
 
 		AVFormatContext.registerAll();
@@ -73,10 +74,7 @@ public class VideoReaderExample {
 		}
 
 		System.out.println("opening codec");
-		if (codecContext.open(codec) < 0) {
-			System.err.println("error opening codec\n");
-			System.exit(1);
-		}
+		codecContext.open(codec);
 
 		System.out.println("pixel format: " + codecContext.getPixFmt());
 

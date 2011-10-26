@@ -21,41 +21,40 @@ package au.notzed.jjmpeg;
 import java.nio.ByteBuffer;
 import java.nio.ShortBuffer;
 
+class AVSamplesNative extends AVNative {
+
+	public AVSamplesNative(AVObject jobject, ByteBuffer p) {
+		super(jobject, p);
+	}
+
+	@Override
+	public void dispose() {
+		if (p != null) {
+			super.dispose();
+			_free(p);
+		}
+	}
+}
+
 /**
  * Holder for audio samples memory, which has some specific memory
  * allocation requirements.
  * @author notzed
  */
-public class AVSamples extends AVNative {
+public class AVSamples extends AVObject {
 
 	ShortBuffer s;
-	
+
 	public AVSamples() {
-		super(_malloc(AVCodecContext.AVCODEC_MAX_AUDIO_FRAME_SIZE * 2));
-		s = p.asShortBuffer();
+		setNative(new AVSamplesNative(this, AVNative._malloc(AVCodecContext.AVCODEC_MAX_AUDIO_FRAME_SIZE * 2)));
+		s = n.p.asShortBuffer();
 	}
 
 	public ByteBuffer getBuffer() {
-		return p;
+		return n.p;
 	}
 
 	public ShortBuffer getSamples() {
 		return s;
-	}
-
-	public void dispose() {
-		//if (p != null) {
-		_free(p);
-		//p = null;
-		//}
-	}
-
-	@Override
-	protected void finalize() throws Throwable {
-		super.finalize();
-		// ??
-		//if (p != null) {
-		//	_free(p);
-		//}
 	}
 }

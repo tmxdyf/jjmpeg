@@ -27,28 +27,40 @@ import java.nio.ByteBuffer;
 public class AVPacket extends AVPacketAbstract {
 
 	AVPacket(ByteBuffer p) {
-		super(p);
+		setNative(new AVPacketNative(this, p));
 	}
 
 	public static AVPacket create() {
-		return new AVPacket(allocate());
+		return new AVPacket(AVPacketNative.allocatePacket());
+	}
+	
+	/**
+	 * Consumes 'len' bytes by incrementing the data pointer and decrementing the
+	 * length of the packet.
+	 * @param len
+	 * @return
+	 */
+	public int consume(int len) {
+		return AVPacketNative.consume(n.p, len);
+	}
+
+}
+
+class AVPacketNative extends AVPacketNativeAbstract {
+
+	AVPacketNative(AVObject o, ByteBuffer p) {
+		super(o, p);
 	}
 
 	@Override
-	protected void finalize() throws Throwable {
-		super.finalize();
-		free(p);
-		System.out.println("packet finalise");
+	public void dispose() {
+		if (p != null) {
+			freePacket(p);
+		}
+		super.dispose();
 	}
 
-	//private native ByteBuffer get_data(ByteBuffer p);
-
-	protected static native ByteBuffer allocate();
-
-	protected static native void free(ByteBuffer p);
-
-
-	//public ByteBuffer getData() {
-	//	return get_data(p);
-	//}
+	static native int consume(ByteBuffer p, int len);
+	static native ByteBuffer allocatePacket();
+	static native void freePacket(ByteBuffer p);
 }

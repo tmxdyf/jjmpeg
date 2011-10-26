@@ -27,10 +27,17 @@ import java.nio.ByteBuffer;
 public class AVOutputFormat extends AVOutputFormatAbstract {
 
 	protected AVOutputFormat(ByteBuffer p) {
-		super(p);
+		setNative(new AVOutputFormatNative(this, p));
 	}
 
 	static AVOutputFormat create(ByteBuffer p) {
 		 return new AVOutputFormat(p);
+	}
+}
+
+class AVOutputFormatNative extends AVOutputFormatNativeAbstract {
+
+	AVOutputFormatNative(AVObject o, ByteBuffer p) {
+		super(o, p);
 	}
 }

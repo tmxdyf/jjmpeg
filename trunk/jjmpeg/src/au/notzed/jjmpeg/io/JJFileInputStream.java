@@ -18,44 +18,47 @@
  */
 package au.notzed.jjmpeg.io;
 
-import au.notzed.jjmpeg.ByteIOContext;
+import au.notzed.jjmpeg.AVIOContext;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 
 /**
  * Read a file through Java.
  *
- * TODO: Not yet tested.
  * @author notzed
  */
-public class JJFileInputStream extends ByteIOContext {
+public class JJFileInputStream extends AVIOContext {
 
 	FileInputStream fis;
-	ByteBuffer buffer;
 
-	protected JJFileInputStream(FileInputStream is, ByteBuffer buffer) {
-		super(buffer, 0);
+	protected JJFileInputStream(FileInputStream is) {
+		super(4096, 0);
 		this.fis = is;
-		this.buffer = buffer;
 	}
 
 	public static JJFileInputStream create(FileInputStream is) {
-		ByteBuffer b = ByteBuffer.allocateDirect(4096).order(ByteOrder.nativeOrder());
-
-		return new JJFileInputStream(is, b);
+		JJFileInputStream jjfis = new JJFileInputStream(is);
+		
+		return jjfis;
 	}
 
 	public int readPacket(ByteBuffer dst) {
+		//System.out.println("jjfilestream readpacket");
 		try {
-			return fis.getChannel().read(dst);
+			int ret = fis.getChannel().read(dst);
+			
+			//System.out.println("jjfilestream.readpacket read " + ret);
+			
+			return ret;
 		} catch (IOException ex) {
+			//System.out.println("jjfilestream readpacket ioexception");
 			return -1;
 		}
 	}
 
 	public int writePacket(ByteBuffer src) {
+		//System.out.println("jjfilestream writepacket");
 		try {
 			return fis.getChannel().write(src);
 		} catch (IOException ex) {
@@ -66,6 +69,8 @@ public class JJFileInputStream extends ByteIOContext {
 	public long seek(long offset, int whence) {
 		long res = -1;
 
+		//System.out.println("jjfilestream seek " + offset + ", " + whence);
+		
 		try {
 			switch (whence) {
 				case AVSEEK_SIZE:

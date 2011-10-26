@@ -18,6 +18,7 @@
  */
 package au.notzed.jjmpeg;
 
+import au.notzed.jjmpeg.exception.AVIOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
@@ -37,36 +38,36 @@ public class AVFormatContext extends AVFormatContextAbstract {
 	public static final int AVSEEK_FLAG_ANY = 4; ///< seek to any frame, even non-keyframes
 	public static final int AVSEEK_FLAG_FRAME = 8; ///< seeking based on frame number
 
-	protected AVFormatContext(ByteBuffer p) {
-		super(p);
+	protected AVFormatContext(ByteBuffer p, int type) {
+		setNative(new AVFormatContextNative(this, p, type));
 	}
 
-	static AVFormatContext create(ByteBuffer p) {
-		return new AVFormatContext(p);
+	static AVFormatContext create(ByteBuffer p, int type) {
+		return new AVFormatContext(p, type);
 	}
 
-	static public AVFormatContext openInputFile(String name) {
+	static public AVFormatContext openInputFile(String name) throws AVIOException {
 		return openInputFile(name, null, 0, null);
 	}
 
-	static public AVFormatContext openInputStream(ByteIOContext pb, String name) {
-		return openInputStream(pb, name, null, null);
+	static public AVFormatContext openInputStream(AVIOContext pb, String name, AVInputFormat fmt) {
+		return openInputStream(pb, name, fmt, null);
 	}
 
 	// TODO: this stuff has been deprecated in newer libavformat
-	static AVFormatContext openInputFile(String name, AVInputFormat fmt, int buf_size, AVFormatParameters ap) {
+	static AVFormatContext openInputFile(String name, AVInputFormat fmt, int buf_size, AVFormatParameters ap) throws AVIOException {
 		ByteBuffer res = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder());
 		ByteBuffer context;
 
-		context = open_input_file(name, fmt != null ? fmt.p : null, buf_size, ap != null ? ap.struct : null, res);
+		context = AVFormatContextNative.openInputFile(name, fmt != null ? fmt.n.p : null, buf_size, ap != null ? ap.struct : null, res);
 		if (context == null) {
 			// throw new AVFormatException based on error id
-			throw new RuntimeException("failed");
+			throw new AVIOException(res.getInt(0));
 		}
 
-		return create(context);
+		return create(context, 1);
 	}
-	
+
 	// TODO: this stuff has been deprecated in newer libavformat
 	/**
 	 * Open an input stream from a byteiocontext.
@@ -79,23 +80,20 @@ public class AVFormatContext extends AVFormatContextAbstract {
 	 * @param ap
 	 * @return 
 	 */
-	static AVFormatContext openInputStream(ByteIOContext ioc, String name, AVInputFormat fmt, AVFormatParameters ap) {
+	static AVFormatContext openInputStream(AVIOContext ioc, String name, AVInputFormat fmt, AVFormatParameters ap) {
 		ByteBuffer res = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder());
 		ByteBuffer context;
 
 		System.out.println("open input stream");
-		context = open_input_stream(ioc.p, name, fmt != null ? fmt.p : null, ap != null ? ap.struct : null, res);
+		context = AVFormatContextNative.openInputStream(ioc.n.p, name, fmt != null ? fmt.n.p : null, ap != null ? ap.struct : null, res);
 		if (context == null) {
 			// throw new AVFormatException based on error id
 			throw new RuntimeException("failed");
 		}
 
-		return create(context);
+		return create(context, 2);
 	}
 
-	static native ByteBuffer open_input_file(String name, ByteBuffer fmt, int buf_size, ByteBuffer fmtParameters, ByteBuffer error_ptr);
-	static native ByteBuffer open_input_stream(ByteBuffer pb, String name, ByteBuffer fmt, ByteBuffer fmtPArameters, ByteBuffer error_ptr);
-	
 	@Override
 	public int readFrame(AVPacket packet) {
 		int res = super.readFrame(packet);
@@ -103,8 +101,8 @@ public class AVFormatContext extends AVFormatContextAbstract {
 		if (res < 0) {
 			switch (res) {
 				case -32: // EPIPE
-					// the superclass binding makes this a pain , not sure how to fix
-			//		throw new AVIOException(-res);
+				// the superclass binding makes this a pain , not sure how to fix
+				//		throw new AVIOException(-res);
 				case -1: // EOF
 					break;
 				default:
@@ -115,4 +113,33 @@ public class AVFormatContext extends AVFormatContextAbstract {
 
 		return res;
 	}
+
+	@Override
+	public void closeInputFile() {
+		dispose();
+	}
+}
+class AVFormatContextNative extends AVFormatContextNativeAbstract {
+
+	private final int type;
+
+	AVFormatContextNative(AVObject o, ByteBuffer p, int type) {
+		super(o, p);
+		this.type = type;
+	}
+
+	@Override
+	public void dispose() {
+		if (p != null) {
+			if (type == 1) {
+				close_input_file(p);
+			} else if (type == 2) {
+				close_input_stream(p);
+			}
+			super.dispose();
+		}
+	}
+	
+	static native ByteBuffer openInputFile(String name, ByteBuffer fmt, int buf_size, ByteBuffer fmtParameters, ByteBuffer error_ptr);
+	static native ByteBuffer openInputStream(ByteBuffer pb, String name, ByteBuffer fmt, ByteBuffer fmtPArameters, ByteBuffer error_ptr);
 }

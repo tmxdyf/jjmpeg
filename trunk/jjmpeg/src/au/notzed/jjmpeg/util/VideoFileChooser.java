@@ -215,10 +215,7 @@ public class VideoFileChooser extends JFileChooser {
 						return;
 					}
 
-					if (codecContext.open(codec) < 0) {
-						info.setText("codec failure");
-						return;
-					}
+					codecContext.open(codec);
 
 					final AVFrame frame = AVFrame.create();
 					AVPacket packet = AVPacket.create();
@@ -265,7 +262,7 @@ public class VideoFileChooser extends JFileChooser {
 									SwingUtilities.invokeAndWait(new Runnable() {
 
 										public void run() {
-											System.out.println("running frame display");
+											//System.out.println("running frame display");
 											// copy image to preview, only greyscale atm, assumes 420P!
 											if (false) {
 												byte[] data = ((DataBufferByte) loaded.getRaster().getDataBuffer()).getData();

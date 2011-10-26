@@ -13,13 +13,13 @@ static int (*dav_open_input_file)(AVFormatContext **ic_ptr, const char *filename
 				  AVFormatParameters *ap);
 
 static int (*dav_open_input_stream)(AVFormatContext **ic_ptr,
-				    ByteIOContext *pb, const char *filename,
+				    AVIOContext *pb, const char *filename,
 				    AVInputFormat *fmt,
 				    AVFormatParameters *ap);
 
 static int (*davcodec_encode_video)(AVCodecContext *avctx, uint8_t *buf, int buf_size, AVFrame *pict);
 
-static ByteIOContext *(*dav_alloc_put_byte)(
+static AVIOContext *(*davio_alloc_context)(
                   unsigned char *buffer,
                   int buffer_size,
                   int write_flag,
@@ -27,6 +27,10 @@ static ByteIOContext *(*dav_alloc_put_byte)(
                   int (*read_packet)(void *opaque, uint8_t *buf, int buf_size),
                   int (*write_packet)(void *opaque, uint8_t *buf, int buf_size),
                   int64_t (*seek)(void *opaque, int64_t offset, int whence));
+
+static int (*dav_probe_input_buffer)(AVIOContext *pb, AVInputFormat **fmt,
+				     const char *filename, void *logctx,
+				     unsigned int offset, unsigned int max_probe_size);
 
 static int (*dsws_scale)(struct SwsContext *context, const uint8_t* const srcSlice[], const int srcStride[],
 			 int srcSliceY, int srcSliceH, uint8_t* const dst[], const int dstStride[]);
@@ -51,7 +55,8 @@ static int init_local(JNIEnv *env) {
 
 	MAPDL(av_open_input_file, avformat_lib);
 	MAPDL(av_open_input_stream, avformat_lib);
-	MAPDL(av_alloc_put_byte, avformat_lib);
+	MAPDL(avio_alloc_context, avformat_lib);
+	MAPDL(av_probe_input_buffer, avformat_lib);
 	MAPDL(avcodec_encode_video, avcodec_lib);
 	MAPDL(av_init_packet, avcodec_lib);
 	MAPDL(sws_scale, swscale_lib);
@@ -60,7 +65,7 @@ static int init_local(JNIEnv *env) {
 	MAPDL(av_malloc, avutil_lib);
 	MAPDL(av_free, avutil_lib);
 
-	jclass byteioclass = (*env)->FindClass(env, "au/notzed/jjmpeg/ByteIOContext");
+	jclass byteioclass = (*env)->FindClass(env, "au/notzed/jjmpeg/AVIOContext");
 	if (byteioclass == NULL)
 		;
 	byteio_readPacket = (*env)->GetMethodID(env, byteioclass, "readPacket", "(Ljava/nio/ByteBuffer;)I");
@@ -110,8 +115,7 @@ JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_AVNative__1free
 }
 /* ********************************************************************** */
 
-// TODO: depdrecated in newer libavformat
-JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVFormatContext_open_1input_1file
+JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVFormatContextNative_openInputFile
 (JNIEnv *env, jclass jc, jstring jname, jobject jfmt, jint buf_size, jobject jap, jobject jerror_buf) {
 	const char *name = STR(jname);
 	AVFormatContext *context;
@@ -131,12 +135,11 @@ JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVFormatContext_open_1input_1fil
 	return res;
 }
 
-// TODO: depdrecated in newer libavformat
-JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVFormatContext_open_1input_1stream
+JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVFormatContextNative_openInputStream
 (JNIEnv *env, jclass jc, jobject jpb, jstring jname, jobject jfmt, jobject jap, jobject jerror_buf) {
-	ByteIOContext *pb = ADDR(jpb);
+	AVIOContext *pb = ADDR(jpb);
 	const char *name = STR(jname);
-	AVFormatContext *context;
+	AVFormatContext *context = NULL;
 	int *resp = ADDR(jerror_buf);
 	AVInputFormat *fmt = ADDR(jfmt);
 	AVFormatParameters *ap = ADDR(jap);
@@ -159,8 +162,8 @@ JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVFormatContext_open_1input_1str
 
 /* ********************************************************************** */
 
-JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVFrame_getPlaneAt(JNIEnv *env, jobject jo, jint index, jint fmt, jint width, jint height) {
-	jobject jptr = (*env)->GetObjectField(env, jo, field_p);
+JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVFrameNative_getPlaneAt
+(JNIEnv *env, jclass jc, jobject jptr, jint index, jint fmt, jint width, jint height) {
 	AVFrame *cptr = ADDR(jptr);
 
 	// FIXME: this depends on pixel format
@@ -174,16 +177,7 @@ JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVFrame_getPlaneAt(JNIEnv *env, 
 
 /* ********************************************************************** */
 
-// TODO: this isn't needed, decode-video just uses the packet directly
-//JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVPacket_get_1data
-//(JNIEnv *env, jobject jo, jobject jpacket) {
-//	jobject jptr = (*env)->GetObjectField(env, jo, field_p);
-//	AVPacket *packet = ADDR(jptr);
-
-//	return WRAP(packet->data, packet->size);
-//}
-
-JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVPacket_allocate
+JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVPacketNative_allocatePacket
 (JNIEnv *env, jclass hc) {
 	AVPacket *packet = malloc(sizeof(AVPacket));
 
@@ -193,16 +187,15 @@ JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVPacket_allocate
 	return WRAP(packet, sizeof(AVPacket));
 }
 
-JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_AVPacket_free
+JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_AVPacketNative_freePacket
 (JNIEnv *env, jclass jc, jobject jpacket) {
 	AVPacket *packet = ADDR(jpacket);
 
 	free(packet);
 }
 
-JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_AVAudioPacket_consume
-(JNIEnv *env, jobject jo, jint len) {
-	jobject jptr = (*env)->GetObjectField(env, jo, field_p);
+JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_AVPacketNative_consume
+(JNIEnv *env, jclass jc, jobject jptr, jint len) {
 	AVPacket *packet = ADDR(jptr);
 
 	//printf("consume, packet = %p  data = %p, size = %d\n", packet, packet->data, packet->size); fflush(stdout);
@@ -217,8 +210,8 @@ JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_AVAudioPacket_consume
 
 /* ********************************************************************** */
 
-JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_SwsContext__1scale (JNIEnv *env, jobject jo, jobject jsrc, jint srcSliceY, jint srcSliceH, jobject jdst) {
-	jobject jptr = (*env)->GetObjectField(env, jo, field_p);
+JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_SwsContextNative_scale
+(JNIEnv *env, jclass jc, jobject jptr, jobject jsrc, jint srcSliceY, jint srcSliceH, jobject jdst) {
 	struct SwsContext *sws = ADDR(jptr);
 	struct AVFrame *src = ADDR(jsrc);
 	struct AVFrame *dst = ADDR(jdst);
@@ -234,7 +227,8 @@ JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_SwsContext__1scale (JNIEnv *env, jo
 /* ********************************************************************** */
 
 // our rescale_q takes pointer arguments
-JNIEXPORT jlong JNICALL Java_au_notzed_jjmpeg_AVRational_jj_1rescale_1q (JNIEnv *env, jclass jc, jlong ja, jobject jbq, jobject jcq) {
+JNIEXPORT jlong JNICALL Java_au_notzed_jjmpeg_AVRationalNative_jjRescaleQ
+(JNIEnv *env, jclass jc, jlong ja, jobject jbq, jobject jcq) {
 	AVRational *bqp = ADDR(jbq);
 	AVRational *cqp = ADDR(jcq);
 	jlong res;
@@ -250,15 +244,15 @@ JNIEXPORT jlong JNICALL Java_au_notzed_jjmpeg_AVRational_jj_1rescale_1q (JNIEnv 
 
 // This assumes we only get called from threads which invoked the ffmpeg libraries.
 // If not, things are a (tad) more complex.
-struct byteio_data {
+struct avio_data {
 	JNIEnv *env;
 	jobject jo;
 };
 
-/* Wrappers for ByteIOContext to allow callbacks to java */
+/* Wrappers for AVIOContext to allow callbacks to java */
 
-static int ByteIOContext_readPacket(void *opaque, uint8_t *buf, int buf_size) {
-	struct byteio_data *bd = opaque;
+static int AVIOContext_readPacket(void *opaque, uint8_t *buf, int buf_size) {
+	struct avio_data *bd = opaque;
 
 	d(printf("iocontext.readPacket()\n"));
 
@@ -269,11 +263,13 @@ static int ByteIOContext_readPacket(void *opaque, uint8_t *buf, int buf_size) {
 	jobject byteBuffer = WRAP(buf, buf_size);
 	int res = (*bd->env)->CallIntMethod(env, bd->jo, byteio_readPacket, byteBuffer);
 
+	d(printf("readpacket returned %d\n", res));
+
 	return res;
 }
 
-static int ByteIOContext_writePacket(void *opaque, uint8_t *buf, int buf_size) {
-	struct byteio_data *bd = opaque;
+static int AVIOContext_writePacket(void *opaque, uint8_t *buf, int buf_size) {
+	struct avio_data *bd = opaque;
 
 	d(printf("iocontext.writePacket()\n"));
 
@@ -287,8 +283,8 @@ static int ByteIOContext_writePacket(void *opaque, uint8_t *buf, int buf_size) {
 	return res;
 }
 
-static int64_t ByteIOContext_seek(void *opaque, int64_t offset, int whence) {
-	struct byteio_data *bd = opaque;
+static int64_t AVIOContext_seek(void *opaque, int64_t offset, int whence) {
+	struct avio_data *bd = opaque;
 
 	d(printf("iocontext.seek()\n"));
 
@@ -301,26 +297,63 @@ static int64_t ByteIOContext_seek(void *opaque, int64_t offset, int whence) {
 	return res;
 }
 
-JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_ByteIOContext_create_1put_1byte (JNIEnv *env, jclass jc, jobject buffer, jint write_flag) {
-	unsigned char *buf = ADDR(buffer);
-	int buf_size = SIZE(buffer);	
+#define ALLOC_WRITE 1
+#define ALLOC_STREAMED 2
 
-	d(printf("iocontext.createPutByte(%p, %d)\n", buf, buf_size));
+JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVIOContextNative_allocContext
+(JNIEnv *env, jclass jc, jint size, jint flags) {
+	unsigned char *buf = CALLDL(av_malloc)(size);
 
-	ByteIOContext *res = CALLDL(av_alloc_put_byte)(buf, buf_size, write_flag, NULL,
-						       ByteIOContext_readPacket,
-						       ByteIOContext_writePacket,
-						       ByteIOContext_seek);
+	if (buf == NULL)
+		return NULL;
+
+	// This has a weird-arse interface: you must pass it an allocated buffer
+	// but then it feels free to reallocate it whenever it wants.
+	// So we allocate here based on the requested size.
+
+	d(printf("iocontext.allocContext(%p, %d)\n", buf, size));
+
+	int write_flag = (flags & ALLOC_WRITE) != 0;
+
+	AVIOContext *res = CALLDL(avio_alloc_context)(buf, size, write_flag, NULL,
+						      AVIOContext_readPacket,
+						      AVIOContext_writePacket,
+						      AVIOContext_seek);
+
+	if (res != NULL) {
+		res->is_streamed = (flags & ALLOC_STREAMED) != 0;
+	}
 
 	d(printf(" = %p\n", res));
 
 	return WRAP(res, sizeof(*res));
 }
 
-JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_ByteIOContext_bind (JNIEnv *env, jobject jo) {
-	jobject jptr = (*env)->GetObjectField(env, jo, field_p);
-	ByteIOContext *cptr = ADDR(jptr);
-	struct byteio_data *bd;
+JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVIOContextNative_probeInput
+(JNIEnv *env, jclass jc, jobject jpb, jstring jname, jint offset, jint max_probe_size) {
+	AVIOContext *pb = ADDR(jpb);
+	const char *name = STR(jname);
+	//int *resp = ADDR(jerror_buf);
+	AVInputFormat *fmt = NULL;
+	jobject res = NULL;
+
+	//resp[0]
+	int ret = CALLDL(av_probe_input_buffer)(pb, &fmt, name, NULL, offset, max_probe_size);
+	d(printf("probe input buffer = %d\n", ret));
+
+	if (ret == 0) {
+		res = WRAP(fmt, sizeof(*fmt));
+	}
+
+	RSTR(jname, name);
+
+	return res;
+}
+
+JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_AVIOContextNative_bind
+(JNIEnv *env, jclass jc, jobject jo, jobject jptr) {
+	AVIOContext *cptr = ADDR(jptr);
+	struct avio_data *bd;
 
 	d(printf("iocontext.bind()\n"));
 
@@ -335,10 +368,10 @@ JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_ByteIOContext_bind (JNIEnv *env, jo
 	cptr->opaque = bd;
 }
 
-JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_ByteIOContext_unbind (JNIEnv *env, jobject jo) {
-	jobject jptr = (*env)->GetObjectField(env, jo, field_p);
-	ByteIOContext *cptr = ADDR(jptr);
-	struct byteio_data *bd = cptr->opaque;
+JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_AVIOContextNative_unbind
+(JNIEnv *env, jclass jc, jobject jo, jobject jptr) {
+	AVIOContext *cptr = ADDR(jptr);
+	struct avio_data *bd = cptr->opaque;
 
 	d(printf("iocontext.unbind()\n"));
 

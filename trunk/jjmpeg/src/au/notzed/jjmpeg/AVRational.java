@@ -30,7 +30,7 @@ import java.nio.LongBuffer;
 public class AVRational extends AVRationalAbstract {
 
 	protected AVRational(ByteBuffer p) {
-		super(p);
+		setNative(new AVRationalNative(this, p));
 	}
 
 	static AVRational create(ByteBuffer p) {
@@ -45,16 +45,12 @@ public class AVRational extends AVRationalAbstract {
 	}
 	public static final AVRational AV_TIME_BASE_Q = create(1, 1000000);
 
-	// perhapd implement this locally instead?
-	static native long jj_rescale_q(long a, ByteBuffer bq, ByteBuffer cq);
-//	/usr/include/ffmpeg/libavutil/mathematics.h:int64_t av_rescale_q(int64_t a, AVRational bq, AVRational cq) av_const;
-
 	public double q2d() {
 		return getNum() / (double) getDen();
 	}
 
 	static public long rescaleQ(long a, AVRational bq, AVRational cq) {
-		return jj_rescale_q(a, bq.p, cq.p);
+		return AVRationalNative.jjRescaleQ(a, bq.n.p, cq.n.p);
 	}
 
 	/**
@@ -94,3 +90,16 @@ public class AVRational extends AVRationalAbstract {
 		return res;
 	}
 }
+
+class AVRationalNative extends AVRationalNativeAbstract {
+
+	AVRationalNative(AVObject o, ByteBuffer p) {
+		super(o, p);
+	}
+	
+	// perhapd implement this locally instead?
+	static native long jjRescaleQ(long a, ByteBuffer bq, ByteBuffer cq);
+	//	/usr/include/ffmpeg/libavutil/mathematics.h:int64_t av_rescale_q(int64_t a, AVRational bq, AVRational cq) av_const;
+
+}
+
