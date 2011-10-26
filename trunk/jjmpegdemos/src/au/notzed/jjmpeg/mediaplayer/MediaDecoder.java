@@ -24,7 +24,10 @@ import au.notzed.jjmpeg.AVPacket;
 import au.notzed.jjmpeg.AVRational;
 import au.notzed.jjmpeg.AVStream;
 import au.notzed.jjmpeg.exception.AVDecodingError;
+import au.notzed.jjmpeg.exception.AVIOException;
 import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Base class for Decoders.
@@ -56,33 +59,34 @@ public abstract class MediaDecoder {
 	 * @throws IOException 
 	 */
 	MediaDecoder(MediaReader src, MediaSink dest, AVStream stream, int streamid) throws IOException {
-		this.src = src;
-		this.dest = dest;
-		this.stream = stream;
+		try {
+			this.src = src;
+			this.dest = dest;
+			this.stream = stream;
 
-		// find decoder for the video stream
-		cc = stream.getCodec();
-		codec = AVCodec.findDecoder(cc.getCodecID());
-		if (codec == null) {
-			throw new IOException("Unable to find video decoder " + cc.getCodecID());
+			// find decoder for the video stream
+			cc = stream.getCodec();
+			codec = AVCodec.findDecoder(cc.getCodecID());
+			if (codec == null) {
+				throw new IOException("Unable to find video decoder " + cc.getCodecID());
+			}
+
+			cc.open(codec);
+
+			System.out.println("Codec: " + codec.getName());
+
+			AVRational tb = stream.getTimeBase();
+			tb_Num = tb.getNum();
+			tb_Den = tb.getDen();
+
+			startpts = stream.getStartTime();
+			startms = AVRational.starSlash(startpts * 1000, tb_Num, tb_Den);
+			duration = AVRational.starSlash(stream.getDuration() * 1000, tb_Num, tb_Den);
+
+			System.out.println("stream start " + startms + " length " + duration);
+		} catch (AVIOException ex) {
+			throw new IOException("Unable to open video decoder", ex);
 		}
-
-		int res;
-		if ((res = cc.open(codec)) < 0) {
-			throw new IOException("Unable to open video decoder " + res);
-		}
-
-		System.out.println("Codec: " + codec.getName());
-
-		AVRational tb = stream.getTimeBase();
-		tb_Num = tb.getNum();
-		tb_Den = tb.getDen();
-
-		startpts = stream.getStartTime();
-		startms = AVRational.starSlash(startpts * 1000, tb_Num, tb_Den);
-		duration = AVRational.starSlash(stream.getDuration() * 1000, tb_Num, tb_Den);
-
-		System.out.println("stream start " + startms + " length " + duration);
 	}
 
 	/**

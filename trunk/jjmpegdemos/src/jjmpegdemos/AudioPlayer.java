@@ -8,6 +8,7 @@ import au.notzed.jjmpeg.AVPacket;
 import au.notzed.jjmpeg.AVSamples;
 import au.notzed.jjmpeg.AVStream;
 import au.notzed.jjmpeg.exception.AVDecodingError;
+import au.notzed.jjmpeg.exception.AVIOException;
 import com.jogamp.openal.AL;
 import com.jogamp.openal.ALException;
 import com.jogamp.openal.ALFactory;
@@ -112,7 +113,7 @@ public class AudioPlayer {
 	public AudioPlayer() {
 	}
 
-	public void playFile(String file) throws FileNotFoundException {
+	public void playFile(String file) throws FileNotFoundException, AVIOException {
 		this.file = file;
 
 		inital();
@@ -145,9 +146,7 @@ public class AudioPlayer {
 			System.out.println("no codec");
 		}
 
-		if (actx.open(aCodec) < 0) {
-			System.out.println("codec open failed");
-		}
+		actx.open(aCodec);
 
 		System.out.printf("Opened Audio\n channels=%d\n format=%s\n rate=%d\n", actx.getChannels(), actx.getSampleFmt(), actx.getSampleRate());
 
@@ -193,11 +192,13 @@ public class AudioPlayer {
 
 		if (args.length == 0) {
 			File f = Main.chooseFile();
-			if (f == null)
+			if (f == null) {
 				return;
+			}
 			file = f.getPath();
-		} else
+		} else {
 			file = args[0];
+		}
 
 		final AudioPlayer audioScanner = new AudioPlayer();
 
@@ -207,10 +208,12 @@ public class AudioPlayer {
 				System.out.println("Hit ctrl-C to quit");
 				try {
 					audioScanner.playFile(file);
+				} catch (AVIOException ex) {
+					Logger.getLogger(AudioPlayer.class.getName()).log(Level.SEVERE, null, ex);
 				} catch (FileNotFoundException ex) {
 					Logger.getLogger(AudioPlayer.class.getName()).log(Level.SEVERE, null, ex);
+					System.exit(0);
 				}
-				System.exit(0);
 			}
 		}).start();
 		JOptionPane.showMessageDialog(null, "Playing " + file, "Simple Audio Player", JOptionPane.INFORMATION_MESSAGE);

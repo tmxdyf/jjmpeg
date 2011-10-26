@@ -11,12 +11,16 @@ import au.notzed.jjmpeg.AVCodec;
 import au.notzed.jjmpeg.AVCodecContext;
 import au.notzed.jjmpeg.AVFormatContext;
 import au.notzed.jjmpeg.AVFrame;
+import au.notzed.jjmpeg.AVInputFormat;
 import au.notzed.jjmpeg.AVPacket;
 import au.notzed.jjmpeg.AVPlane;
 import au.notzed.jjmpeg.AVStream;
 import au.notzed.jjmpeg.PixelFormat;
 import au.notzed.jjmpeg.exception.AVDecodingError;
+import au.notzed.jjmpeg.exception.AVIOException;
 import au.notzed.jjmpeg.io.JJFileInputStream;
+import au.notzed.jjmpeg.util.VideoFileChooser;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.util.logging.Level;
@@ -25,28 +29,49 @@ import java.util.logging.Logger;
 /**
  * This tries to read from a Java file and feed it into ffmpeg.
  * 
- * **BROKEN BROKEN**
- * 
- * Unfortunately, the binding routines are completely fubar right now,
- * and this will not work.
- * 
- * **BROKEN BROKEN**
- * 
  * @author notzed
  */
 public class VideoJavaReaderExample {
 
+	static File chooseFile() {
+		VideoFileChooser fc = new VideoFileChooser();
+		if (fc.showOpenDialog(null) == fc.APPROVE_OPTION) {
+			return fc.getSelectedFile();
+		} else {
+			return null;
+		}
+	}
+
 	/**
 	 * @param args the command line arguments
 	 */
-	public static void main(String[] args) throws FileNotFoundException {
-		String name = "/home/notzed/Videos/mike0.avi";
+	public static void main(String[] args) throws FileNotFoundException, AVIOException {
+		String name;
+
+		if (args.length == 0) {
+			File f = chooseFile();
+			if (f == null) {
+				return;
+			}
+
+			name = f.getPath();
+		} else {
+			name = args[0];
+		}
+
+		AVFormatContext.registerAll();
 
 		FileInputStream fis = new FileInputStream(name);
 		JJFileInputStream jjfis = JJFileInputStream.create(fis);
-		
-		AVFormatContext.registerAll();
-		AVFormatContext format = AVFormatContext.openInputStream(jjfis, name);
+
+		AVInputFormat ifmt = jjfis.probeInput(name, 0, 4096);
+
+		if (ifmt == null) {
+			System.err.println("probe Input failed");
+			System.exit(1);
+		}
+
+		AVFormatContext format = AVFormatContext.openInputStream(jjfis, name, ifmt);
 
 		if (format.findStreamInfo() < 0) {
 			System.err.println("Could not find stream information");
@@ -87,10 +112,7 @@ public class VideoJavaReaderExample {
 		}
 
 		System.out.println("opening codec");
-		if (codecContext.open(codec) < 0) {
-			System.err.println("error opening codec\n");
-			System.exit(1);
-		}
+		codecContext.open(codec);
 
 		System.out.println("pixel format: " + codecContext.getPixFmt());
 
@@ -124,9 +146,9 @@ public class VideoJavaReaderExample {
 				packet.freePacket();
 			}
 		}
-		
+
 		format.closeInputStream();
-		
+
 		System.out.printf("Read %d frames\n", count);
 	}
 }

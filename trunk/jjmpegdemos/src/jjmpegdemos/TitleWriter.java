@@ -31,6 +31,7 @@ import au.notzed.jjmpeg.CodecID;
 import au.notzed.jjmpeg.PixelFormat;
 import au.notzed.jjmpeg.SwsContext;
 import au.notzed.jjmpeg.exception.AVEncodingError;
+import au.notzed.jjmpeg.exception.AVIOException;
 import au.notzed.jjmpeg.util.VideoFileChooser;
 import java.awt.Color;
 import java.awt.Font;
@@ -44,6 +45,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.JColorChooser;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -64,7 +67,7 @@ public class TitleWriter {
 	int stepsize = 15;
 	Color colour = Color.RED;
 
-	public void writeTitles(String filename, String title) {
+	public void writeTitles(String filename, String title) throws AVIOException {
 		AVCodec codec;
 		AVCodecContext c;
 		AVFrame picture;
@@ -78,7 +81,7 @@ public class TitleWriter {
 		}
 
 		try {
-			c = AVCodecContext.allocContext();
+			c = AVCodecContext.create();
 			picture = AVFrame.create(PixelFormat.PIX_FMT_YUV420P, width, height);
 
 			c.setBitRate(400000);
@@ -91,10 +94,7 @@ public class TitleWriter {
 			c.setMaxBFrames(1);
 			c.setPixFmt(PixelFormat.PIX_FMT_YUV420P);
 
-			if (c.open(codec) < 0) {
-				System.err.println("could not open codec");
-				System.exit(1);
-			}
+			c.open(codec);
 
 			FileOutputStream f = new FileOutputStream(filename);
 			ByteBuffer outbuf = ByteBuffer.allocateDirect(100000);
@@ -207,8 +207,11 @@ public class TitleWriter {
 						tw.fps = (Integer) fps.getValue();
 						tw.stepsize = (Integer) speed.getValue();
 						tw.colour = colour.getColor();
-
-						tw.writeTitles(file.getAbsolutePath(), text.getText());
+						try {
+							tw.writeTitles(file.getAbsolutePath(), text.getText());
+						} catch (AVIOException ex) {
+							Logger.getLogger(TitleWriter.class.getName()).log(Level.SEVERE, null, ex);
+						}
 					}
 				}
 				System.exit(0);
