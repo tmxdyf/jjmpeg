@@ -26,13 +26,9 @@ import java.nio.ByteBuffer;
  */
 public class AVFrame extends AVFrameAbstract {
 
-	private boolean allocatedFrames = false;
-
 	protected AVFrame(ByteBuffer p) {
-		super(p);
+		setNative(new AVFrameNative(this, p));
 	}
-
-	native ByteBuffer getPlaneAt(int index, int pixelFormat, int width, int height);
 
 	static public AVFrame create(ByteBuffer p) {
 		return new AVFrame(p);
@@ -45,28 +41,44 @@ public class AVFrame extends AVFrameAbstract {
 	static public AVFrame create(PixelFormat fmt, int width, int height) {
 		AVFrame f = create();
 		int res = f.alloc(fmt.toC(), width, height);
-		
+
 		if (res != 0) {
 			throw new ExceptionInInitializerError("Unable to allocate bitplanes");
 		}
-		f.allocatedFrames = true;
-		
-		return f;
-	}
+		((AVFrameNative) f.n).allocated = true;
 
-	public void dispose() {
-		if (allocatedFrames)
-			free();
-		AVFormatContext._free(p);
+		return f;
 	}
 
 	public AVPlane getPlaneAt(int index, PixelFormat fmt, int width, int height) {
 		int lineSize = getLineSizeAt(index);
 
-		return new AVPlane(getPlaneAt(index, fmt.toC(fmt), width, height), lineSize, width, height);
+		return new AVPlane(AVFrameNative.getPlaneAt(n.p, index, fmt.toC(fmt), width, height), lineSize, width, height);
 	}
 
 	public boolean isKeyFrame() {
 		return getKeyFrame() != 0;
+	}
+}
+
+class AVFrameNative extends AVFrameNativeAbstract {
+
+	boolean allocated = false;
+
+	AVFrameNative(AVObject o, ByteBuffer p) {
+		super(o, p);
+	}
+
+	static native ByteBuffer getPlaneAt(ByteBuffer p, int index, int pixelFormat, int width, int height);
+
+	@Override
+	public void dispose() {
+		if (p != null) {
+			if (allocated) {
+				free(p);
+			}
+			AVFormatContextNative._free(p);
+		}
+		super.dispose();
 	}
 }

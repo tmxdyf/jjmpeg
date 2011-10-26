@@ -27,10 +27,17 @@ import java.nio.ByteBuffer;
 public class SwsFilter extends SwsFilterAbstract {
 
 	protected SwsFilter(ByteBuffer p) {
-		super(p);
+		setNative(new SwsFilterNative(this, p));
 	}
 
 	static SwsFilter create(ByteBuffer p) {
 		return new SwsFilter(p);
+	}
+}
+
+class SwsFilterNative extends SwsFilterNativeAbstract {
+
+	SwsFilterNative(AVObject o, ByteBuffer p) {
+		super(o, p);
 	}
 }

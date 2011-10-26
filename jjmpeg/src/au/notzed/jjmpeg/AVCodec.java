@@ -27,7 +27,7 @@ import java.nio.ByteBuffer;
 public class AVCodec extends AVCodecAbstract {
 
 	AVCodec(ByteBuffer p) {
-		super(p);
+		setNative(new AVCodecNative(this, p));
 	}
 
 	static public AVCodec create(ByteBuffer p) {
@@ -37,6 +37,13 @@ public class AVCodec extends AVCodecAbstract {
 	}
 
 	static public AVCodec findEncoder(CodecID id) {
-		return AVCodec.create(_find_encoder(id.toC()));
+		return AVCodec.create(AVCodecNative.find_encoder(id.toC()));
+	}
+}
+
+class AVCodecNative extends AVCodecNativeAbstract {
+
+	AVCodecNative(AVObject o, ByteBuffer p) {
+		super(o, p);
 	}
 }

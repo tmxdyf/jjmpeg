@@ -37,7 +37,7 @@ public class AVAudioPacket extends AVPacket {
 	}
 
 	public static AVAudioPacket create() {
-		return new AVAudioPacket(AVPacket.allocate());
+		return new AVAudioPacket(AVPacketNative.allocatePacket());
 	}
 
 	/**
@@ -46,11 +46,11 @@ public class AVAudioPacket extends AVPacket {
 	 * @return
 	 */
 	public static AVAudioPacket create(AVPacket src) {
-		AVAudioPacket packet = new AVAudioPacket(AVPacket.allocate());
+		AVAudioPacket packet = new AVAudioPacket(AVPacketNative.allocatePacket());
 
 		// *this = *src;
-		packet.p.put(src.p);
-		src.p.rewind();
+		packet.n.p.put(src.n.p);
+		src.n.p.rewind();
 		// so it doesn't go away without us knowing
 		packet.src = src;
 
@@ -65,17 +65,8 @@ public class AVAudioPacket extends AVPacket {
 	 * @param src
 	 */
 	public void setSrc(AVPacket src) {
-		p.put(src.p).rewind();
-		src.p.rewind();
+		n.p.put(src.n.p).rewind();
+		src.n.p.rewind();
 		this.src = src;
 	}
-
-	/**
-	 * Consumes 'len' bytes by incrementing the data pointer and decrementing the
-	 * length of the packet.
-	 * @param len
-	 * @return
-	 */
-	public native int consume(int len);
-
 }

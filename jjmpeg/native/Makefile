@@ -30,8 +30,8 @@ SUBDIRS=linux-amd64 linux-32 win-amd64
 
 all: $(WRAPPERS) $(WRAPPERS_DVB) $(HEADERS) $(HEADERS_DVB)
 
-$(WRAPPERS): gennative.pl native.conf
-	./gennative.pl
+$(WRAPPERS): genjjmpeg.pl native.conf
+	./genjjmpeg.pl
 
 $(HEADERS):
 	$(javah) -classpath ../dist/jjmpeg.jar $(CLASSES)

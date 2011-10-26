@@ -18,20 +18,30 @@
  */
 package au.notzed.jjmpeg;
 
+import java.lang.ref.ReferenceQueue;
+import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.LinkedList;
 
 /**
  *
  * @author notzed
  */
-abstract public class AVNative {
+abstract public class AVNative extends WeakReference<AVObject> {
 
-	final ByteBuffer p;
+	ByteBuffer p;
+	static private ReferenceQueue<AVObject> refqueue = new ReferenceQueue<AVObject>();
+	static private LinkedList<AVNative> reflist = new LinkedList<AVNative>();
 
-	protected AVNative(ByteBuffer p) {
+	protected AVNative(AVObject jobject, ByteBuffer p) {
+		super(jobject, refqueue);
+		reflist.add(this);
+
 		this.p = p;
 		p.order(ByteOrder.nativeOrder());
+		
+		gc(2);
 	}
 	static final boolean is64;
 
@@ -58,5 +68,30 @@ abstract public class AVNative {
 	static native int getPointerBits();
 
 	static native ByteBuffer _malloc(int size);
+
 	static native void _free(ByteBuffer mem);
+
+	private static void gc(int limit) {
+		AVNative an;
+		int count = 0;
+		
+		while (count < limit
+				&& ((an = (AVNative) refqueue.poll()) != null)) {
+			an.dispose();
+			count += 1;
+		}
+	}
+
+	/**
+	 * Dispose of this resource.  It must be safe to call this multiple times.
+	 * 
+	 * The default dispose sets this.p = null;
+	 */
+	public void dispose() {
+		if (p != null) {
+			reflist.remove(this);
+			p = null;
+			System.out.println("Disposing: " + getClass().getName());
+		}
+	}
 }

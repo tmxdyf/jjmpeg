@@ -27,10 +27,17 @@ import java.nio.ByteBuffer;
 public class AVStream extends AVStreamAbstract {
 
 	protected AVStream(ByteBuffer p) {
-		super(p);
+		setNative(new AVStreamNative(this, p));
 	}
 
 	static AVStream create(ByteBuffer p) {
 		 return new AVStream(p);
+	}
+}
+
+class AVStreamNative extends AVStreamNativeAbstract {
+
+	AVStreamNative(AVObject o, ByteBuffer p) {
+		super(o, p);
 	}
 }

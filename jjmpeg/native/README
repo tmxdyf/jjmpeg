@@ -3,7 +3,7 @@ Code Generation
 ---------------
 
 The generator is defined by the 'native.conf' file, and processed by the perl
-script 'gennative.pl'.
+script 'genjjmpeg.pl'.
 
 This creates:
  jjmpeg-jni.c: The automatically generated bindings from the description.
@@ -16,7 +16,8 @@ native calls.
 
 The jjdvb binding currently works in a similar way, although uses the
 gendvb.pl script and native-dvb.conf file.  It generates jjdvb-jni.c
-and DVBAbstract.java.
+and DVBAbstract.java.  It's configuration isn't identical to the
+one described here.
 
 Compiling
 ---------
@@ -77,8 +78,11 @@ name, and also defines which library the methods are loaded from (for dlopen).
 
 Plain C prototypes then follow, with the following limitations and alterations:
  - struct types are not allowed, only typedef'd types.
- - static is an additional keyword (which must be the first) which defines
-   a class function.
+ - optional keywords which must appear in this order
+   - `native' indicates no auto-generated binding in the public object
+   - `protected' indicates the public object binding is protected
+   - `static' indicates package scope, and that the method must not take the ByteBuffer
+     object wrapper pointer.
  - only a limited number of types work.  Any struct types must match one of
    the classes defined in the file, or some other java class at compile time.
 

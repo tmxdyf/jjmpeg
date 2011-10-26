@@ -20,6 +20,7 @@ package au.notzed.jjmpeg;
 
 import au.notzed.jjmpeg.exception.AVDecodingError;
 import au.notzed.jjmpeg.exception.AVEncodingError;
+import au.notzed.jjmpeg.exception.AVIOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.IntBuffer;
@@ -46,17 +47,30 @@ public class AVCodecContext extends AVCodecContextAbstract {
 	private IntBuffer fin = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder()).asIntBuffer();
 
 	protected AVCodecContext(ByteBuffer p) {
-		super(p);
+		setNative(new AVCodecContextNative(this, p));
 	}
 
 	static AVCodecContext create(ByteBuffer p) {
 		return new AVCodecContext(p);
 	}
 
-	public void dispose() {
-		AVFormatContext._free(p);
+	public static AVCodecContext create() {
+		AVCodecContext cc = allocContext();
+
+		if (cc != null) {
+			((AVCodecContextNative) cc.n).allocated = true;
+		}
+
+		return cc;
 	}
 
+	public void open(AVCodec codec) throws AVIOException {
+		int res = AVCodecContextNative.open(n.p, codec.n.p);
+		
+		if (res < 0)
+			throw new AVIOException(res);
+	}
+	
 	/**
 	 * Returns true if decoding frame complete.
 	 * @param frame
@@ -67,7 +81,7 @@ public class AVCodecContext extends AVCodecContextAbstract {
 	public boolean decodeVideo(AVFrame frame, AVPacket packet) throws AVDecodingError {
 		int res;
 
-		res = _decode_video2(frame.p, fin, packet.p);
+		res = decodeVideo2(frame, fin, packet);
 		if (res < 0) {
 			throw new AVDecodingError(-res);
 		}
@@ -86,7 +100,7 @@ public class AVCodecContext extends AVCodecContextAbstract {
 	 */
 	public int encodeVideo(ByteBuffer buf, AVFrame pict) throws AVEncodingError {
 		int buf_size = buf.capacity();
-		int len = _encode_video(buf, buf_size, pict != null ? pict.p : null);
+		int len = encodeVideo(buf, buf_size, pict != null ? pict : null);
 
 		if (len >= 0) {
 			buf.limit(len);
@@ -108,12 +122,12 @@ public class AVCodecContext extends AVCodecContextAbstract {
 	public int decodeAudio(AVSamples samples, AVAudioPacket packet) throws AVDecodingError {
 		int data = 0;
 		ShortBuffer s = samples.getSamples();
-		
+
 		while (data == 0 && packet.getSize() > 0) {
 			int res = 0;
 
-			fin.put(0, samples.p.capacity());
-			res = _decode_audio3(s, fin, packet.p);
+			fin.put(0, samples.getBuffer().capacity());
+			res = decodeAudio3(s, fin, packet);
 			if (res < 0) {
 				throw new AVDecodingError(-res);
 			}
@@ -124,8 +138,28 @@ public class AVCodecContext extends AVCodecContextAbstract {
 		samples.getBuffer().position(0);
 		samples.getBuffer().limit(data);
 		s.position(0);
-		s.limit(data/2);
+		s.limit(data / 2);
 
 		return data;
+	}
+}
+
+class AVCodecContextNative extends AVCodecContextNativeAbstract {
+
+	boolean allocated = false;
+
+	AVCodecContextNative(AVObject o, ByteBuffer p) {
+		super(o, p);
+	}
+
+	@Override
+	public void dispose() {
+		if (p != null) {
+			// close?
+			if (allocated) {
+				_free(p);
+			}
+		}
+		super.dispose();
 	}
 }

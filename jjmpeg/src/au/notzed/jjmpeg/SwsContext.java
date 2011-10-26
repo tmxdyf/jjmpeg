@@ -40,24 +40,36 @@ public class SwsContext extends SwsContextAbstract {
 	public static final int SWS_SPLINE = 0x400;
 
 	protected SwsContext(ByteBuffer p) {
-		super(p);
+		setNative(new SwsContextNative(this, p));
 	}
-
-	native int _scale(ByteBuffer srcFrame, int srcSliceY, int srcSliceH, ByteBuffer dstFrame);
 
 	static SwsContext create(ByteBuffer p) {
 		return new SwsContext(p);
 	}
 
 	static public SwsContext create(int srcW, int srcH, PixelFormat srcFormat, int dstW, int dstH, PixelFormat dstFormat, int flags) {
-		return SwsContext.create(_getContext(srcW, srcH, srcFormat.toC(), dstW, dstH, dstFormat.toC(), flags, null, null, null));
+		//return getContext(srcW, srcH, srcFormat, dstW, dstH, dstFormat, flags, null, null, null);
+		return SwsContext.create(SwsContextNativeAbstract.getContext(srcW, srcH, srcFormat.toC(), dstW, dstH, dstFormat.toC(), flags, null, null, null));
 	}
 
 	public int scale(AVFrame src, int srcSliceY, int srcSliceH, AVFrame dst) {
-		return _scale(src.p, srcSliceY, srcSliceH, dst.p);
+		return SwsContextNative.scale(n.p, src.n.p, srcSliceY, srcSliceH, dst.n.p);
+	}
+}
+
+class SwsContextNative extends SwsContextNativeAbstract {
+
+	SwsContextNative(AVObject o, ByteBuffer p) {
+		super(o, p);
 	}
 
+	static native int scale(ByteBuffer p, ByteBuffer srcFrame, int srcSliceY, int srcSliceH, ByteBuffer dstFrame);
+
+	@Override
 	public void dispose() {
-		freeContext();
+		if (p != null) {
+			freeContext(p);
+			super.dispose();
+		}
 	}
 }

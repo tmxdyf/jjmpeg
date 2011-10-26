@@ -1,7 +1,15 @@
 #!/usr/bin/perl
-
 # generate ffmpeg bindings
 
+# suffix of generated native binding
+$npostfix = "NativeAbstract";
+# suffix of generated java binding
+$jpostfix = "Abstract";
+# suffix of native java implementation
+$jimpl = "Native";
+
+
+# read api descriptor
 open IN,"native.conf";
 
 # c to jni type
@@ -55,9 +63,29 @@ sub doat($$) {
     my $ind = shift;
     my $what = shift;
     if ($ind ne "") {
+	print "(ByteBuffer p, ".$what.")";
+    } else {
+	print "(ByteBuffer p)";
+    }
+}
+
+sub doatjava($$) {
+    my $ind = shift;
+    my $what = shift;
+    if ($ind ne "") {
 	print "(".$what.")";
     } else {
 	print "()";
+    }
+}
+
+sub doatcall($$) {
+    my $ind = shift;
+    my $what = shift;
+    if ($ind ne "") {
+	print "(n.p, ".$what.")";
+    } else {
+	print "(n.p)";
     }
 }
 
@@ -111,11 +139,11 @@ while (<IN>) {
 	    }
 	    if ($opt =~ m/o/) {
 		$jtype = "ByteBuffer";
-		$prefix = "_";
+		#$prefix = "_";
 		$ntype = "jobject";
 	    } elsif ($opt =~ m/e/) {
 		$jtype = "int";
-		$prefix = "_";
+		#$prefix = "_";
 		$ntype = "jint";
 	    } else {
 		$nscope = $scope;
@@ -167,8 +195,19 @@ while (<IN>) {
 		my %methodinfo = ();
 		my $static = 0;
 		my $wraptype = 0;
+		my $scope = "public";
 
 		$type = trim($type);
+
+		if ($type =~ m/protected (.*)/) {
+		    $scope = "protected";
+		    $type = $1;
+		}
+
+		if ($type =~ m/native (.*)/) {
+		    $scope = "native";
+		    $type = $1;
+		}
 
 		if ($type =~ m/static (.*)/) {
 		    $static = 1;
@@ -191,6 +230,7 @@ while (<IN>) {
 		}
 
 		$methodinfo{wraptype} = $wraptype;
+		$methodinfo{scope} = $scope;
 		$methodinfo{static} = $static;
 		$methodinfo{rawargs} = $args;
 		$methodinfo{type} = $type;
@@ -311,8 +351,6 @@ static void *avcodec_lib;
 static void *avformat_lib;
 static void *swscale_lib;
 
-static jfieldID field_p;
-
 JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_AVNative_getPointerBits
 (JNIEnv *env, jclass jc) {
 \tif (init_local(env) == 0) return 0;
@@ -334,10 +372,11 @@ END
 	}
     }
 
-print "\n";
-    print "\tfield_p = (*env)->GetFieldID(env, jc, \"p\", \"Ljava/nio/ByteBuffer;\");\n";
-print "\tif (field_p == NULL) return 0;\n";
-print "\n";
+#print "\n";
+#    print "\tfield_p = (*env)->GetFieldID(env, jc, \"p\", \"Ljava/nio/ByteBuffer;\");\n";
+#print "\tif (field_p == NULL) return 0;\n";
+#print "\n";
+
     print "\treturn sizeof(void *)*8;\n";
     print "}\n";
 }
@@ -360,10 +399,10 @@ foreach $classinfo (@classes) {
 	my $ind = $opt =~ m/i/;
 
 	if ($opt =~ m/g/) {
-	    print "JNIEXPORT $fi{ntype} JNICALL ${nativeprefix}_${class}Abstract_";
-	    if ($opt =~ m/[eo]/) {
-		print "_1";
-	    }
+	    print "JNIEXPORT $fi{ntype} JNICALL ${nativeprefix}_${class}${npostfix}_";
+	    #if ($opt =~ m/[eo]/) {
+	#	print "_1";
+	    #}
 	    if ($opt =~ m/i/) {
 		#print "1";
 		$at = "At";
@@ -371,12 +410,12 @@ foreach $classinfo (@classes) {
 		$at = "";
 	    }
 	    print "get$fi{jname}$at(";
-	    print "JNIEnv *env, jobject jo";
+	    print "JNIEnv *env, jclass jc, jobject jptr";
 	    if ($ind) {
 		print ", jint index";
 	    }
 	    print ") {\n";
-	    print "\tjobject jptr = (*env)->GetObjectField(env, jo, field_p);\n";
+	    #print "\tjobject jptr = (*env)->GetObjectField(env, jo, field_p);\n";
 	    print "\t$class *cptr = ADDR(jptr);\n";
 	    print "\treturn ";
 	    if ($fi{ntype} eq "jobject") {
@@ -399,10 +438,10 @@ foreach $classinfo (@classes) {
 	    print ";\n}\n\n";
 	}
 	if ($opt =~ m/s/) {
-	    print "JNIEXPORT void JNICALL ${nativeprefix}_${class}Abstract_";
-	    if ($opt =~ m/[eo]/) {
-		print "_1";
-	    }
+	    print "JNIEXPORT void JNICALL ${nativeprefix}_${class}${npostfix}_";
+	    #if ($opt =~ m/[eo]/) {
+	#	print "_1";
+	    #}
 	    if ($opt =~ m/i/) {
 		#print "1";
 		$at = "At";
@@ -410,13 +449,13 @@ foreach $classinfo (@classes) {
 		$at = "";
 	    }
 	    print "set$fi{jname}$at(";
-	    print "JNIEnv *env, jobject jo";
+	    print "JNIEnv *env, jclass jc, jobject jptr";
 	    if ($ind) {
 		print ", jint index";
 	    }
 	    print ", $fi{ntype} val";
 	    print ") {\n";
-	    print "\tjobject jptr = (*env)->GetObjectField(env, jo, field_p);\n";
+	    #print "\tjobject jptr = (*env)->GetObjectField(env, jo, field_p);\n";
 	    print "\t$class *cptr = ADDR(jptr);\n";
 	    print "\tcptr->$fi{name}";
 	    if ($ind) {
@@ -433,7 +472,7 @@ foreach $classinfo (@classes) {
 	my %mi = %{$methodinfo};
 	my @arginfo = @{$mi{args}};
 
-	print "JNIEXPORT $mi{ntype} JNICALL ${nativeprefix}_${class}Abstract__1$mi{nname}\n";
+	print "JNIEXPORT $mi{ntype} JNICALL ${nativeprefix}_${class}${npostfix}_$mi{nname}\n";
 	if ($mi{static}) {
 	    print "(JNIEnv *env, jclass jc";
 	    foreach $argdata (@arginfo) {
@@ -442,14 +481,14 @@ foreach $classinfo (@classes) {
 	    }
 	    print ") {\n";
 	} else {
-	    print "(JNIEnv *env, jobject jo";
+	    print "(JNIEnv *env, jclass jc, jobject jptr";
 		
 	    foreach $argdata (@arginfo) {
 		%ai = %{$argdata};
 		print ", $ai{ntype} $ai{nname}";
 	    }
 	    print ") {\n";
-	    print "\tjobject jptr = (*env)->GetObjectField(env, jo, field_p);\n";
+	    #print "\tjobject jptr = (*env)->GetObjectField(env, jo, field_p);\n";
 	    print "\t$class *cptr = ADDR(jptr);\n";
 	}
 	# wrap/converty any jni args to c args
@@ -518,9 +557,9 @@ foreach $classinfo (@classes) {
 close STDOUT;
 open STDOUT, ">AVAbstract.java";
 
-    print "/* I am automatically generated.  Editing me would be pointless,\n   but I wont stop you if you so desire. */\n\n";
+print "/* I am automatically generated.  Editing me would be pointless,\n   but I wont stop you if you so desire. */\n\n";
 
-    print <<END;
+print <<END;
 package au.notzed.jjmpeg;
 import java.nio.ByteBuffer;
 import java.nio.ShortBuffer;
@@ -528,18 +567,18 @@ import java.nio.IntBuffer;
 import java.nio.DoubleBuffer;
 
 END
+
 # now create java code
 foreach $classinfo (@classes) {
     my %ci = %{$classinfo};
 
     my $class = $ci{name};
 
-    print <<END;
-abstract class ${class}Abstract extends AVNative {
-\tprotected ${class}Abstract(ByteBuffer p) {
-\t\tsuper(p);
-\t}
-END
+    # First the native wrapper
+    print "abstract class ${class}${npostfix} extends AVNative {\n";
+    print "\tprotected ${class}${npostfix}(AVObject o, ByteBuffer p) {\n";
+    print "\t\tsuper(o, p);\n";
+    print "\t}\n";
 
     print "\t// Fields\n";
     # field accessors
@@ -552,41 +591,21 @@ END
 	my $ind = $opt =~ m/i/;
 
 	if ($opt =~ m/g/) {
-	    print "\t$fi{nscope}native $fi{jtype} $fi{prefix}get$fi{jname}$fi{suffix}";
+	    print "\tstatic native $fi{jtype} $fi{prefix}get$fi{jname}$fi{suffix}";
 	    doat($ind, "int index");
 	    print ";\n";
-	    if ($opt =~ m/o/) {
-		print "\t$fi{scope} $fi{type} get$fi{jname}$fi{suffix}";
-		doat($ind, "int index");
-		print " {\n\t\treturn $fi{type}.create($fi{prefix}get$fi{jname}$fi{suffix}";
-		doat($ind, "index");
-		print ");\n\t}\n";
-	    } elsif ($opt =~ m/e/) {
-		print "\t${scope} $fi{type} get$fi{jname}() {\n";
-		print "\t\treturn $fi{type}.values()[$fi{prefix}get$fi{jname}()+$fi{offset}];\n\t}\n";
-	    }
 	}
 	if ($opt =~ m/s/) {
-	    print "\t$fi{nscope}native $fi{jtype} $fi{prefix}set$fi{jname}$fi{suffix}(";
+	    print "\tstatic native $fi{jtype} $fi{prefix}set$fi{jname}$fi{suffix}(";
+	    print "ByteBuffer p, ";
 	    if ($ind) {
 		print "int index, ";
 	    }
 	    print "$fi{jtype} val";
 	    print ");\n";
-	    if ($opt =~ m/o/) {
-		print STDERR "ERROR: unimplemented object setting!\n";
-		print "\t$fi{scope} $fi{type} set$fi{jname}$fi{suffix}";
-		doat($ind, "int index");
-		print " {\n\t\treturn $fi{type}.create($fi{prefix}get$fi{jname}$fi{suffix}";
-		doat($ind, "index");
-		print ");\n\t}\n";
-	    } elsif ($opt =~ m/e/) {
-		print "\t${scope} void set$fi{jname}($fi{type} val) {\n";
-		print "\t\t$fi{prefix}set$fi{jname}(val.toC());\n\t}\n";
-	    }
 	}
     }
-
+    
     # methods
     print "\t// Native Methods\n";
     my @methods= @{$ci{methods}};
@@ -604,10 +623,15 @@ END
 	    $jtype = "ByteBuffer";
 	}
 
-	print "\t${scope}native ${jtype} _${name}(";
+	print "\tstatic native ${jtype} ${name}(";
 	my @arginfo = @{$mi{args}};
-
 	my $count = 0;
+
+	if (!$mi{static}) {
+	    $count = 1;
+	    print "ByteBuffer p";
+	}
+
 	foreach $argdata (@arginfo) {
 	    %ai = %{$argdata};
 	    print ", " if $count > 0;
@@ -616,6 +640,64 @@ END
 	}
 	print ");\n";
     }
+
+    print "}\n\n";
+
+    # Now the java accessor to the native object
+    print "abstract class ${class}$jpostfix extends AVObject {\n";
+
+    #print "\tprotected ${class}$jpostfix(AVNative n) {\n";
+    #print "\t\tsuper(n);\n";
+    #print "\t}\n";
+
+    $aclass = "$class$npostfix.";
+
+    print "\t// Fields\n";
+    # field accessors
+    my @fields = @{$ci{fields}};
+    foreach $fieldinfo (@fields) {
+	my %fi = %{$fieldinfo};
+
+	# getter
+	my $opt = $fi{opt};
+	my $ind = $opt =~ m/i/;
+
+	if ($opt =~ m/g/) {
+	    if ($opt =~ m/o/) {
+		print "\t$fi{scope} $fi{type} get$fi{jname}$fi{suffix}";
+		doatjava($ind, "int index");
+		print " {\n\t\treturn $fi{type}.create(${aclass}get$fi{jname}$fi{suffix}";
+		doatcall($ind, "index");
+		print ");\n\t}\n";
+	    } elsif ($opt =~ m/e/) {
+		print "\t${scope} $fi{type} get$fi{jname}() {\n";
+		print "\t\treturn $fi{type}.values()[${aclass}get$fi{jname}(n.p)+$fi{offset}];\n\t}\n";
+	    } else {
+		print "\t$fi{scope} $fi{jtype} get$fi{jname}$fi{suffix}";
+		doatjava($ind, "int index");
+		print " {\n\t\treturn ${aclass}get$fi{jname}$fi{suffix}";
+		doatcall($ind, "index");
+		print ";\n\t}\n";
+	    }
+	}
+	if ($opt =~ m/s/) {
+	    if ($opt =~ m/o/) {
+		print STDERR "ERROR: unimplemented object setting!\n";
+		print "\t$fi{scope} $fi{type} ${aclass}.set$fi{jname}$fi{suffix}";
+		doatjava($ind, "int index");
+		print " {\n\t\treturn $fi{type}.create($fi{prefix}get$fi{jname}$fi{suffix}";
+		doatcall($ind, "index");
+		print ");\n\t}\n";
+	    } elsif ($opt =~ m/e/) {
+		print "\t${scope} void set$fi{jname}($fi{type} val) {\n";
+		print "\t\t${aclass}set$fi{jname}(n.p, val.toC());\n\t}\n";
+	    } else {
+		print "\t${scope} void set$fi{jname}($fi{jtype} val) {\n";
+		print "\t\t${aclass}set$fi{jname}(n.p, val);\n\t}\n";
+	    }
+	}
+    }
+
     print "\t// Public Methods\n";
     foreach $methodinfo (@methods) {
 	my %mi = %{$methodinfo};
@@ -624,18 +706,23 @@ END
 	# add the public wrapper - if it's simple and we can
 	my $name = $mi{jname};
 	my $abstract = "";
+	my $scope = $mi{scope};
+
+	next if ($scope eq "native");
 
 	if(!$mi{dofunc}) {
-	    next;
-	    $abstract = "abstract ";
+	    $scope = "";
+	    #next;
+	    #$abstract = "abstract ";
 	}
 
 	if ($mi{static}) {
+	    #$scope = "";
 	    $abstract = "static ".$abstract;
 	}
 
 	$name =~ s/^(.)/lc($1)/e;
-	print "\t${abstract}public $mi{jtype} ${name}(";
+	print "\t${abstract}${scope} $mi{jtype} ${name}(";
 	$count = 0;
 	foreach $argdata (@arginfo) {
 	    %ai = %{$argdata};
@@ -644,7 +731,8 @@ END
 	    $count += 1;
 	}
 	print ")";
-	if ($mi{dofunc}) {
+	#if ($mi{dofunc}) {
+	if (1) {
 	    print " {\n\t\t";
 	    if ($mi{jtype} ne "void") {
 		print "return ";
@@ -652,8 +740,12 @@ END
 	    if ($mi{wraptype}) {
 		print "$mi{jtype}.create(";
 	    }
-	    print "_$mi{pname}(";
+	    print "${aclass}$mi{pname}(";
 	    $count = 0;
+	    if (!$mi{static}) {
+		$count = 1;
+		print "n.p";
+	    }
 	    foreach $argdata (@arginfo) {
 		%ai = %{$argdata};
 		print ", " if $count > 0;
@@ -662,7 +754,7 @@ END
 		    print ".toC()";
 		}
 		if ($ai{deref}) {
-		    print ".p";
+		    print ".n.p";
 		}
 		$count += 1;
 	    }

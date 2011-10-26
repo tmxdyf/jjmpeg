@@ -28,6 +28,7 @@ import au.notzed.jjmpeg.CodecID;
 import au.notzed.jjmpeg.PixelFormat;
 import au.notzed.jjmpeg.SwsContext;
 import au.notzed.jjmpeg.exception.AVEncodingError;
+import au.notzed.jjmpeg.exception.AVIOException;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics2D;
@@ -48,7 +49,7 @@ public class VideoWriterExample {
 	/**
 	 * @param args the command line arguments
 	 */
-	public static void main(String[] args) {
+	public static void main(String[] args) throws AVIOException {
 		String filename = "/tmp/test.mpeg";
 		int width = 352;
 		int height = 288;
@@ -66,7 +67,7 @@ public class VideoWriterExample {
 		}
 
 		try {
-			c = AVCodecContext.allocContext();
+			c = AVCodecContext.create();
 			picture = AVFrame.create(PixelFormat.PIX_FMT_YUV420P, width, height);
 
 			c.setBitRate(400000);
@@ -79,10 +80,7 @@ public class VideoWriterExample {
 			c.setMaxBFrames(1);
 			c.setPixFmt(PixelFormat.PIX_FMT_YUV420P);
 
-			if (c.open(codec) < 0) {
-				System.err.println("could not open codec");
-				System.exit(1);
-			}
+			c.open(codec);
 
 			FileOutputStream f = new FileOutputStream(filename);
 			ByteBuffer outbuf = ByteBuffer.allocateDirect(100000);

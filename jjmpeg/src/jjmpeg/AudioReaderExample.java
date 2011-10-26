@@ -8,6 +8,7 @@ import au.notzed.jjmpeg.AVPacket;
 import au.notzed.jjmpeg.AVSamples;
 import au.notzed.jjmpeg.AVStream;
 import au.notzed.jjmpeg.exception.AVDecodingError;
+import au.notzed.jjmpeg.exception.AVIOException;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -34,7 +35,7 @@ public class AudioReaderExample {
 	AVAudioPacket apacket;
 	AVSamples samples;
 
-	public AudioReaderExample(String file) throws FileNotFoundException {
+	public AudioReaderExample(String file) throws FileNotFoundException, AVIOException {
 		this.file = file;
 
 		format = AVFormatContext.openInputFile(file);
@@ -65,9 +66,7 @@ public class AudioReaderExample {
 			System.out.println("no codec");
 		}
 
-		if (actx.open(aCodec) < 0) {
-			System.out.println("codec open failed");
-		}
+		actx.open(aCodec);
 
 		System.out.printf("Opened Audio\n channels=%d\n format=%s\n rate=%d\n", actx.getChannels(), actx.getSampleFmt(), actx.getSampleRate());
 
@@ -113,7 +112,7 @@ public class AudioReaderExample {
 		format.closeInputFile();
 	}
 
-	public static void main(String[] args) throws FileNotFoundException {
+	public static void main(String[] args) throws FileNotFoundException, AVIOException {
 		String file = args.length > 0 ? args[0] :"/home/notzed/sye/08 - Time After Time";
 
 		AudioReaderExample audioScanner = new AudioReaderExample(file);
