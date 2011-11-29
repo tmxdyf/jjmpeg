@@ -94,7 +94,6 @@ public class AudioReaderExample {
 					}
 				} catch (IOException ex) {
 					Logger.getLogger(AudioReaderExample.class.getName()).log(Level.SEVERE, null, ex);
-				} catch (AVDecodingError x) {
 				} finally {
 					packet.freePacket();
 				}
