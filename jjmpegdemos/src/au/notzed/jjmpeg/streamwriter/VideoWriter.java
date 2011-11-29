@@ -19,7 +19,6 @@
 package au.notzed.jjmpeg.streamwriter;
 
 import au.notzed.jjmpeg.AVFormatContext;
-import au.notzed.jjmpeg.CodecID;
 import au.notzed.jjmpeg.exception.AVException;
 import au.notzed.jjmpeg.exception.AVIOException;
 import au.notzed.jjmpeg.io.JJMediaWriter;
@@ -41,16 +40,14 @@ public class VideoWriter {
 	static int fps = 25;
 
 	public static void main(String[] args) {
-		String filename = args.length > 0 ? args[0] : "/home/notzed/newtitle.avi";
-		
+		String filename = args.length > 0 ? args[0] : "/home/notzed/moving-text.avi";
+
 		try {
 			AVFormatContext.registerAll();
 
 			JJMediaWriter writer = new JJMediaWriter(filename);
-			JJVideoStream vstream = //writer.addVideoStream(width, height, 25, 400000);
+			JJVideoStream vstream = writer.addVideoStream(width, height, 25, 400000);
 
-			writer.addVideoStream(CodecID.CODEC_ID_RAWVIDEO, 0, width, height, 25, 400000);
-			
 			BufferedImage image = vstream.createImage();
 
 			writer.open();
