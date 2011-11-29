@@ -23,4 +23,16 @@ package au.notzed.jjmpeg.exception;
  * @author notzed
  */
 public class AVException extends Exception {
+
+	public AVException() {
+	}
+	
+	public AVException(Throwable cause) {
+		super(cause);
+	}
+	
+	public AVException(String message) {
+		super(message);
+	}
+	
 }

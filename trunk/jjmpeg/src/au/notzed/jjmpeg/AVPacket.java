@@ -26,12 +26,18 @@ import java.nio.ByteBuffer;
  */
 public class AVPacket extends AVPacketAbstract {
 
+	public static final int AV_PKT_FLAG_KEY = 1;
+	
 	AVPacket(ByteBuffer p) {
 		setNative(new AVPacketNative(this, p));
 	}
 
 	public static AVPacket create() {
 		return new AVPacket(AVPacketNative.allocatePacket());
+	}
+
+	public void setData(ByteBuffer data, int size) {
+		AVPacketNative.setData(n.p, data, size);
 	}
 	
 	/**
@@ -43,7 +49,6 @@ public class AVPacket extends AVPacketAbstract {
 	public int consume(int len) {
 		return AVPacketNative.consume(n.p, len);
 	}
-
 }
 
 class AVPacketNative extends AVPacketNativeAbstract {
@@ -61,6 +66,10 @@ class AVPacketNative extends AVPacketNativeAbstract {
 	}
 
 	static native int consume(ByteBuffer p, int len);
+
 	static native ByteBuffer allocatePacket();
+
 	static native void freePacket(ByteBuffer p);
+	
+	public static native void setData(ByteBuffer p, ByteBuffer b, int size);
 }

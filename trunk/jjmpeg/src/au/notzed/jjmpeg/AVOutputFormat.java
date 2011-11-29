@@ -26,12 +26,38 @@ import java.nio.ByteBuffer;
  */
 public class AVOutputFormat extends AVOutputFormatAbstract {
 
+	public static final int AVFMT_NOFILE = 0x0001;
+	/**< Needs '%d' in filename. */
+	public static final int AVFMT_NEEDNUMBER = 0x0002;
+	/**< Show format stream IDs numbers. */
+	public static final int AVFMT_SHOW_IDS = 0x0008;
+	/**< Format wants AVPicture structure for raw picture data. */
+	public static final int AVFMT_RAWPICTURE = 0x0020;
+	/**< Format wants global header. */
+	public static final int AVFMT_GLOBALHEADER = 0x0040;
+	/**< Format does not need / have any timestamps. */
+	public static final int AVFMT_NOTIMESTAMPS = 0x0080;
+	/**< Use generic index building code. */
+	public static final int AVFMT_GENERIC_INDEX = 0x0100;
+	/**< Format allows timestamp discontinuities. Note, muxers always require valid (monotone) timestamps */
+	public static final int AVFMT_TS_DISCONT = 0x0200;
+	/**< Format allows variable fps. */
+	public static final int AVFMT_VARIABLE_FPS = 0x0400;
+	/**< Format does not need width/height */
+	public static final int AVFMT_NODIMENSIONS = 0x0800;
+	/**< Format does not require any streams */
+	public static final int AVFMT_NOSTREAMS = 0x1000;
+
 	protected AVOutputFormat(ByteBuffer p) {
 		setNative(new AVOutputFormatNative(this, p));
 	}
 
 	static AVOutputFormat create(ByteBuffer p) {
-		 return new AVOutputFormat(p);
+		if (p == null) {
+			return null;
+		}
+
+		return new AVOutputFormat(p);
 	}
 }
 

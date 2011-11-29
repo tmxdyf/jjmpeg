@@ -22,10 +22,9 @@ package au.notzed.jjmpeg.exception;
  *
  * @author notzed
  */
-public class AVDecodingError extends AVException {
-	public int errid;
+public class AVDecodingError extends AVIOException {
 
 	public AVDecodingError(int errid) {
-		this.errid = errid;
+		super(errid);
 	}
 }

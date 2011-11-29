@@ -16,15 +16,31 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with jjmpeg.  If not, see <http://www.gnu.org/licenses/>.
  */
-package au.notzed.jjmpeg.exception;
+package au.notzed.jjmpeg;
+
+import java.nio.ByteBuffer;
+
 
 /**
  *
  * @author notzed
  */
-public class AVEncodingError extends AVIOException {
+public class AVFormatParameters extends AVFormatParametersAbstract {
 
-	public AVEncodingError(int errid) {
-		super(errid);
+	protected AVFormatParameters(ByteBuffer p) {
+		setNative(new AVFormatParametersNative(this, p));
+	}
+
+	static AVFormatParameters create(ByteBuffer p) {
+		if (p == null) {
+			return null;
+		}
+		return new AVFormatParameters(p);
+	}
+}
+class AVFormatParametersNative extends AVFormatParametersNativeAbstract {
+
+	AVFormatParametersNative(AVObject o, ByteBuffer p) {
+		super(o, p);
 	}
 }

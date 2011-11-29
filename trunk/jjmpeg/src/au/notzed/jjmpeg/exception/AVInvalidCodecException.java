@@ -4,12 +4,9 @@ package au.notzed.jjmpeg.exception;
  *
  * @author notzed
  */
-public class AVInvalidCodecException extends AVIOException {
+public class AVInvalidCodecException extends AVException {
 
-	public int id;
-
-	public AVInvalidCodecException(int id, String what) {
+	public AVInvalidCodecException(String what) {
 		super(what);
-		this.id = id;
 	}
 }

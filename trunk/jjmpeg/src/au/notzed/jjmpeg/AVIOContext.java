@@ -19,15 +19,14 @@
  */
 package au.notzed.jjmpeg;
 
+import au.notzed.jjmpeg.exception.AVIOException;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 /**
  * Wrapper for AVIOContext - allows custom streams to
  * be implemented from java.
- *
- * Or should, if it wasn't busted.
  * 
- * TODO: This is now deprecated in libavformat.  Should i just rename it?
  * @author notzed
  */
 public abstract class AVIOContext extends AVIOContextAbstract {
@@ -40,9 +39,48 @@ public abstract class AVIOContext extends AVIOContextAbstract {
 	//
 	public static final int ALLOC_WRITE = 1;
 	public static final int ALLOC_STREAMED = 2;
-
+	// flags for open
+	public static final int URL_RDONLY = 0;
+	public static final int URL_WRONLY = 1;
+	public static final int URL_RDWR = 2;
+	
 	protected AVIOContext(ByteBuffer p) {
-		setNative(new AVIOContextNative(this, p));
+		setNative(new AVIOContextNative(this, p, 0));
+	}
+
+	static AVIOContext create(ByteBuffer p) {
+		// These could call back to the C versions
+		return new AVIOContext(p) {
+
+			@Override
+			public int readPacket(ByteBuffer dst) {
+				throw new UnsupportedOperationException("Not supported yet.");
+			}
+
+			@Override
+			public int writePacket(ByteBuffer src) {
+				throw new UnsupportedOperationException("Not supported yet.");
+			}
+
+			@Override
+			public long seek(long offset, int whence) {
+				throw new UnsupportedOperationException("Not supported yet.");
+			}
+		};
+	}
+
+	public static AVIOContext open(String url, int flags) throws AVIOException {
+		ByteBuffer res = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder());
+		ByteBuffer context;
+
+		System.out.println("open url " + url);
+		context = AVIOContextNative.open(url, flags, res);
+
+		if (context == null) {
+			throw new AVIOException("Failed ot open " + url);
+		}
+
+		return create(context);
 	}
 
 	/**
@@ -78,12 +116,6 @@ public abstract class AVIOContext extends AVIOContextAbstract {
 	 *
 	 * TODO: still thinking of how to implement the lifecycle.
 	 */
-	@Override
-	public void dispose() {
-		super.dispose();
-		AVIOContextNative.unbind(this, n.p);
-	}
-
 	public abstract int readPacket(ByteBuffer dst);
 
 	public abstract int writePacket(ByteBuffer src);
@@ -92,14 +124,30 @@ public abstract class AVIOContext extends AVIOContextAbstract {
 }
 
 class AVIOContextNative extends AVIOContextNativeAbstract {
-	
-	AVIOContextNative(AVObject o, ByteBuffer p) {
+
+	private final int type;
+
+	AVIOContextNative(AVObject o, ByteBuffer p, int type) {
 		super(o, p);
+
+		this.type = type;
+	}
+
+	@Override
+	public void dispose() {
+		if (p != null) {
+			if (type == 1) {
+				AVIOContextNative.unbind((AVIOContext) this.get(), p);
+			}
+			super.dispose();
+		}
 	}
 
 	static native ByteBuffer allocContext(int size, int flags);
 
 	static native ByteBuffer probeInput(ByteBuffer p, String filename, int offset, int max_probe_size);
+
+	static native ByteBuffer open(String url, int flags, ByteBuffer error_ptr);
 
 	/**
 	 * Bind AVIOContext to java instance

@@ -15,9 +15,16 @@ public class AVIOException extends IOException {
 	int errno;
 
 	public AVIOException(int errno) {
+		this.errno = errno;
 	}
 	
 	public AVIOException(String what) {
 	}
 
+	@Override
+	public String toString() {
+		return "Error " + errno;
+	}
+
+	
 }

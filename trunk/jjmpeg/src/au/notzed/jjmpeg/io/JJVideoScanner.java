@@ -1,20 +1,22 @@
 /*
- *  Copyright (C) 2011 Michael Zucchi
+ * Copyright (c) 2011 Michael Zucchi
  *
- *  This program is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
+ * This file is part of jjmpeg, a java binding to ffmpeg's libraries.
  *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
+ * jjmpeg is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * jjmpeg is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with jjmpeg.  If not, see <http://www.gnu.org/licenses/>.
  */
-package au.notzed.jjmpeg.util;
+package au.notzed.jjmpeg.io;
 
 import au.notzed.jjmpeg.AVCodec;
 import au.notzed.jjmpeg.AVCodecContext;
@@ -22,6 +24,7 @@ import au.notzed.jjmpeg.AVFormatContext;
 import au.notzed.jjmpeg.AVFrame;
 import au.notzed.jjmpeg.AVPacket;
 import au.notzed.jjmpeg.AVPlane;
+import au.notzed.jjmpeg.AVRational;
 import au.notzed.jjmpeg.AVStream;
 import au.notzed.jjmpeg.PixelFormat;
 import au.notzed.jjmpeg.SwsContext;
@@ -37,7 +40,7 @@ import java.nio.ByteBuffer;
  * High level interface for scanning video frames.
  * @author notzed
  */
-public class VideoScanner {
+public class JJVideoScanner {
 
 	AVFormatContext format;
 	AVCodecContext codecContext = null;
@@ -49,12 +52,19 @@ public class VideoScanner {
 	int height;
 	int width;
 	PixelFormat fmt;
+	// timebase
+	int tb_Num;
+	int tb_Den;
+	// start pts
+	long startpts;
+	// start ms
+	long startms;
 	//
 	AVFrame iframe;
 	AVFrame oframe;
 	AVPacket packet;
 
-	public VideoScanner(String name) throws AVInvalidStreamException, AVIOException {
+	public JJVideoScanner(String name) throws AVInvalidStreamException, AVIOException, AVInvalidCodecException {
 		//AVFormatContext.registerAll();
 		format = AVFormatContext.openInputFile(name);
 
@@ -88,7 +98,7 @@ public class VideoScanner {
 		codec = AVCodec.findDecoder(codecContext.getCodecID());
 
 		if (codec == null) {
-			throw new AVInvalidCodecException(codecContext.getCodecID(), "No video stream");
+			throw new AVInvalidCodecException("No video stream");
 		}
 
 		System.out.println("opening codec");
@@ -108,8 +118,15 @@ public class VideoScanner {
 
 		oframe = AVFrame.create(PixelFormat.PIX_FMT_BGR24, swidth, sheight);
 		scale = SwsContext.create(width, height, fmt, swidth, sheight, PixelFormat.PIX_FMT_BGR24, SwsContext.SWS_BILINEAR);
+
+		AVRational tb = stream.getTimeBase();
+		tb_Num = tb.getNum();
+		tb_Den = tb.getDen();
+
+		startpts = stream.getStartTime();
+		startms = AVRational.starSlash(startpts * 1000, tb_Num, tb_Den);
 	}
-	
+
 	public void dispose() {
 		scale.dispose();
 		oframe.dispose();
@@ -119,7 +136,7 @@ public class VideoScanner {
 		codecContext.dispose();
 		format.dispose();
 	}
-	
+
 	/**
 	 * Set output rendered size.
 	 * 
@@ -135,6 +152,28 @@ public class VideoScanner {
 
 		oframe = AVFrame.create(PixelFormat.PIX_FMT_BGR24, swidth, sheight);
 		scale = SwsContext.create(width, height, fmt, swidth, sheight, PixelFormat.PIX_FMT_BGR24, SwsContext.SWS_BILINEAR);
+	}
+
+	public int getWidth() {
+		return width;
+	}
+
+	public int getHeight() {
+		return height;
+	}
+
+	public PixelFormat getPixelFormat() {
+		return fmt;
+	}
+
+	/**
+	 * Convert the 'pts' provided to milliseconds relative to the start of the
+	 * video stream.
+	 * @param pts
+	 * @return 
+	 */
+	public long convertPTS(long pts) {
+		return AVRational.starSlash(pts * 1000, tb_Num, tb_Den) - startms;
 	}
 
 	/**
@@ -182,6 +221,7 @@ public class VideoScanner {
 	AVFrame readAVFrame() throws AVDecodingError {
 		// read packets until a whole frame is decoded
 		int count = 0;
+		pts = -1;
 		while (format.readFrame(packet) >= 0) {
 			try {
 				// is this from the video stream?
@@ -208,7 +248,8 @@ public class VideoScanner {
 	 * 
 	 * Target should be this.getFrame() or a copy of it.
 	 * @param target
-	 * @return
+	 * @return the internal pts.  Use convertPTS() to convert to
+	 * milliseconds.
 	 * @throws AVDecodingError 
 	 */
 	public long readFrame(AVFrame target) throws AVDecodingError {
@@ -229,7 +270,8 @@ public class VideoScanner {
 	 * 
 	 * Image should be allocated using createFrame()
 	 * @param dst
-	 * @return
+	 * @return the internal pts.  Use convertPTS() to convert to
+	 * milliseconds.
 	 * @throws AVDecodingError 
 	 */
 	public long readFrame(BufferedImage dst) throws AVDecodingError {

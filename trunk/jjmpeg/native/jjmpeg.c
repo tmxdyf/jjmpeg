@@ -5,7 +5,8 @@
 
 #include "jjmpeg-jni.c"
 
-#define d(x) x; fflush(stdout)
+//#define d(x) x; fflush(stdout)
+#define d(x)
 
 static int (*dav_open_input_file)(AVFormatContext **ic_ptr, const char *filename,
 				  AVInputFormat *fmt,
@@ -18,6 +19,7 @@ static int (*dav_open_input_stream)(AVFormatContext **ic_ptr,
 				    AVFormatParameters *ap);
 
 static int (*davcodec_encode_video)(AVCodecContext *avctx, uint8_t *buf, int buf_size, AVFrame *pict);
+static int (*davio_open)(AVIOContext **s, const char *url, int flags);
 
 static AVIOContext *(*davio_alloc_context)(
                   unsigned char *buffer,
@@ -56,6 +58,7 @@ static int init_local(JNIEnv *env) {
 	MAPDL(av_open_input_file, avformat_lib);
 	MAPDL(av_open_input_stream, avformat_lib);
 	MAPDL(avio_alloc_context, avformat_lib);
+	MAPDL(avio_open, avformat_lib);
 	MAPDL(av_probe_input_buffer, avformat_lib);
 	MAPDL(avcodec_encode_video, avcodec_lib);
 	MAPDL(av_init_packet, avcodec_lib);
@@ -181,8 +184,13 @@ JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVPacketNative_allocatePacket
 (JNIEnv *env, jclass hc) {
 	AVPacket *packet = malloc(sizeof(AVPacket));
 
-	if (packet != NULL)
+	if (packet != NULL) {
+		packet->data = NULL;
+		packet->size = 0;
 		CALLDL(av_init_packet)(packet);
+	}
+
+	d(printf("alloc packet = %p, data=%p size=%d\n", packet, packet->data, packet->size));
 
 	return WRAP(packet, sizeof(AVPacket));
 }
@@ -208,6 +216,15 @@ JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_AVPacketNative_consume
 	return packet->size;
 }
 
+JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_AVPacketNative_setData
+(JNIEnv *env, jclass jc, jobject jptr, jobject jp, jint size) {
+	AVPacket *packet = ADDR(jptr);
+	uint8_t *p = ADDR(jp);
+
+	packet->data = p;
+	packet->size = size;
+}
+
 /* ********************************************************************** */
 
 JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_SwsContextNative_scale
@@ -226,7 +243,7 @@ JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_SwsContextNative_scale
 
 /* ********************************************************************** */
 
-// our rescale_q takes pointer arguments
+// this rescale_q takes pointer arguments
 JNIEXPORT jlong JNICALL Java_au_notzed_jjmpeg_AVRationalNative_jjRescaleQ
 (JNIEnv *env, jclass jc, jlong ja, jobject jbq, jobject jcq) {
 	AVRational *bqp = ADDR(jbq);
@@ -379,5 +396,24 @@ JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_AVIOContextNative_unbind
 
 	free(bd);
 	CALLDL(av_free)(cptr);
+}
+
+
+JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVIOContextNative_open
+(JNIEnv *env, jclass jc, jstring jurl, int flags, jobject jerror_buf) {
+	const char *url = STR(jurl);
+	AVIOContext *context = NULL;
+	int *resp = ADDR(jerror_buf);
+	jobject res = NULL;
+
+	resp[0] = CALLDL(avio_open)(&context, url, flags);
+
+	if (resp[0] == 0) {
+		res = WRAP(context, sizeof(*context));
+	}
+
+	RSTR(jurl, url);
+
+	return res;
 }
 

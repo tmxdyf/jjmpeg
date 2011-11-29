@@ -12,6 +12,10 @@ abstract class AVCodecContextNativeAbstract extends AVNative {
 		super(o, p);
 	}
 	// Fields
+	static native int getBitRate(ByteBuffer p);
+	static native int setBitRate(ByteBuffer p, int val);
+	static native int getFlags(ByteBuffer p);
+	static native int setFlags(ByteBuffer p, int val);
 	static native int getWidth(ByteBuffer p);
 	static native int setWidth(ByteBuffer p, int val);
 	static native int getHeight(ByteBuffer p);
@@ -27,18 +31,18 @@ abstract class AVCodecContextNativeAbstract extends AVNative {
 	static native int setFrameSize(ByteBuffer p, int val);
 	static native int getFrameNumber(ByteBuffer p);
 	static native int getCodecType(ByteBuffer p);
+	static native int setCodecType(ByteBuffer p, int val);
 	static native int getCodecID(ByteBuffer p);
-	static native int getBitRate(ByteBuffer p);
-	static native int setBitRate(ByteBuffer p, int val);
+	static native int setCodecID(ByteBuffer p, int val);
 	static native int getGOPSize(ByteBuffer p);
 	static native int setGOPSize(ByteBuffer p, int val);
 	static native int getMaxBFrames(ByteBuffer p);
 	static native int setMaxBFrames(ByteBuffer p, int val);
 	static native ByteBuffer getTimeBase(ByteBuffer p);
-	static native int getTimeBase_num(ByteBuffer p);
-	static native int setTimeBase_num(ByteBuffer p, int val);
-	static native int getTimeBase_den(ByteBuffer p);
-	static native int setTimeBase_den(ByteBuffer p, int val);
+	static native int getTimeBaseNum(ByteBuffer p);
+	static native int setTimeBaseNum(ByteBuffer p, int val);
+	static native int getTimeBaseDen(ByteBuffer p);
+	static native int setTimeBaseDen(ByteBuffer p, int val);
 	static native int getStrictStdCompliance(ByteBuffer p);
 	static native int setStrictStdCompliance(ByteBuffer p, int val);
 	static native int getErrorRecognition(ByteBuffer p);
@@ -47,6 +51,9 @@ abstract class AVCodecContextNativeAbstract extends AVNative {
 	static native int setIdctAlgo(ByteBuffer p, int val);
 	static native int getErrorConcealment(ByteBuffer p);
 	static native int setErrorConcealment(ByteBuffer p, int val);
+	static native int getMbDecision(ByteBuffer p);
+	static native int setMbDecision(ByteBuffer p, int val);
+	static native ByteBuffer getCodedFrame(ByteBuffer p);
 	// Native Methods
 	static native int open(ByteBuffer p, ByteBuffer codec);
 	static native int close(ByteBuffer p);
@@ -61,6 +68,18 @@ abstract class AVCodecContextNativeAbstract extends AVNative {
 
 abstract class AVCodecContextAbstract extends AVObject {
 	// Fields
+	public  int getBitRate() {
+		return AVCodecContextNativeAbstract.getBitRate(n.p);
+	}
+	public  void setBitRate(int val) {
+		AVCodecContextNativeAbstract.setBitRate(n.p, val);
+	}
+	public  int getFlags() {
+		return AVCodecContextNativeAbstract.getFlags(n.p);
+	}
+	public  void setFlags(int val) {
+		AVCodecContextNativeAbstract.setFlags(n.p, val);
+	}
 	public  int getWidth() {
 		return AVCodecContextNativeAbstract.getWidth(n.p);
 	}
@@ -106,14 +125,14 @@ abstract class AVCodecContextAbstract extends AVObject {
 	public  int getCodecType() {
 		return AVCodecContextNativeAbstract.getCodecType(n.p);
 	}
+	public  void setCodecType(int val) {
+		AVCodecContextNativeAbstract.setCodecType(n.p, val);
+	}
 	public  int getCodecID() {
 		return AVCodecContextNativeAbstract.getCodecID(n.p);
 	}
-	public  int getBitRate() {
-		return AVCodecContextNativeAbstract.getBitRate(n.p);
-	}
-	public  void setBitRate(int val) {
-		AVCodecContextNativeAbstract.setBitRate(n.p, val);
+	public  void setCodecID(int val) {
+		AVCodecContextNativeAbstract.setCodecID(n.p, val);
 	}
 	public  int getGOPSize() {
 		return AVCodecContextNativeAbstract.getGOPSize(n.p);
@@ -130,17 +149,17 @@ abstract class AVCodecContextAbstract extends AVObject {
 	public  AVRational getTimeBase() {
 		return AVRational.create(AVCodecContextNativeAbstract.getTimeBase(n.p));
 	}
-	public  int getTimeBase_num() {
-		return AVCodecContextNativeAbstract.getTimeBase_num(n.p);
+	public  int getTimeBaseNum() {
+		return AVCodecContextNativeAbstract.getTimeBaseNum(n.p);
 	}
-	public  void setTimeBase_num(int val) {
-		AVCodecContextNativeAbstract.setTimeBase_num(n.p, val);
+	public  void setTimeBaseNum(int val) {
+		AVCodecContextNativeAbstract.setTimeBaseNum(n.p, val);
 	}
-	public  int getTimeBase_den() {
-		return AVCodecContextNativeAbstract.getTimeBase_den(n.p);
+	public  int getTimeBaseDen() {
+		return AVCodecContextNativeAbstract.getTimeBaseDen(n.p);
 	}
-	public  void setTimeBase_den(int val) {
-		AVCodecContextNativeAbstract.setTimeBase_den(n.p, val);
+	public  void setTimeBaseDen(int val) {
+		AVCodecContextNativeAbstract.setTimeBaseDen(n.p, val);
 	}
 	public  int getStrictStdCompliance() {
 		return AVCodecContextNativeAbstract.getStrictStdCompliance(n.p);
@@ -166,18 +185,27 @@ abstract class AVCodecContextAbstract extends AVObject {
 	public  void setErrorConcealment(int val) {
 		AVCodecContextNativeAbstract.setErrorConcealment(n.p, val);
 	}
+	public  int getMbDecision() {
+		return AVCodecContextNativeAbstract.getMbDecision(n.p);
+	}
+	public  void setMbDecision(int val) {
+		AVCodecContextNativeAbstract.setMbDecision(n.p, val);
+	}
+	public  AVFrame getCodedFrame() {
+		return AVFrame.create(AVCodecContextNativeAbstract.getCodedFrame(n.p));
+	}
 	// Public Methods
 	public int close() {
 		return AVCodecContextNativeAbstract.close(n.p);
 	}
 	 int decodeVideo2(AVFrame picture, IntBuffer got_picture_ptr, AVPacket avpkt) {
-		return AVCodecContextNativeAbstract.decode_video2(n.p, picture.n.p, got_picture_ptr, avpkt.n.p);
+		return AVCodecContextNativeAbstract.decode_video2(n.p, picture != null ? picture.n.p : null, got_picture_ptr, avpkt != null ? avpkt.n.p : null);
 	}
 	public int encodeVideo(ByteBuffer buf, int buf_size, AVFrame pict) {
-		return AVCodecContextNativeAbstract.encode_video(n.p, buf, buf_size, pict.n.p);
+		return AVCodecContextNativeAbstract.encode_video(n.p, buf, buf_size, pict != null ? pict.n.p : null);
 	}
 	 int decodeAudio3(ShortBuffer samples, IntBuffer frame_size_ptr, AVPacket avpkt) {
-		return AVCodecContextNativeAbstract.decode_audio3(n.p, samples, frame_size_ptr, avpkt.n.p);
+		return AVCodecContextNativeAbstract.decode_audio3(n.p, samples, frame_size_ptr, avpkt != null ? avpkt.n.p : null);
 	}
 	public int encodeAudio(ByteBuffer buf, int buf_size, ShortBuffer samples) {
 		return AVCodecContextNativeAbstract.encode_audio(n.p, buf, buf_size, samples);
@@ -226,7 +254,11 @@ abstract class AVFormatContextNativeAbstract extends AVNative {
 	}
 	// Fields
 	static native ByteBuffer getInputFormat(ByteBuffer p);
+	static native ByteBuffer setInputFormat(ByteBuffer p, ByteBuffer val);
 	static native ByteBuffer getOutputFormat(ByteBuffer p);
+	static native ByteBuffer setOutputFormat(ByteBuffer p, ByteBuffer val);
+	static native ByteBuffer getIOContext(ByteBuffer p);
+	static native ByteBuffer setIOContext(ByteBuffer p, ByteBuffer val);
 	static native int getNBStreams(ByteBuffer p);
 	static native ByteBuffer getStreamAt(ByteBuffer p, int index);
 	static native long getStartTime(ByteBuffer p);
@@ -241,8 +273,16 @@ abstract class AVFormatContextNativeAbstract extends AVNative {
 	static native int seek_frame(ByteBuffer p, int stream_index, long timestamp, int flags);
 	static native int read_frame(ByteBuffer p, ByteBuffer pkt);
 	static native int find_stream_info(ByteBuffer p);
+	static native ByteBuffer new_stream(ByteBuffer p, int id);
+	static native int set_parameters(ByteBuffer p, ByteBuffer ap);
+	static native int write_header(ByteBuffer p);
+	static native int write_frame(ByteBuffer p, ByteBuffer pkt);
+	static native int interleaved_write_frame(ByteBuffer p, ByteBuffer pkt);
+	static native int write_trailer(ByteBuffer p);
 	static native void register_all();
 	static native int seek_file(ByteBuffer p, int stream_index, long min_ts, long ts, long max_ts, int flags);
+	static native ByteBuffer alloc_context();
+	static native void free_context(ByteBuffer p);
 }
 
 abstract class AVFormatContextAbstract extends AVObject {
@@ -250,8 +290,20 @@ abstract class AVFormatContextAbstract extends AVObject {
 	public  AVInputFormat getInputFormat() {
 		return AVInputFormat.create(AVFormatContextNativeAbstract.getInputFormat(n.p));
 	}
+	public  void setInputFormat(AVInputFormat val) {
+		AVFormatContextNativeAbstract.setInputFormat(n.p, val != null ? val.n.p : null);
+	}
 	public  AVOutputFormat getOutputFormat() {
 		return AVOutputFormat.create(AVFormatContextNativeAbstract.getOutputFormat(n.p));
+	}
+	public  void setOutputFormat(AVOutputFormat val) {
+		AVFormatContextNativeAbstract.setOutputFormat(n.p, val != null ? val.n.p : null);
+	}
+	public  AVIOContext getIOContext() {
+		return AVIOContext.create(AVFormatContextNativeAbstract.getIOContext(n.p));
+	}
+	public  void setIOContext(AVIOContext val) {
+		AVFormatContextNativeAbstract.setIOContext(n.p, val != null ? val.n.p : null);
 	}
 	public  int getNBStreams() {
 		return AVFormatContextNativeAbstract.getNBStreams(n.p);
@@ -288,16 +340,40 @@ abstract class AVFormatContextAbstract extends AVObject {
 		return AVFormatContextNativeAbstract.seek_frame(n.p, stream_index, timestamp, flags);
 	}
 	public int readFrame(AVPacket pkt) {
-		return AVFormatContextNativeAbstract.read_frame(n.p, pkt.n.p);
+		return AVFormatContextNativeAbstract.read_frame(n.p, pkt != null ? pkt.n.p : null);
 	}
 	public int findStreamInfo() {
 		return AVFormatContextNativeAbstract.find_stream_info(n.p);
+	}
+	public AVStream newStream(int id) {
+		return AVStream.create(AVFormatContextNativeAbstract.new_stream(n.p, id));
+	}
+	public int setParameters(AVFormatParameters ap) {
+		return AVFormatContextNativeAbstract.set_parameters(n.p, ap != null ? ap.n.p : null);
+	}
+	public int writeHeader() {
+		return AVFormatContextNativeAbstract.write_header(n.p);
+	}
+	public int writeFrame(AVPacket pkt) {
+		return AVFormatContextNativeAbstract.write_frame(n.p, pkt != null ? pkt.n.p : null);
+	}
+	public int interleavedWriteFrame(AVPacket pkt) {
+		return AVFormatContextNativeAbstract.interleaved_write_frame(n.p, pkt != null ? pkt.n.p : null);
+	}
+	public int writeTrailer() {
+		return AVFormatContextNativeAbstract.write_trailer(n.p);
 	}
 	static public void registerAll() {
 		AVFormatContextNativeAbstract.register_all();
 	}
 	public int seekFile(int stream_index, long min_ts, long ts, long max_ts, int flags) {
 		return AVFormatContextNativeAbstract.seek_file(n.p, stream_index, min_ts, ts, max_ts, flags);
+	}
+	static public AVFormatContext allocContext() {
+		return AVFormatContext.create(AVFormatContextNativeAbstract.alloc_context());
+	}
+	protected void freeContext() {
+		AVFormatContextNativeAbstract.free_context(n.p);
 	}
 }
 abstract class AVInputFormatNativeAbstract extends AVNative {
@@ -329,7 +405,13 @@ abstract class AVOutputFormatNativeAbstract extends AVNative {
 	static native String getLongName(ByteBuffer p);
 	static native String getMimeType(ByteBuffer p);
 	static native String getExtensions(ByteBuffer p);
+	static native int getVideoCodec(ByteBuffer p);
+	static native int getAudioCodec(ByteBuffer p);
+	static native int getSubtitleCodec(ByteBuffer p);
+	static native int getFlags(ByteBuffer p);
+	static native int setFlags(ByteBuffer p, int val);
 	// Native Methods
+	static native ByteBuffer guess_format(String short_name, String filename, String mime_type);
 }
 
 abstract class AVOutputFormatAbstract extends AVObject {
@@ -346,6 +428,36 @@ abstract class AVOutputFormatAbstract extends AVObject {
 	public  String getExtensions() {
 		return AVOutputFormatNativeAbstract.getExtensions(n.p);
 	}
+	public  CodecID getVideoCodec() {
+		return CodecID.values()[AVOutputFormatNativeAbstract.getVideoCodec(n.p)+0];
+	}
+	public  CodecID getAudioCodec() {
+		return CodecID.values()[AVOutputFormatNativeAbstract.getAudioCodec(n.p)+0];
+	}
+	public  CodecID getSubtitleCodec() {
+		return CodecID.values()[AVOutputFormatNativeAbstract.getSubtitleCodec(n.p)+0];
+	}
+	public  int getFlags() {
+		return AVOutputFormatNativeAbstract.getFlags(n.p);
+	}
+	public  void setFlags(int val) {
+		AVOutputFormatNativeAbstract.setFlags(n.p, val);
+	}
+	// Public Methods
+	static public AVOutputFormat guessFormat(String short_name, String filename, String mime_type) {
+		return AVOutputFormat.create(AVOutputFormatNativeAbstract.guess_format(short_name, filename, mime_type));
+	}
+}
+abstract class AVFormatParametersNativeAbstract extends AVNative {
+	protected AVFormatParametersNativeAbstract(AVObject o, ByteBuffer p) {
+		super(o, p);
+	}
+	// Fields
+	// Native Methods
+}
+
+abstract class AVFormatParametersAbstract extends AVObject {
+	// Fields
 	// Public Methods
 }
 abstract class AVPacketNativeAbstract extends AVNative {
@@ -359,10 +471,13 @@ abstract class AVPacketNativeAbstract extends AVNative {
 	static native long setDTS(ByteBuffer p, long val);
 	static native int getSize(ByteBuffer p);
 	static native int getStreamIndex(ByteBuffer p);
+	static native int setStreamIndex(ByteBuffer p, int val);
 	static native long getPos(ByteBuffer p);
 	static native int getFlags(ByteBuffer p);
+	static native int setFlags(ByteBuffer p, int val);
 	// Native Methods
 	static native void free_packet(ByteBuffer p);
+	static native void init_packet(ByteBuffer p);
 }
 
 abstract class AVPacketAbstract extends AVObject {
@@ -385,15 +500,24 @@ abstract class AVPacketAbstract extends AVObject {
 	public  int getStreamIndex() {
 		return AVPacketNativeAbstract.getStreamIndex(n.p);
 	}
+	public  void setStreamIndex(int val) {
+		AVPacketNativeAbstract.setStreamIndex(n.p, val);
+	}
 	public  long getPos() {
 		return AVPacketNativeAbstract.getPos(n.p);
 	}
 	public  int getFlags() {
 		return AVPacketNativeAbstract.getFlags(n.p);
 	}
+	public  void setFlags(int val) {
+		AVPacketNativeAbstract.setFlags(n.p, val);
+	}
 	// Public Methods
 	public void freePacket() {
 		AVPacketNativeAbstract.free_packet(n.p);
+	}
+	public void initPacket() {
+		AVPacketNativeAbstract.init_packet(n.p);
 	}
 }
 abstract class AVFrameNativeAbstract extends AVNative {
@@ -518,11 +642,15 @@ abstract class AVIOContextNativeAbstract extends AVNative {
 	}
 	// Fields
 	// Native Methods
+	static native int close(ByteBuffer p);
 }
 
 abstract class AVIOContextAbstract extends AVObject {
 	// Fields
 	// Public Methods
+	public int close() {
+		return AVIOContextNativeAbstract.close(n.p);
+	}
 }
 abstract class SwsContextNativeAbstract extends AVNative {
 	protected SwsContextNativeAbstract(AVObject o, ByteBuffer p) {
@@ -538,7 +666,7 @@ abstract class SwsContextAbstract extends AVObject {
 	// Fields
 	// Public Methods
 	static public SwsContext getContext(int srcW, int srcH, PixelFormat srcFormat, int dstW, int dstH, PixelFormat dstFormat, int flags, SwsFilter srcFilter, SwsFilter dstFilter, DoubleBuffer param) {
-		return SwsContext.create(SwsContextNativeAbstract.getContext(srcW, srcH, srcFormat.toC(), dstW, dstH, dstFormat.toC(), flags, srcFilter.n.p, dstFilter.n.p, param));
+		return SwsContext.create(SwsContextNativeAbstract.getContext(srcW, srcH, srcFormat.toC(), dstW, dstH, dstFormat.toC(), flags, srcFilter != null ? srcFilter.n.p : null, dstFilter != null ? dstFilter.n.p : null, param));
 	}
 	public void freeContext() {
 		SwsContextNativeAbstract.freeContext(n.p);
