@@ -20,9 +20,10 @@ package au.notzed.jjmpeg.videoscanner;
 
 import au.notzed.jjmpeg.exception.AVDecodingError;
 import au.notzed.jjmpeg.exception.AVIOException;
+import au.notzed.jjmpeg.exception.AVInvalidCodecException;
 import au.notzed.jjmpeg.exception.AVInvalidStreamException;
 import au.notzed.jjmpeg.util.VideoFileChooser;
-import au.notzed.jjmpeg.util.VideoScanner;
+import au.notzed.jjmpeg.io.JJVideoScanner;
 import java.awt.BorderLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -37,7 +38,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
 /**
- * Demo of VideoScanner class
+ * Demo of JJVideoScanner class
  * @author notzed
  */
 public class Main implements ActionListener {
@@ -50,7 +51,7 @@ public class Main implements ActionListener {
 	JFrame frame;
 	BufferedImage image;
 	JLabel label;
-	VideoScanner vs;
+	JJVideoScanner vs;
 	Timer timer;
 
 	public Main(String name) {
@@ -68,7 +69,7 @@ public class Main implements ActionListener {
 
 	void start() {
 		try {
-			vs = new VideoScanner(name);
+			vs = new JJVideoScanner(name);
 
 			image = vs.createImage();
 			label.setIcon(new ImageIcon(image));
@@ -81,6 +82,8 @@ public class Main implements ActionListener {
 				new Thread(run).start();
 			}
 
+		} catch (AVInvalidCodecException ex) {
+			Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
 		} catch (AVInvalidStreamException ex) {
 			Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
 		} catch (AVIOException ex) {
@@ -137,7 +140,7 @@ public class Main implements ActionListener {
 						System.out.println("end of file, restart " + pts);
 						vs.dispose();
 						vs = null;
-						vs = new VideoScanner(name);
+						vs = new JJVideoScanner(name);
 						pts = 0;
 					}
 
@@ -145,11 +148,11 @@ public class Main implements ActionListener {
 				} while (pts != -1);
 			} catch (AVInvalidStreamException ex) {
 				Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
-			} catch (AVIOException ex) {
-				Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
 			} catch (InterruptedException ex) {
 				Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
 			} catch (AVDecodingError ex) {
+				Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
+			} catch (AVIOException ex) {
 				Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
 			} catch (Exception ex) {
 				Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
@@ -167,14 +170,16 @@ public class Main implements ActionListener {
 				System.out.println("end of file, restart " + pts);
 				vs.dispose();
 				vs = null;
-				vs = new VideoScanner(name);
+				vs = new JJVideoScanner(name);
 			}
 			label.repaint();
+		} catch (AVInvalidCodecException ex) {
+			Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
 		} catch (AVInvalidStreamException ex) {
 			Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
-		} catch (AVIOException ex) {
-			Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
 		} catch (AVDecodingError ex) {
+			Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
+		} catch (AVIOException ex) {
 			Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
 		}
 	}

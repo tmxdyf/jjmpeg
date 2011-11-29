@@ -2,7 +2,7 @@
 JDK_HOME=/usr/java/latest
 javah=$(JDK_HOME)/bin/javah
 
-CFLAGS=-I$(JDK_HOME)/include -I$(JDK_HOME)/include/linux -I/usr/include/ffmpeg -fPIC -Wall -O2
+CFLAGS=-I$(JDK_HOME)/include -I$(JDK_HOME)/include/linux -I/usr/include/ffmpeg -fPIC -Wall -g
 LIBS=#-lavcodec -lavformat -lavutil
 
 CLASSES=au.notzed.jjmpeg.AVFormatContext\

@@ -23,8 +23,8 @@
 
 #define ADDR(jp) (jp != NULL ? (*env)->GetDirectBufferAddress(env, jp) : NULL)
 #define SIZE(jp) (jp != NULL ? (*env)->GetDirectBufferCapacity(env, jp) : 0)
-#define STR(jp) ((*env)->GetStringUTFChars(env, jp, NULL))
-#define RSTR(jp, cp) ((*env)->ReleaseStringUTFChars(env, jp, cp))
+#define STR(jp) (jp != NULL ? (*env)->GetStringUTFChars(env, jp, NULL) : NULL)
+#define RSTR(jp, cp) ((jp != NULL) ? ((*env)->ReleaseStringUTFChars(env, jp, cp)):0 )
 
 #define WRAP(cp, clen) ((*env)->NewDirectByteBuffer(env, cp, clen));
 #define WRAPSTR(js) ((*env)->NewStringUTF(env, js));

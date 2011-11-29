@@ -461,7 +461,14 @@ foreach $classinfo (@classes) {
 	    if ($ind) {
 		print "[index]";
 	    }
-	    print " = val";
+	    print " = ";
+	    if ($opt =~ m/o/) {
+		print "ADDR(";
+	    }
+	    print "val";
+	    if ($opt =~ m/o/) {
+		print(")");
+	    }
 	    print ";\n}\n\n";
 	}
     }
@@ -682,12 +689,8 @@ foreach $classinfo (@classes) {
 	}
 	if ($opt =~ m/s/) {
 	    if ($opt =~ m/o/) {
-		print STDERR "ERROR: unimplemented object setting!\n";
-		print "\t$fi{scope} $fi{type} ${aclass}.set$fi{jname}$fi{suffix}";
-		doatjava($ind, "int index");
-		print " {\n\t\treturn $fi{type}.create($fi{prefix}get$fi{jname}$fi{suffix}";
-		doatcall($ind, "index");
-		print ");\n\t}\n";
+		print "\t${scope} void set$fi{jname}($fi{type} val) {\n";
+		print "\t\t${aclass}set$fi{jname}(n.p, val != null ? val.n.p : null);\n\t}\n";
 	    } elsif ($opt =~ m/e/) {
 		print "\t${scope} void set$fi{jname}($fi{type} val) {\n";
 		print "\t\t${aclass}set$fi{jname}(n.p, val.toC());\n\t}\n";
@@ -749,12 +752,15 @@ foreach $classinfo (@classes) {
 	    foreach $argdata (@arginfo) {
 		%ai = %{$argdata};
 		print ", " if $count > 0;
+		if ($ai{deref}) {
+		    print "$ai{name} != null ? ";
+		}
 		print "$ai{name}";
 		if ($ai{deenum}) {
 		    print ".toC()";
 		}
 		if ($ai{deref}) {
-		    print ".n.p";
+		    print ".n.p : null";
 		}
 		$count += 1;
 	    }

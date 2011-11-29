@@ -22,11 +22,6 @@ import au.notzed.jjmpeg.exception.AVIOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
-class AVFormatParameters {
-
-	ByteBuffer struct;
-}
-
 /**
  *
  * @author notzed
@@ -40,6 +35,10 @@ public class AVFormatContext extends AVFormatContextAbstract {
 
 	protected AVFormatContext(ByteBuffer p, int type) {
 		setNative(new AVFormatContextNative(this, p, type));
+	}
+
+	static AVFormatContext create(ByteBuffer p) {
+		return new AVFormatContext(p, 0);
 	}
 
 	static AVFormatContext create(ByteBuffer p, int type) {
@@ -59,7 +58,7 @@ public class AVFormatContext extends AVFormatContextAbstract {
 		ByteBuffer res = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder());
 		ByteBuffer context;
 
-		context = AVFormatContextNative.openInputFile(name, fmt != null ? fmt.n.p : null, buf_size, ap != null ? ap.struct : null, res);
+		context = AVFormatContextNative.openInputFile(name, fmt != null ? fmt.n.p : null, buf_size, ap != null ? ap.n.p : null, res);
 		if (context == null) {
 			// throw new AVFormatException based on error id
 			throw new AVIOException(res.getInt(0));
@@ -85,7 +84,7 @@ public class AVFormatContext extends AVFormatContextAbstract {
 		ByteBuffer context;
 
 		System.out.println("open input stream");
-		context = AVFormatContextNative.openInputStream(ioc.n.p, name, fmt != null ? fmt.n.p : null, ap != null ? ap.struct : null, res);
+		context = AVFormatContextNative.openInputStream(ioc.n.p, name, fmt != null ? fmt.n.p : null, ap != null ? ap.n.p : null, res);
 		if (context == null) {
 			// throw new AVFormatException based on error id
 			throw new RuntimeException("failed");
@@ -119,6 +118,7 @@ public class AVFormatContext extends AVFormatContextAbstract {
 		dispose();
 	}
 }
+
 class AVFormatContextNative extends AVFormatContextNativeAbstract {
 
 	private final int type;
@@ -131,15 +131,22 @@ class AVFormatContextNative extends AVFormatContextNativeAbstract {
 	@Override
 	public void dispose() {
 		if (p != null) {
-			if (type == 1) {
-				close_input_file(p);
-			} else if (type == 2) {
-				close_input_stream(p);
+			switch (type) {
+				case 0:
+					free_context(p);
+					break;
+				case 1:
+					close_input_file(p);
+					break;
+				case 2:
+					close_input_stream(p);
+					break;
 			}
 			super.dispose();
 		}
 	}
-	
+
 	static native ByteBuffer openInputFile(String name, ByteBuffer fmt, int buf_size, ByteBuffer fmtParameters, ByteBuffer error_ptr);
+
 	static native ByteBuffer openInputStream(ByteBuffer pb, String name, ByteBuffer fmt, ByteBuffer fmtPArameters, ByteBuffer error_ptr);
 }

@@ -31,7 +31,10 @@ public class AVStream extends AVStreamAbstract {
 	}
 
 	static AVStream create(ByteBuffer p) {
-		 return new AVStream(p);
+		if (p == null) {
+			return null;
+		}
+		return new AVStream(p);
 	}
 }
 

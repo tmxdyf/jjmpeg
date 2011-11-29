@@ -39,7 +39,117 @@ public class AVCodecContext extends AVCodecContextAbstract {
 	public static final int AVMEDIA_TYPE_SUBTITLE = 3;
 	public static final int AVMEDIA_TYPE_ATTACHMENT = 4;
 	public static final int AVMEDIA_TYPE_NB = 5;
-//
+	//
+	public static final int FF_MB_DECISION_SIMPLE = 0;        ///< uses mb_cmp
+	public static final int FF_MB_DECISION_BITS = 1;       ///< chooses the one which needs the fewest bits
+	public static final int FF_MB_DECISION_RD = 2;        ///< rate distortion	public static final int 
+	//
+	///< Use fixed qscale.
+	public static final int CODEC_FLAG_QSCALE = 0x0002;
+	///< 4 MV per MB allowed / advanced prediction for H.263.
+	public static final int CODEC_FLAG_4MV = 0x0004;
+	///< Use qpel MC.
+	public static final int CODEC_FLAG_QPEL = 0x0010;
+	///< Use GMC.
+	public static final int CODEC_FLAG_GMC = 0x0020;
+	///< Always try a MB with MV=<0,0>.
+	public static final int CODEC_FLAG_MV0 = 0x0040;
+	///< Use data partitioning.
+	public static final int CODEC_FLAG_PART = 0x0080;
+	public static final int CODEC_FLAG_INPUT_PRESERVED = 0x0100;
+	///< Use internal 2pass ratecontrol in first pass mode.
+	public static final int CODEC_FLAG_PASS1 = 0x0200;
+	///< Use internal 2pass ratecontrol in second pass mode.
+	public static final int CODEC_FLAG_PASS2 = 0x0400;
+	///< Use external Huffman table (for MJPEG).
+	public static final int CODEC_FLAG_EXTERN_HUFF = 0x1000;
+	///< Only decode/encode grayscale.
+	public static final int CODEC_FLAG_GRAY = 0x2000;
+	///< Don't draw edges.
+	public static final int CODEC_FLAG_EMU_EDGE = 0x4000;
+	///< error[?] variables will be set during encoding.
+	public static final int CODEC_FLAG_PSNR = 0x8000;
+	/** Input bitstream might be truncated at a random
+	public static final int CODEC_FLAG_TRUNCATED       = 0x00010000;
+	location instead of only at frame boundaries. */
+	///< Normalize adaptive quantization.
+	public static final int CODEC_FLAG_NORMALIZE_AQP = 0x00020000;
+	///< Use interlaced DCT.
+	public static final int CODEC_FLAG_INTERLACED_DCT = 0x00040000;
+	///< Force low delay.
+	public static final int CODEC_FLAG_LOW_DELAY = 0x00080000;
+	///< Use alternate scan.
+	public static final int CODEC_FLAG_ALT_SCAN = 0x00100000;
+	///< Place global headers in extradata instead of every keyframe.
+	public static final int CODEC_FLAG_GLOBAL_HEADER = 0x00400000;
+	///< Use only bitexact stuff (except (I)DCT).
+	public static final int CODEC_FLAG_BITEXACT = 0x00800000;
+	/* Fx : Flag for h263+ extra options */
+	///< H.263 advanced intra coding / MPEG-4 AC prediction
+	public static final int CODEC_FLAG_AC_PRED = 0x01000000;
+	///< unlimited motion vector
+	public static final int CODEC_FLAG_H263P_UMV = 0x02000000;
+	///< Use rate distortion optimization for cbp.
+	public static final int CODEC_FLAG_CBP_RD = 0x04000000;
+	///< Use rate distortion optimization for qp selectioon.
+	public static final int CODEC_FLAG_QP_RD = 0x08000000;
+	///< H.263 alternative inter VLC
+	public static final int CODEC_FLAG_H263P_AIV = 0x00000008;
+	///< OBMC
+	public static final int CODEC_FLAG_OBMC = 0x00000001;
+	///< loop filter
+	public static final int CODEC_FLAG_LOOP_FILTER = 0x00000800;
+	public static final int CODEC_FLAG_H263P_SLICE_STRUCT = 0x10000000;
+	///< interlaced motion estimation
+	public static final int CODEC_FLAG_INTERLACED_ME = 0x20000000;
+	///< Will reserve space for SVCD scan offset user data.
+	public static final int CODEC_FLAG_SVCD_SCAN_OFFSET = 0x40000000;
+	public static final int CODEC_FLAG_CLOSED_GOP = 0x80000000;
+	///< Allow non spec compliant speedup tricks.
+	public static final int CODEC_FLAG2_FAST = 0x00000001;
+	///< Strictly enforce GOP size.
+	public static final int CODEC_FLAG2_STRICT_GOP = 0x00000002;
+	///< Skip bitstream encoding.
+	public static final int CODEC_FLAG2_NO_OUTPUT = 0x00000004;
+	///< Place global headers at every keyframe instead of in extradata.
+	public static final int CODEC_FLAG2_LOCAL_HEADER = 0x00000008;
+	///< H.264 allow B-frames to be used as references.
+	public static final int CODEC_FLAG2_BPYRAMID = 0x00000010;
+	///< H.264 weighted biprediction for B-frames
+	public static final int CODEC_FLAG2_WPRED = 0x00000020;
+	///< H.264 one reference per partition, as opposed to one reference per macroblock
+	public static final int CODEC_FLAG2_MIXED_REFS = 0x00000040;
+	///< H.264 high profile 8x8 transform
+	public static final int CODEC_FLAG2_8X8DCT = 0x00000080;
+	///< H.264 fast pskip
+	public static final int CODEC_FLAG2_FASTPSKIP = 0x00000100;
+	///< H.264 access unit delimiters
+	public static final int CODEC_FLAG2_AUD = 0x00000200;
+	///< B-frame rate-distortion optimization
+	public static final int CODEC_FLAG2_BRDO = 0x00000400;
+	///< Use MPEG-2 intra VLC table.
+	public static final int CODEC_FLAG2_INTRA_VLC = 0x00000800;
+	///< Only do ME/MC (I frames -> ref, P frame -> ME+MC).
+	public static final int CODEC_FLAG2_MEMC_ONLY = 0x00001000;
+	///< timecode is in drop frame format.
+	public static final int CODEC_FLAG2_DROP_FRAME_TIMECODE = 0x00002000;
+	///< RD optimal MB level residual skipping
+	public static final int CODEC_FLAG2_SKIP_RD = 0x00004000;
+	///< Input bitstream might be truncated at a packet boundaries instead of only at frame boundaries.
+	public static final int CODEC_FLAG2_CHUNKS = 0x00008000;
+	///< Use MPEG-2 nonlinear quantizer.
+	public static final int CODEC_FLAG2_NON_LINEAR_QUANT = 0x00010000;
+	///< Use a bit reservoir when encoding if possible
+	public static final int CODEC_FLAG2_BIT_RESERVOIR = 0x00020000;
+	///< Use macroblock tree ratecontrol (x264 only)
+	public static final int CODEC_FLAG2_MBTREE = 0x00040000;
+	///< Use psycho visual optimizations.
+	public static final int CODEC_FLAG2_PSY = 0x00080000;
+	///< Compute SSIM during encoding, error[] values are undefined.
+	public static final int CODEC_FLAG2_SSIM = 0x00100000;
+	///< Use periodic insertion of intra blocks instead of keyframes.
+	public static final int CODEC_FLAG2_INTRA_REFRESH = 0x00200000;
+	//
 	public static final long AV_TIME_BASE = 1000000;
 	public static final long AV_NOPTS_VALUE = (0x8000000000000000L);
 	public static final int AVCODEC_MAX_AUDIO_FRAME_SIZE = 192000; // 1 second of 48khz 32bit audio
@@ -66,11 +176,12 @@ public class AVCodecContext extends AVCodecContextAbstract {
 
 	public void open(AVCodec codec) throws AVIOException {
 		int res = AVCodecContextNative.open(n.p, codec.n.p);
-		
-		if (res < 0)
+
+		if (res < 0) {
 			throw new AVIOException(res);
+		}
 	}
-	
+
 	/**
 	 * Returns true if decoding frame complete.
 	 * @param frame
