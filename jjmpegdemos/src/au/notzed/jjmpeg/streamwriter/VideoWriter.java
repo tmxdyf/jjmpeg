@@ -40,7 +40,7 @@ public class VideoWriter {
 	static int fps = 25;
 
 	public static void main(String[] args) {
-		String filename = args.length > 0 ? args[0] : "/home/notzed/moving-text.avi";
+		String filename = args.length > 0 ? args[0] : "moving-text.avi";
 
 		try {
 			AVFormatContext.registerAll();
