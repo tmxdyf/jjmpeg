@@ -77,7 +77,6 @@ class AVFrameNative extends AVFrameNativeAbstract {
 			if (allocated) {
 				free(p);
 			}
-			AVFormatContextNative._free(p);
 		}
 		super.dispose();
 	}
