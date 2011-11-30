@@ -116,6 +116,19 @@ JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_AVNative__1free
 
         (*dav_free)(mem);
 }
+
+JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_AVNative_getVersions
+(JNIEnv *env, jclass jc, jobject jvers) {
+        int *vers = ADDR(jvers);
+
+	vers[0] = LIBAVFORMAT_VERSION_MAJOR;
+	vers[1] = LIBAVCODEC_VERSION_MAJOR;
+	vers[2] = LIBAVUTIL_VERSION_MAJOR;
+
+	printf("versions = %d %d %d\n", vers[0], vers[1], vers[2]); fflush(stdout);
+}
+
+
 /* ********************************************************************** */
 
 JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVFormatContextNative_openInputFile

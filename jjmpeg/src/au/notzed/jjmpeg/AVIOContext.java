@@ -40,10 +40,26 @@ public abstract class AVIOContext extends AVIOContextAbstract {
 	public static final int ALLOC_WRITE = 1;
 	public static final int ALLOC_STREAMED = 2;
 	// flags for open
-	public static final int URL_RDONLY = 0;
-	public static final int URL_WRONLY = 1;
-	public static final int URL_RDWR = 2;
-	
+	public static final int URL_RDONLY;
+	public static final int URL_WRONLY;
+	public static final int URL_RDWR;
+
+	static {
+		// These flags changed at version 53
+
+		// TODO: should be done at build time as part of genjjmpeg.pl
+		int[] vers = AVNative.getVersions();
+		if (vers[AVNative.LIBAVFORMAT_VERSION] >= 53) {
+			URL_RDONLY = 1;
+			URL_WRONLY = 2;
+			URL_RDWR = 3;
+		} else {
+			URL_RDONLY = 0;
+			URL_WRONLY = 1;
+			URL_RDWR = 2;
+		}
+	}
+
 	protected AVIOContext(ByteBuffer p) {
 		setNative(new AVIOContextNative(this, p, 0));
 	}
@@ -73,11 +89,11 @@ public abstract class AVIOContext extends AVIOContextAbstract {
 		ByteBuffer res = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder());
 		ByteBuffer context;
 
-		System.out.println("open url " + url);
+		System.out.println("open url " + url + " flags " + flags);
 		context = AVIOContextNative.open(url, flags, res);
 
 		if (context == null) {
-			throw new AVIOException("Failed ot open " + url);
+			throw new AVIOException(res.asIntBuffer().get(0), "Failed to open " + url);
 		}
 
 		return create(context);
