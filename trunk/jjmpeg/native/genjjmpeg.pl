@@ -351,7 +351,7 @@ static void *avcodec_lib;
 static void *avformat_lib;
 static void *swscale_lib;
 
-JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_AVNative_getPointerBits
+JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_AVNative_initNative
 (JNIEnv *env, jclass jc) {
 \tif (init_local(env) == 0) return 0;
 

@@ -46,12 +46,18 @@ abstract public class AVNative extends WeakReference<AVObject> {
 		gc(2);
 	}
 	static final boolean is64;
+	/**
+	 * Index of libavformat major version number in result from getVersions()
+	 */
+	static final int LIBAVFORMAT_VERSION = 0;
+	static final int LIBAVCODEC_VERSION = 1;
+	static final int LIBAVUTIL_VERSION = 2;
 
 	static {
 		int bits;
 
 		System.loadLibrary("jjmpeg");
-		bits = getPointerBits();
+		bits = initNative();
 
 		if (bits == 0) {
 			throw new UnsatisfiedLinkError("Unable to open jjmpeg");
@@ -67,11 +73,28 @@ abstract public class AVNative extends WeakReference<AVObject> {
 
 	static native ByteBuffer getPointerIndex(ByteBuffer base, int offset, int size, int index);
 
-	static native int getPointerBits();
+	static native int initNative();
+
+	static native void getVersions(ByteBuffer b);
 
 	static native ByteBuffer _malloc(int size);
 
 	static native void _free(ByteBuffer mem);
+
+	/**
+	 * Retrieve run-time library version info.
+	 * 
+	 * use LIB*_VERSION indices to get actual versions.
+	 */
+	static public int[] getVersions() {
+		ByteBuffer bvers = ByteBuffer.allocateDirect(4 * 3).order(ByteOrder.nativeOrder());
+
+		getVersions(bvers);
+
+		int[] vers = new int[3];
+		bvers.asIntBuffer().get(vers);
+		return vers;
+	}
 
 	private static void gc(int limit) {
 		AVNative an;
