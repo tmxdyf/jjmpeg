@@ -30,8 +30,12 @@ public class AVFrame extends AVFrameAbstract {
 		setNative(new AVFrameNative(this, p));
 	}
 
+	protected AVFrame(ByteBuffer p, boolean allocated) {
+		setNative(new AVFrameNative(this, p, allocated));
+	}
+
 	static public AVFrame create(ByteBuffer p) {
-		return new AVFrame(p);
+		return new AVFrame(p, false);
 	}
 
 	static public AVFrame create() {
@@ -45,7 +49,7 @@ public class AVFrame extends AVFrameAbstract {
 		if (res != 0) {
 			throw new ExceptionInInitializerError("Unable to allocate bitplanes");
 		}
-		((AVFrameNative) f.n).allocated = true;
+		((AVFrameNative) f.n).filled = true;
 
 		return f;
 	}
@@ -63,10 +67,18 @@ public class AVFrame extends AVFrameAbstract {
 
 class AVFrameNative extends AVFrameNativeAbstract {
 
-	boolean allocated = false;
+	// Was it allocated (with allocFrame()), or just referenced
+	boolean allocated = true;
+	// Has it been filled using avpicture_alloc()
+	boolean filled = false;
 
 	AVFrameNative(AVObject o, ByteBuffer p) {
 		super(o, p);
+	}
+
+	AVFrameNative(AVObject o, ByteBuffer p, boolean allocated) {
+		super(o, p);
+		this.allocated = allocated;
 	}
 
 	static native ByteBuffer getPlaneAt(ByteBuffer p, int index, int pixelFormat, int width, int height);
@@ -74,8 +86,11 @@ class AVFrameNative extends AVFrameNativeAbstract {
 	@Override
 	public void dispose() {
 		if (p != null) {
-			if (allocated) {
+			if (filled) {
 				free(p);
+			}
+			if (allocated) {
+				AVFormatContextNative._free(p);
 			}
 		}
 		super.dispose();
