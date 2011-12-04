@@ -70,6 +70,7 @@ public class VideoFileChooser extends JFileChooser {
 		JLabel info;
 		ImageIcon iicon;
 		BufferedImage preview;
+		BufferedImage preview_tmp;
 
 		public VideoInfo(JFileChooser fc) {
 			super(new BorderLayout());
@@ -79,6 +80,7 @@ public class VideoFileChooser extends JFileChooser {
 			setBorder(new EmptyBorder(0, 8, 0, 0));
 
 			preview = new BufferedImage(256, 256, BufferedImage.TYPE_3BYTE_BGR);
+			preview_tmp = new BufferedImage(256, 256, BufferedImage.TYPE_3BYTE_BGR);
 
 			iicon = new ImageIcon(preview);
 			icon = new JLabel(iicon);
@@ -183,6 +185,11 @@ public class VideoFileChooser extends JFileChooser {
 
 				try {
 					info.setText(null);
+					thumb.setText(null);
+					Graphics2D gg = preview.createGraphics();
+					gg.setColor(Color.black);
+					gg.fillRect(0, 0, preview.getWidth(), preview.getHeight());
+					gg.dispose();
 
 					format = AVFormatContext.openInputFile(image.getPath());
 
@@ -226,7 +233,7 @@ public class VideoFileChooser extends JFileChooser {
 					final int width = codecContext.getWidth();
 					PixelFormat fmt = codecContext.getPixFmt();
 
-					System.out.println("fmt = " + fmt);
+					info.setText(String.format("<html><b>Type:</b> %s<br><b>Size:</b> %dx%d<br><b>Format:</b> %s\n", codec.getName(), width, height, fmt));
 
 					//if (fmt != PixelFormat.PIX_FMT_YUV420P
 					//		&& fmt != PixelFormat.PIX_FMT_YUVJ420P
@@ -244,11 +251,9 @@ public class VideoFileChooser extends JFileChooser {
 						h = 256;
 					}
 
-					final BufferedImage loaded = new BufferedImage(width, height, BufferedImage.TYPE_3BYTE_BGR);
 					final AVFrame iconFrame = AVFrame.create(PixelFormat.PIX_FMT_BGR24, w, h);
 
 					final SwsContext scale = SwsContext.create(width, height, fmt, w, h, PixelFormat.PIX_FMT_BGR24, SwsContext.SWS_BILINEAR);
-
 
 					// preview video until cancelled
 					// TODO: loop
@@ -264,37 +269,22 @@ public class VideoFileChooser extends JFileChooser {
 									SwingUtilities.invokeAndWait(new Runnable() {
 
 										public void run() {
-											//System.out.println("running frame display");
-											// copy image to preview, only greyscale atm, assumes 420P!
-											if (false) {
-												byte[] data = ((DataBufferByte) loaded.getRaster().getDataBuffer()).getData();
+											// Use SWS Scale to convert/scale result
+											scale.scale(frame, 0, height, iconFrame);
+											AVPlane splane = iconFrame.getPlaneAt(0, PixelFormat.PIX_FMT_BGR24, w, h);
+											byte[] data = ((DataBufferByte) preview_tmp.getRaster().getDataBuffer()).getData();
 
-												try {
-													int xw = Math.min(plane.width, width);
-													int xh = Math.min(plane.height, height);
-													for (int y = 0; y < xh; y++) {
-														plane.data.position(y * plane.lineSize);
-														plane.data.get(data, y * width, xw);
-													}
-												} catch (Exception x) {
-												} finally {
-													plane.data.rewind();
-												}
-												// Use java to scale it
-												Graphics2D gg = preview.createGraphics();
-												gg.setColor(Color.black);
-												gg.fillRect(0, 0, preview.getWidth(), preview.getHeight());
-												gg.drawImage(loaded, (preview.getWidth() - w) / 2, (preview.getHeight() - h) / 2, w, h, null);
-												gg.dispose();
-											} else {
-												// Use SWS Scale to convert/scale result
-												int lines = scale.scale(frame, 0, height, iconFrame);
-												AVPlane splane = iconFrame.getPlaneAt(0, PixelFormat.PIX_FMT_BGR24, w, h);
-												byte[] data = ((DataBufferByte) preview.getRaster().getDataBuffer()).getData();
+											splane.data.get(data, 0, Math.min(data.length, splane.data.capacity()));
+											splane.data.rewind();
 
-												splane.data.get(data, 0, Math.min(data.length, splane.data.capacity()));
-												splane.data.rewind();
-											}
+											// Use java to centre it
+											Graphics2D gg = preview.createGraphics();
+											gg.setColor(Color.black);
+											gg.fillRect(0, 0, preview.getWidth(), preview.getHeight());
+											int l = (preview.getWidth() - w) / 2;
+											int t = (preview.getHeight() - h) / 2;
+											gg.drawImage(preview_tmp, l, t, l + w, t + h, 0, 0, w, h, null);
+											gg.dispose();
 
 											if (thumb.getIcon() == null) {
 												thumb.setIcon(new ImageIcon(preview));
