@@ -437,25 +437,33 @@ foreach $classinfo (@classes) {
 	    print ") {\n";
 	    #print "\tjobject jptr = (*env)->GetObjectField(env, jo, field_p);\n";
 	    print "\t$class *cptr = ADDR(jptr);\n";
-	    print "\treturn ";
-	    if ($fi{ntype} eq "jobject") {
-		print "WRAP(";
+	    if ($fi{ntype} eq "jobject" or $fi{ntype} eq "jstring") {
+		print "\tvoid *cdata = (void *)";
 		if ($opt =~ m/r/) {
 		    print "&";
 		}
-	    } elsif ($fi{ntype} eq "jstring") {
-		print "WRAPSTR(";
+		print "cptr->$fi{name}";
+		if ($ind) {
+		    print "[index]";
+		}
+		print ";\n";
+		print "\tif (cdata == NULL) return NULL;\n";
+		print "\treturn ";
+		if ($fi{ntype} eq "jobject") {
+		    print "WRAP(";
+		    print "cdata, sizeof($fi{type}));\n";
+		} elsif ($fi{ntype} eq "jstring") {
+		    print "WRAPSTR((char *)cdata);\n";
+		}
+	    } else {
+		print "\treturn ";
+		print "cptr->$fi{name}";
+		if ($ind) {
+		    print "[index]";
+		}
+		print ";\n";
 	    }
-	    print "cptr->$fi{name}";
-	    if ($ind) {
-		print "[index]";
-	    }
-	    if ($fi{ntype} eq "jobject") {
-		print ", sizeof($fi{type}))";
-	    } elsif ($fi{ntype} eq "jstring") {
-		print ")";
-	    }
-	    print ";\n}\n\n";
+	    print "}\n\n";
 	}
 	if ($opt =~ m/s/) {
 	    print "JNIEXPORT void JNICALL ${nativeprefix}_${class}${npostfix}_";

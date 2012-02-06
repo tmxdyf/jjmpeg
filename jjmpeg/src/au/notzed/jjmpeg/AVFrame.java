@@ -35,6 +35,9 @@ public class AVFrame extends AVFrameAbstract {
 	}
 
 	static public AVFrame create(ByteBuffer p) {
+		if (p == null) {
+			return null;
+		}
 		return new AVFrame(p, false);
 	}
 
