@@ -263,6 +263,8 @@ public class AVCodecContext extends AVCodecContextAbstract {
 		int buf_size = buf.capacity();
 		int len = encodeAudio(buf, buf_size, (ShortBuffer)samples.getSamples());
 
+		assert (len < buf_size);
+		
 		if (len >= 0) {
 			buf.limit(len);
 			buf.position(0);

@@ -42,24 +42,23 @@ class AVSamplesNative extends AVNative {
  * @author notzed
  */
 public class AVSamples extends AVObject {
+
 	final SampleFormat format;
 	Buffer samples;
 
 	public AVSamples(SampleFormat format) {
 		setNative(new AVSamplesNative(this, AVNative._malloc(AVCodecContext.AVCODEC_MAX_AUDIO_FRAME_SIZE * 2)));
 		this.format = format;
-		
+
 		samples = format.getBuffer(n.p);
-		System.out.println("byte order = " + n.p.order());
 	}
 
 	public AVSamples(SampleFormat format, int channels, int frameSize) {
 		setNative(new AVSamplesNative(this, AVNative._malloc(format.getByteSize() * channels * frameSize)));
 		this.format = format;
 		samples = format.getBuffer(n.p);
-		System.out.println("byte order = " + n.p.order());
 	}
-	
+
 	public ByteBuffer getBuffer() {
 		return n.p;
 	}
@@ -70,5 +69,54 @@ public class AVSamples extends AVObject {
 
 	public SampleFormat getFormat() {
 		return format;
+	}
+
+	/**
+	 * Drain the samples from src into this.
+	 * 
+	 * This is called repeatedly to create full sample buffers for
+	 * encoding.
+	 * 
+	 * @param src
+	 * @return true if this is now full and can be encoded.  It also
+	 * means src may not be fully drained, and so should be called again.
+	 */
+	public boolean fill(AVSamples src) {
+		/*
+		 * You know, sometimes when you try to write a fairly simple bit
+		 * of code using an existing api you have to wonder:
+		 *   just what the fuck were they thinking?
+		 */
+		ByteBuffer obuf = getBuffer();
+		ByteBuffer sbuf = src.getBuffer();
+		int dremaining = obuf.capacity() - obuf.position();
+		int sremaining = sbuf.remaining();
+
+		if (sremaining > 0) {
+			ByteBuffer ssbuf = sbuf.slice();
+			int len = Math.min(sremaining, dremaining);
+
+			ssbuf.limit(ssbuf.position() + len);
+			sbuf.position(sbuf.position() + len);
+
+			obuf.put(ssbuf);
+
+			if (!obuf.hasRemaining()) {
+				obuf.rewind();
+				obuf.limit(obuf.capacity());
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Pad out the rest of the buffer with 0.
+	 */
+	public void pad() {
+		ByteBuffer obuf = getBuffer();
+		for (int i = obuf.position(); i < obuf.capacity(); i++) {
+			obuf.put(i, (byte) 0);
+		}
 	}
 }

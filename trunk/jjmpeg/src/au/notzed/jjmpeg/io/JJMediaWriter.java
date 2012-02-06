@@ -60,7 +60,7 @@ import java.util.LinkedList;
  */
 public class JJMediaWriter {
 
-	LinkedList<JJStream> streams = new LinkedList<JJStream>();
+	LinkedList<JJWriterStream> streams = new LinkedList<JJWriterStream>();
 	String filename;
 	AVOutputFormat format;
 	AVFormatContext oc;
@@ -119,7 +119,7 @@ public class JJMediaWriter {
 
 		/* now that all the parameters are set, we can open the audio and
 		video codecs and allocate the necessary encode buffers */
-		for (JJStream sd : streams) {
+		for (JJWriterStream sd : streams) {
 			sd.open();
 		}
 
@@ -142,7 +142,7 @@ public class JJMediaWriter {
 	 * @return
 	 * @throws AVInvalidStreamException 
 	 */
-	public JJVideoStream addVideoStream(int width, int height, int frame_rate, int bit_rate) throws AVInvalidStreamException {
+	public JJWriterVideo addVideoStream(int width, int height, int frame_rate, int bit_rate) throws AVInvalidStreamException {
 		return addVideoStream(format.getVideoCodec(), streams.size(), width, height, frame_rate, bit_rate);
 	}
 
@@ -156,7 +156,7 @@ public class JJMediaWriter {
 	 * @return
 	 * @throws AVInvalidStreamException 
 	 */
-	public JJVideoStream addVideoStream(int codec_id, int streamid, int width, int height, int frame_rate, int bit_rate) throws AVInvalidStreamException {
+	public JJWriterVideo addVideoStream(int codec_id, int streamid, int width, int height, int frame_rate, int bit_rate) throws AVInvalidStreamException {
 		AVCodecContext c;
 		AVStream st;
 
@@ -198,7 +198,7 @@ public class JJMediaWriter {
 		if ((oc.getOutputFormat().getFlags() & AVOutputFormat.AVFMT_GLOBALHEADER) != 0) {
 			c.setFlags(c.getFlags() | AVCodecContext.CODEC_FLAG_GLOBAL_HEADER);
 		}
-		JJVideoStream sd = new JJVideoStream(st);
+		JJWriterVideo sd = new JJWriterVideo(st);
 		streams.add(sd);
 
 		return sd;
@@ -214,7 +214,7 @@ public class JJMediaWriter {
 	 * @return
 	 * @throws AVInvalidStreamException 
 	 */
-	public JJAudioStream addAudioStream(int codec_id, int streamid, SampleFormat fmt, int sample_rate, int channels, int bit_rate) throws AVInvalidStreamException {
+	public JJWriterAudio addAudioStream(int codec_id, int streamid, SampleFormat fmt, int sample_rate, int channels, int bit_rate) throws AVInvalidStreamException {
 		AVCodecContext c;
 		AVStream st;
 
@@ -244,7 +244,7 @@ public class JJMediaWriter {
 			c.setFlags(c.getFlags() | AVCodecContext.CODEC_FLAG_GLOBAL_HEADER);
 		}
 
-		JJAudioStream as = new JJAudioStream(st);
+		JJWriterAudio as = new JJWriterAudio(st);
 
 		streams.add(as);
 
@@ -262,7 +262,7 @@ public class JJMediaWriter {
 		oc.writeTrailer();
 
 		/* close each codec */
-		for (JJStream sd : streams) {
+		for (JJWriterStream sd : streams) {
 			sd.close();
 		}
 
@@ -273,14 +273,14 @@ public class JJMediaWriter {
 		oc.dispose();
 	}
 
-	public abstract class JJStream {
+	public abstract class JJWriterStream {
 
 		AVStream stream;
 		ByteBuffer outputBuffer;
 		AVCodecContext c;
 		AVPacket packet;
 
-		public JJStream(AVStream stream) {
+		public JJWriterStream(AVStream stream) {
 			this.stream = stream;
 			c = stream.getCodec();
 			packet = AVPacket.create();
@@ -313,7 +313,7 @@ public class JJMediaWriter {
 	/**
 	 * Represents a video stream.
 	 */
-	public class JJVideoStream extends JJStream {
+	public class JJWriterVideo extends JJWriterStream {
 
 		AVFrame picture;
 		// for rgb input
@@ -321,7 +321,7 @@ public class JJMediaWriter {
 		private AVPlane rgbPlane;
 		private SwsContext rgbSWS;
 
-		public JJVideoStream(AVStream stream) {
+		public JJWriterVideo(AVStream stream) {
 			super(stream);
 		}
 
@@ -462,12 +462,12 @@ public class JJMediaWriter {
 		}
 	}
 
-	public class JJAudioStream extends JJStream {
+	public class JJWriterAudio extends JJWriterStream {
 
 		AVFrame picture;
 		long audio_input_frame_size;
 
-		public JJAudioStream(AVStream stream) {
+		public JJWriterAudio(AVStream stream) {
 			super(stream);
 		}
 
