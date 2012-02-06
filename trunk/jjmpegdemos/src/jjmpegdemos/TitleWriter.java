@@ -32,7 +32,7 @@ import au.notzed.jjmpeg.PixelFormat;
 import au.notzed.jjmpeg.SwsContext;
 import au.notzed.jjmpeg.exception.AVEncodingError;
 import au.notzed.jjmpeg.exception.AVIOException;
-import au.notzed.jjmpeg.util.VideoFileChooser;
+import au.notzed.jjmpeg.util.JJFileChooser;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics2D;
@@ -195,9 +195,9 @@ public class TitleWriter {
 				colour.setPreviewPanel(new JPanel());
 				Object[] options = new Object[]{"Create", "Cancel"};
 				if (JOptionPane.showOptionDialog(null, msg, "Title Creator", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]) == JOptionPane.YES_OPTION) {
-					VideoFileChooser vfc = new VideoFileChooser();
+					JJFileChooser vfc = new JJFileChooser();
 
-					if (vfc.showSaveDialog(null) == VideoFileChooser.APPROVE_OPTION) {
+					if (vfc.showSaveDialog(null) == JJFileChooser.APPROVE_OPTION) {
 						File file = vfc.getSelectedFile();
 
 						TitleWriter tw = new TitleWriter();
