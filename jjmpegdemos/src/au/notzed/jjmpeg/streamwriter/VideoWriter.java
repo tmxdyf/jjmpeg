@@ -22,7 +22,7 @@ import au.notzed.jjmpeg.AVFormatContext;
 import au.notzed.jjmpeg.exception.AVException;
 import au.notzed.jjmpeg.exception.AVIOException;
 import au.notzed.jjmpeg.io.JJMediaWriter;
-import au.notzed.jjmpeg.io.JJMediaWriter.JJVideoStream;
+import au.notzed.jjmpeg.io.JJMediaWriter.JJWriterVideo;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
@@ -46,7 +46,7 @@ public class VideoWriter {
 			AVFormatContext.registerAll();
 
 			JJMediaWriter writer = new JJMediaWriter(filename);
-			JJVideoStream vstream = writer.addVideoStream(width, height, 25, 400000);
+			JJWriterVideo vstream = writer.addVideoStream(width, height, 25, 400000);
 
 			BufferedImage image = vstream.createImage();
 
