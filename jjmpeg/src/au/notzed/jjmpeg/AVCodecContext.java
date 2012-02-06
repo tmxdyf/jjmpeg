@@ -153,6 +153,7 @@ public class AVCodecContext extends AVCodecContextAbstract {
 	public static final long AV_TIME_BASE = 1000000;
 	public static final long AV_NOPTS_VALUE = (0x8000000000000000L);
 	public static final int AVCODEC_MAX_AUDIO_FRAME_SIZE = 192000; // 1 second of 48khz 32bit audio
+	public static final int FF_MIN_BUFFER_SIZE = 16384;
 	//
 	private IntBuffer fin = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder()).asIntBuffer();
 
@@ -232,7 +233,11 @@ public class AVCodecContext extends AVCodecContextAbstract {
 	 */
 	public int decodeAudio(AVSamples samples, AVAudioPacket packet) throws AVDecodingError {
 		int data = 0;
-		ShortBuffer s = samples.getSamples();
+		ByteBuffer buf = samples.getBuffer();
+
+		buf.limit(buf.capacity());
+		
+		ShortBuffer s = (ShortBuffer) samples.getSamples();
 
 		while (data == 0 && packet.getSize() > 0) {
 			int res = 0;
@@ -252,6 +257,19 @@ public class AVCodecContext extends AVCodecContextAbstract {
 		s.limit(data / 2);
 
 		return data;
+	}
+	
+	public int encodeAudio(ByteBuffer buf, AVSamples samples) throws AVEncodingError {
+		int buf_size = buf.capacity();
+		int len = encodeAudio(buf, buf_size, (ShortBuffer)samples.getSamples());
+
+		if (len >= 0) {
+			buf.limit(len);
+			buf.position(0);
+			return len;
+		} else {
+			throw new AVEncodingError(-len);
+		}
 	}
 }
 

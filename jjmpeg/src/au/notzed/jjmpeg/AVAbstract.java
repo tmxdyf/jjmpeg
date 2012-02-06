@@ -26,8 +26,11 @@ abstract class AVCodecContextNativeAbstract extends AVNative {
 	static native int setSampleRate(ByteBuffer p, int val);
 	static native int getChannels(ByteBuffer p);
 	static native int setChannels(ByteBuffer p, int val);
+	static native int getChannelLayout(ByteBuffer p);
+	static native int setChannelLayout(ByteBuffer p, int val);
 	static native int getSampleFmt(ByteBuffer p);
 	static native int setSampleFmt(ByteBuffer p, int val);
+	static native int getFrameSize(ByteBuffer p);
 	static native int setFrameSize(ByteBuffer p, int val);
 	static native int getFrameNumber(ByteBuffer p);
 	static native int getCodecType(ByteBuffer p);
@@ -110,11 +113,20 @@ abstract class AVCodecContextAbstract extends AVObject {
 	public  void setChannels(int val) {
 		AVCodecContextNativeAbstract.setChannels(n.p, val);
 	}
+	public  int getChannelLayout() {
+		return AVCodecContextNativeAbstract.getChannelLayout(n.p);
+	}
+	public  void setChannelLayout(int val) {
+		AVCodecContextNativeAbstract.setChannelLayout(n.p, val);
+	}
 	public  SampleFormat getSampleFmt() {
 		return SampleFormat.values()[AVCodecContextNativeAbstract.getSampleFmt(n.p)+1];
 	}
 	public  void setSampleFmt(SampleFormat val) {
 		AVCodecContextNativeAbstract.setSampleFmt(n.p, val.toC());
+	}
+	public  int getFrameSize() {
+		return AVCodecContextNativeAbstract.getFrameSize(n.p);
 	}
 	public  void setFrameSize(int val) {
 		AVCodecContextNativeAbstract.setFrameSize(n.p, val);
@@ -428,14 +440,14 @@ abstract class AVOutputFormatAbstract extends AVObject {
 	public  String getExtensions() {
 		return AVOutputFormatNativeAbstract.getExtensions(n.p);
 	}
-	public  CodecID getVideoCodec() {
-		return CodecID.values()[AVOutputFormatNativeAbstract.getVideoCodec(n.p)+0];
+	public  int getVideoCodec() {
+		return AVOutputFormatNativeAbstract.getVideoCodec(n.p);
 	}
-	public  CodecID getAudioCodec() {
-		return CodecID.values()[AVOutputFormatNativeAbstract.getAudioCodec(n.p)+0];
+	public  int getAudioCodec() {
+		return AVOutputFormatNativeAbstract.getAudioCodec(n.p);
 	}
-	public  CodecID getSubtitleCodec() {
-		return CodecID.values()[AVOutputFormatNativeAbstract.getSubtitleCodec(n.p)+0];
+	public  int getSubtitleCodec() {
+		return AVOutputFormatNativeAbstract.getSubtitleCodec(n.p);
 	}
 	public  int getFlags() {
 		return AVOutputFormatNativeAbstract.getFlags(n.p);

@@ -61,7 +61,7 @@ import javax.swing.event.AncestorListener;
  *
  * @author notzed
  */
-public class VideoFileChooser extends JFileChooser {
+public class JJFileChooser extends JFileChooser {
 
 	class VideoInfo extends JPanel implements PropertyChangeListener, AncestorListener {
 
@@ -320,7 +320,7 @@ public class VideoFileChooser extends JFileChooser {
 		}
 	}
 
-	public VideoFileChooser() {
+	public JJFileChooser() {
 		super();
 
 		setAccessory(new VideoInfo(this));
@@ -362,7 +362,7 @@ public class VideoFileChooser extends JFileChooser {
 		SwingUtilities.invokeLater(new Runnable() {
 
 			public void run() {
-				VideoFileChooser vfc = new VideoFileChooser();
+				JJFileChooser vfc = new JJFileChooser();
 
 				vfc.showOpenDialog(null);
 			}

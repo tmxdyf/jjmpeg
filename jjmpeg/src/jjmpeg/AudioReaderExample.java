@@ -7,7 +7,6 @@ import au.notzed.jjmpeg.AVFormatContext;
 import au.notzed.jjmpeg.AVPacket;
 import au.notzed.jjmpeg.AVSamples;
 import au.notzed.jjmpeg.AVStream;
-import au.notzed.jjmpeg.exception.AVDecodingError;
 import au.notzed.jjmpeg.exception.AVIOException;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -72,7 +71,7 @@ public class AudioReaderExample {
 
 		packet = AVPacket.create();
 		apacket = AVAudioPacket.create();
-		samples = new AVSamples();
+		samples = new AVSamples(actx.getSampleFmt());
 
 		long total = 0;
 
@@ -84,11 +83,14 @@ public class AudioReaderExample {
 				try {
 					if (packet.getStreamIndex() == audioID) {
 						apacket.setSrc(packet);
+						System.out.println("audio packet");
 						while (apacket.getSize() > 0) {
 							int len = actx.decodeAudio(samples, apacket);
 
 							total += len / 4;
 
+							System.out.println(" audio samples: " + samples.getBuffer().limit());
+							
 							fos.getChannel().write(samples.getBuffer());
 						}
 					}
@@ -112,7 +114,7 @@ public class AudioReaderExample {
 	}
 
 	public static void main(String[] args) throws FileNotFoundException, AVIOException {
-		String file = args.length > 0 ? args[0] :"/home/notzed/sye/08 - Time After Time";
+		String file = args.length > 0 ? args[0] :"/home/notzed/Videos/big-buck-bunny_trailer.webm";
 
 		AudioReaderExample audioScanner = new AudioReaderExample(file);
 	}

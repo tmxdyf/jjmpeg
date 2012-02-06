@@ -18,8 +18,8 @@
  */
 package au.notzed.jjmpeg;
 
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
-import java.nio.ShortBuffer;
 
 class AVSamplesNative extends AVNative {
 
@@ -42,19 +42,33 @@ class AVSamplesNative extends AVNative {
  * @author notzed
  */
 public class AVSamples extends AVObject {
+	final SampleFormat format;
+	Buffer samples;
 
-	ShortBuffer s;
-
-	public AVSamples() {
+	public AVSamples(SampleFormat format) {
 		setNative(new AVSamplesNative(this, AVNative._malloc(AVCodecContext.AVCODEC_MAX_AUDIO_FRAME_SIZE * 2)));
-		s = n.p.asShortBuffer();
+		this.format = format;
+		
+		samples = format.getBuffer(n.p);
+		System.out.println("byte order = " + n.p.order());
 	}
 
+	public AVSamples(SampleFormat format, int channels, int frameSize) {
+		setNative(new AVSamplesNative(this, AVNative._malloc(format.getByteSize() * channels * frameSize)));
+		this.format = format;
+		samples = format.getBuffer(n.p);
+		System.out.println("byte order = " + n.p.order());
+	}
+	
 	public ByteBuffer getBuffer() {
 		return n.p;
 	}
 
-	public ShortBuffer getSamples() {
-		return s;
+	public Buffer getSamples() {
+		return samples;
+	}
+
+	public SampleFormat getFormat() {
+		return format;
 	}
 }
