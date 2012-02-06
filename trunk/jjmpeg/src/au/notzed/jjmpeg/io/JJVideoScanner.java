@@ -59,6 +59,11 @@ public class JJVideoScanner {
 	long startpts;
 	// start ms
 	long startms;
+	// duration (estimated?)
+	long duration;
+	long durationms;
+	//
+	long seekid = -1;
 	//
 	AVFrame iframe;
 	AVFrame oframe;
@@ -125,6 +130,13 @@ public class JJVideoScanner {
 
 		startpts = stream.getStartTime();
 		startms = AVRational.starSlash(startpts * 1000, tb_Num, tb_Den);
+		duration = stream.getDuration();
+		durationms = AVRational.starSlash(duration * 1000, tb_Num, tb_Den);
+
+		System.out.println("startpts   = " + startpts);
+		System.out.println("startms    = " + startms);
+		System.out.println("duration   = " + duration);
+		System.out.println("durationms = " + durationms);
 	}
 
 	public void dispose() {
@@ -164,6 +176,22 @@ public class JJVideoScanner {
 
 	public PixelFormat getPixelFormat() {
 		return fmt;
+	}
+
+	/**
+	 * Retrieve duration of sequence, in milliseconds.
+	 * @return 
+	 */
+	public long getDurationMS() {
+		return durationms;
+	}
+
+	/**
+	 * Get duration in timebase units (i.e. frames?)
+	 * @return 
+	 */
+	public long getDuration() {
+		return duration;
 	}
 
 	/**
@@ -232,6 +260,13 @@ public class JJVideoScanner {
 					if (frameFinished) {
 						count++;
 						pts = packet.getDTS();
+						
+						// If seeking, attempt to get to the exact frame
+						if (seekid != -1
+								&& pts < seekid) {
+							continue;
+						}
+						seekid = -1;
 						return iframe;
 					}
 				}
@@ -257,8 +292,8 @@ public class JJVideoScanner {
 		AVFrame frame = readAVFrame();
 
 		if (frame != null) {
+			System.out.printf("scaling height %d\n", height);
 			scale.scale(frame, 0, height, target);
-
 			return pts;
 		}
 
@@ -304,5 +339,42 @@ public class JJVideoScanner {
 		} else {
 			return null;
 		}
+	}
+
+	/**
+	 * Attempt to seek to the nearest millisecond.
+	 * 
+	 * The next frame read should match the stamp.
+	 * 
+	 * This only seeks to key frames
+	 * @param stamp
+	 * @throws AVIOException 
+	 */
+	public void seekMS(long stamp) throws AVIOException {
+		int res;
+
+		res = format.seekFile(-1, 0, stamp * 1000, stamp * 1000, 0);
+		if (res < 0) {
+			throw new AVIOException(res, "Cannot seek");
+		}
+
+		codecContext.flushBuffers();
+	}
+
+	/**
+	 * Seek in stream units
+	 * @param stamp
+	 * @throws AVIOException 
+	 */
+	public void seek(long stamp) throws AVIOException {
+		int res;
+
+		res = format.seekFile(videoStream, 0, stamp, stamp, 0);
+		if (res < 0) {
+			throw new AVIOException(res, "Cannot seek");
+		}
+
+		seekid = stamp;
+		codecContext.flushBuffers();
 	}
 }

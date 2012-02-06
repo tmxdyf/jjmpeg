@@ -36,8 +36,8 @@ public class AVCodec extends AVCodecAbstract {
 		return new AVCodec(p);
 	}
 
-	static public AVCodec findEncoder(CodecID id) {
-		return AVCodec.create(AVCodecNative.find_encoder(id.toC()));
+	static public AVCodec findEncoder(int id) {
+		return AVCodec.create(AVCodecNative.find_encoder(id));
 	}
 }
 
