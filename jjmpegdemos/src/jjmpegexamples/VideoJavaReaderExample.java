@@ -19,7 +19,7 @@ import au.notzed.jjmpeg.PixelFormat;
 import au.notzed.jjmpeg.exception.AVDecodingError;
 import au.notzed.jjmpeg.exception.AVIOException;
 import au.notzed.jjmpeg.io.JJFileInputStream;
-import au.notzed.jjmpeg.util.VideoFileChooser;
+import au.notzed.jjmpeg.util.JJFileChooser;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -34,7 +34,7 @@ import java.util.logging.Logger;
 public class VideoJavaReaderExample {
 
 	static File chooseFile() {
-		VideoFileChooser fc = new VideoFileChooser();
+		JJFileChooser fc = new JJFileChooser();
 		if (fc.showOpenDialog(null) == fc.APPROVE_OPTION) {
 			return fc.getSelectedFile();
 		} else {
