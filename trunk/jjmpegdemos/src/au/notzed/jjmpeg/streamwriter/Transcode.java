@@ -30,10 +30,8 @@ import au.notzed.jjmpeg.io.JJMediaReader.JJReaderAudio;
 import au.notzed.jjmpeg.io.JJMediaReader.JJReaderStream;
 import au.notzed.jjmpeg.io.JJMediaReader.JJReaderVideo;
 import au.notzed.jjmpeg.io.JJMediaWriter;
-import au.notzed.jjmpeg.io.JJMediaWriter.JJAudioStream;
-import au.notzed.jjmpeg.io.JJMediaWriter.JJVideoStream;
-import java.nio.ByteBuffer;
-import java.nio.ShortBuffer;
+import au.notzed.jjmpeg.io.JJMediaWriter.JJWriterAudio;
+import au.notzed.jjmpeg.io.JJMediaWriter.JJWriterVideo;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -47,7 +45,7 @@ public class Transcode {
 		try {
 			String src = "/home/notzed/Videos/big-buck-bunny_trailer.webm";
 			//String src = "/home/notzed/Videos/LIVE_ Australian Formula 1 Grand Prix Day.m2ts";
-			String dst = "/tmp/buck.avi";
+			String dst = "/tmp/buck.mp4";
 
 			// input
 			JJMediaReader msrc = new JJMediaReader(src);
@@ -76,8 +74,8 @@ public class Transcode {
 
 			// output
 			JJMediaWriter mw = new JJMediaWriter(dst);
-			JJVideoStream vw = null;
-			JJAudioStream aw = null;
+			JJWriterVideo vw = null;
+			JJWriterAudio aw = null;
 			if (vr != null) {
 				vw = mw.addVideoStream(mw.getFormat().getVideoCodec(), 0, vr.getWidth(), vr.getHeight(), 25, 800 * 1024);
 			}
@@ -88,7 +86,7 @@ public class Transcode {
 
 				aw = mw.addAudioStream(mw.getFormat().getAudioCodec(), 1, ac.getSampleFmt(), ac.getSampleRate(), ac.getChannels(), 128 * 1000);
 				//aw = mw.addAudioStream(CodecID.CODEC_ID_MP3, 1, ac.getSampleFmt(), ac.getSampleRate(), ac.getChannels(), 128 * 1000);
-				//aw = mw.addAudioStream(CodecID.CODEC_ID_MP3, 1, SampleFormat.SAMPLE_FMT_S16, ac.getSampleRate(), ac.getChannels(), 256 * 1000);
+				//aw = mw.addAudioStream(CodecID.CODEC_ID_AAC, 1, SampleFormat.SAMPLE_FMT_S16, ac.getSampleRate(), ac.getChannels(), 128 * 1000);
 			}
 
 			mw.open();
@@ -117,43 +115,9 @@ public class Transcode {
 							AVSamples samples;
 							while ((samples = jar.getSamples()) != null) {
 								//System.out.printf("%10d: audio samples %d\n", sr.convertPTS(pts), samples.getBuffer().limit());
-								if (false) {
-									ShortBuffer s = (ShortBuffer) samples.getSamples();
-									for (int i = s.position(); i < s.limit(); i++) {
-										System.out.printf(" %04x", s.get(i));
-										if ((i & 15) == 15) {
-											System.out.println();
-										}
-									}
+								while (outsamples.fill(samples)) {
+									aw.addFrame(outsamples);
 								}
-
-								// fuck me drunk, what a messy api to 'drain' to a target
-								ByteBuffer obuf = outsamples.getBuffer();
-								ByteBuffer sbuf = samples.getBuffer();
-								int dremaining = obuf.capacity() - obuf.position();
-								int sremaining = sbuf.remaining();
-
-								//System.out.println("sremaining = " + sremaining);
-								//System.out.println("dremaining = " + dremaining);
-
-								while (sremaining > 0) {
-									ByteBuffer ssbuf = samples.getBuffer().slice();
-									int len = Math.min(sremaining, dremaining);
-
-									ssbuf.limit(ssbuf.position() + len);
-									sbuf.position(sbuf.position() + len);
-
-									obuf.put(ssbuf);
-
-									if (!obuf.hasRemaining()) {
-										obuf.rewind();
-
-										aw.addFrame(outsamples);
-									}
-									dremaining = obuf.capacity() - obuf.position();
-									sremaining = sbuf.remaining();
-								}
-
 							}
 						}
 						break;
