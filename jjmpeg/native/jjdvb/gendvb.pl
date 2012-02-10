@@ -1,8 +1,14 @@
 #!/usr/bin/perl
 
-# generate ffmpeg bindings
+$conf = $ARGV[0];
+$abstract = $ARGV[1];
+$jni = $ARGV[2];
 
-open IN,"native-dvb.conf";
+print "Building $jni and $abstract from $conf\n";
+
+# generate dvb bindings
+
+open IN,"<$conf";
 
 # c to jni type
 %cntype = (
@@ -282,7 +288,7 @@ while (<IN>) {
 
 
 # create jni code
-open STDOUT, ">jjdvb-jni.c";
+open STDOUT, ">$jni";
 
 $dlsymprefix = "d";
 $dodl = 1;
@@ -525,7 +531,7 @@ foreach $classinfo (@classes) {
 }
 
 close STDOUT;
-open STDOUT, ">DVBAbstract.java";
+open STDOUT, ">$abstract";
 
     print "/* I am automatically generated.  Editing me would be pointless,\n   but I wont stop you if you so desire. */\n\n";
 

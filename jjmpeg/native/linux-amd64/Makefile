@@ -1,58 +1,21 @@
+SRC=..
+TARGET=linux-amd64
 
-# compiler prefix for cross compiling linux x86-64
+include $(SRC)/config.make
+
+FFMPEG_HOME=/usr/include/ffmpeg
+
 CROSS=
+TARGET_JNI_CFLAGS = -I$(SRC)/jni/linux
+TARGET_CFLAGS = -fPIC -m64
+TARGET_JJMPEG_CFLAGS= -I$(FFMPEG_HOME)
+TARGET_JJMPEG_LIBS=
+TARGET_JJMPEG_LDFLAGS = -Wl,-soname,libjjmpeg.so
 
-CC=$(CROSS)gcc
-AR=$(CROSS)ar
-LD=$(CROSS)ld
+TARGET_JJDVB_CFLAGS=
+TARGET_JJDVB_LIBS=
+TARGET_JJDVB_LDFLAGS = -Wl,-soname,libjjdvb.so
 
-JDK_HOME=/usr/java/latest
-javah=$(JDK_HOME)/bin/javah
-
-ARCH=-m64
-
-JNI_CFLAGS=-I$(JJMPEG)/jni -I$(JJMPEG)/jni/linux -D_JNI_IMPLEMENTATION_
-CFLAGS=$(JNI_CFLAGS) -I/usr/include/ffmpeg -fPIC -Wall -O2 $(ARCH)
-LDFLAGS=$(ARCH)
-LIBS=#-lavcodec -lavformat -lavutil
-
-JJMPEG=..
-VPATH=$(JJMPEG)
-
-WRAPPERS=AVAbstract.java jjmpeg-jni.c
-WRAPPERS_DVB=DVBAbstract.java jjdvb-jni.c
-
-jjmpeg_lib=libjjmpeg.so
-jjdvb_lib=libjjdvb.so
+include ../Makefile.libs
 
 all: $(jjmpeg_lib) $(jjdvb_lib)
-
-$(jjmpeg_lib): jjmpeg.o
-	$(CC) $(LDFLAGS) -shared -Wl,-soname,libjjmpeg.so -o $@ $^ $(LIBS)
-
-jjmpeg.o: jjmpeg.c $(HEADERS) jjmpeg-jni.c jjmpeg-jni.h
-
-$(jjdvb_lib): jjdvb.o
-	$(CC) $(LDFLAGS) -shared -Wl,-soname,libjjdvb.so -o $@ $^ $(LIBS)
-
-jjdvb.o: jjdvb.c $(HEADERS_DVB) jjdvb-jni.c jjdvb-jni.h
-
-# webstart jars
-jjmpeg_jar=jjmpeg-natives-linux-amd64.jar
-
-webstart: $(jjmpeg_jar)
-
-jar=$(JDK_HOME)/bin/jar
-jarsigner=$(JDK_HOME)/bin/jarsigner
-keystore=../../webstart/jjmpeg.jks
-keypass=jjmpegpass
-
-$(jjmpeg_jar): $(jjmpeg_lib)
-	$(jar) cf $(jjmpeg_jar) $(jjmpeg_lib)
-	$(jarsigner) -keystore $(keystore) -storepass $(keypass) -keypass $(keypass) $(jjmpeg_jar) jjmpeg
-
-clean:
-	-rm jjdvb.o
-	-rm jjmpeg.o
-	-rm $(jjdvb_lib)
-	-rm $(jjmpeg_lib)

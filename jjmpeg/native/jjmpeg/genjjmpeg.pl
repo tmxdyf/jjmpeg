@@ -1,6 +1,12 @@
 #!/usr/bin/perl
 # generate ffmpeg bindings
 
+$conf = $ARGV[0];
+$abstract = $ARGV[1];
+$jni = $ARGV[2];
+
+print "Building $jni and $abstract from $conf\n";
+
 # suffix of generated native binding
 $npostfix = "NativeAbstract";
 # suffix of generated java binding
@@ -10,7 +16,7 @@ $jimpl = "Native";
 
 
 # read api descriptor
-open IN,"native.conf";
+open IN,"<$conf";
 
 # c to jni type
 %cntype = (
@@ -320,7 +326,7 @@ while (<IN>) {
 
 
 # create jni code
-open STDOUT, ">jjmpeg-jni.c";
+open STDOUT, ">$jni";
 
 $dlsymprefix = "d";
 $dodl = 1;
@@ -590,7 +596,7 @@ foreach $classinfo (@classes) {
 }
 
 close STDOUT;
-open STDOUT, ">AVAbstract.java";
+open STDOUT, ">$abstract";
 
 print "/* I am automatically generated.  Editing me would be pointless,\n   but I wont stop you if you so desire. */\n\n";
 

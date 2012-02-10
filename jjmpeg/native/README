@@ -2,8 +2,8 @@
 Code Generation
 ---------------
 
-The generator is defined by the 'native.conf' file, and processed by the perl
-script 'genjjmpeg.pl'.
+The generator is defined by the 'jjmpeg-native.conf' file, and
+processed by the very ugly write-only perl script 'genjjmpeg.pl'.
 
 This creates:
  jjmpeg-jni.c: The automatically generated bindings from the description.
@@ -22,16 +22,58 @@ one described here.
 Compiling
 ---------
 
+ make all
+or
+ make TARGETS=linux-amd64 all
+
+etc.
+
 This is still work in progress - there is a sub-directory for each architecture
 and the same code is re-compiled for each.  It assumes cross-compilers are
 available and in the path for the given platform, and if not they are simply
-ignored during the build.
+ignored with an ugly error during the build.
 
 For linux, it should compile for the native-sized architecture, and if the appropriate
 development libraries are included for the other size, they should also build.
 
 For example on Fedora AMD-64, installing glibc-devel.i686 and libgcc.i686 should
 suffice.
+
+Perl must be installed, naturally.
+
+Build Configuration
+-------------------
+
+The build configuration is based on a few makefiles and fragments,
+some of which contain configuration information and others which
+should not.
+
+Nothing is ever created automatically in the source directories,
+and all generated sources, object files and jar files are created
+only in the target-specific directories.
+
+Makefile
+ Just runs the targets in the architecture-specific directories.
+
+conf.make
+ Contains some global defaults.  Some of these are overridden in
+ the arch-specific directories.
+
+Makefile.libs
+ This is the makefile which actually does all the work, it takes
+ the configuration from config.make and target/Makefile and
+ builds the targets specified there.
+
+*target*/Makefile
+ This is the makefile which builds the code.
+
+ It first defines SRC, TARGET and then includes $(SRC)/config.make.
+ Then it overrides anything from config.make it needs to, and
+ defines the TARGET_* flags.
+
+ It then includes $(SRC)/Makefile.libs
+
+ And finally it defines all:
 
 Generator Configuration
 -----------------------

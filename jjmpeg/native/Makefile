@@ -1,46 +1,18 @@
 
-JDK_HOME=/usr/java/latest
-javah=$(JDK_HOME)/bin/javah
+# Master make file for native libraries
+#
+# make [ all | clean | "" ]
+#  Will attempt to build all targets.  Failures are ignored.
+#
+# make TARGETS="target list" [ all | clean | "" ]
+#  Will only attempt to build the specified targets.
+#
+# All targets supported
+TARGETS_ALL=linux-amd64 linux-i386 mswin-amd64 mswin-i386 darwin-amd64 darwin-i386
 
-CFLAGS=-I$(JDK_HOME)/include -I$(JDK_HOME)/include/linux -I/usr/include/ffmpeg -fPIC -Wall -g
-LIBS=#-lavcodec -lavformat -lavutil
+TARGETS ?= $(TARGETS_ALL)
 
-# classes containing native methods
-# TODO: incomplete
-CLASSES=au.notzed.jjmpeg.AVFormatContextNative\
- au.notzed.jjmpeg.AVCodecNative\
- au.notzed.jjmpeg.AVCodecContext\
- au.notzed.jjmpeg.AVFrameNative\
- au.notzed.jjmpeg.AVPacketNative\
- au.notzed.jjmpeg.AVStreamNative \
- au.notzed.jjmpeg.AVNative \
- au.notzed.jjmpeg.SwsContextNative
-
-HEADERS=$(patsubst %,%.h,$(subst .,_,$(CLASSES)))
-
-WRAPPERS=AVAbstract.java jjmpeg-jni.c
-WRAPPERS_DVB=DVBAbstract.java jjdvb-jni.c
-
-SUBDIRS=linux-amd64 linux-32 win-amd64
-
-all: $(WRAPPERS) $(WRAPPERS_DVB) $(HEADERS) $(HEADERS_DVB)
-
-$(WRAPPERS): genjjmpeg.pl native.conf
-	./genjjmpeg.pl
-
-$(HEADERS):
-	$(javah) -classpath ../dist/jjmpeg.jar $(CLASSES)
-
-../dist/jjmpeg.jar:
-	( cd .. ; ant )
-
-
-HEADERS_DVB=
-
-$(WRAPPERS_DVB): gendvb.pl native-dvb.conf
-	./gendvb.pl
-
-clean all webstart:
-	for name in $(SUBDIRS) ; do \
-	  ( cd $$name && $(MAKE) $@ ); \
+all clean webstart:
+	for n in $(TARGETS) ; do \
+		( cd $$n && $(MAKE) $@ ) ; \
 	done
