@@ -18,22 +18,16 @@
  */
 package au.notzed.jjmpeg.util;
 
-import au.notzed.jjmpeg.AVCodec;
-import au.notzed.jjmpeg.AVCodecContext;
 import au.notzed.jjmpeg.AVFormatContext;
-import au.notzed.jjmpeg.AVFrame;
-import au.notzed.jjmpeg.AVPacket;
-import au.notzed.jjmpeg.AVPlane;
-import au.notzed.jjmpeg.AVStream;
 import au.notzed.jjmpeg.PixelFormat;
-import au.notzed.jjmpeg.SwsContext;
+import au.notzed.jjmpeg.io.JJMediaReader;
+import au.notzed.jjmpeg.io.JJMediaReader.JJReaderVideo;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
-import java.awt.image.DataBufferByte;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
@@ -70,7 +64,6 @@ public class JJFileChooser extends JFileChooser {
 		JLabel info;
 		ImageIcon iicon;
 		BufferedImage preview;
-		BufferedImage preview_tmp;
 
 		public VideoInfo(JFileChooser fc) {
 			super(new BorderLayout());
@@ -80,7 +73,6 @@ public class JJFileChooser extends JFileChooser {
 			setBorder(new EmptyBorder(0, 8, 0, 0));
 
 			preview = new BufferedImage(256, 256, BufferedImage.TYPE_3BYTE_BGR);
-			preview_tmp = new BufferedImage(256, 256, BufferedImage.TYPE_3BYTE_BGR);
 
 			iicon = new ImageIcon(preview);
 			icon = new JLabel(iicon);
@@ -169,19 +161,31 @@ public class JJFileChooser extends JFileChooser {
 				try {
 					cancelled = true;
 					if (worker.isAlive()) {
-						System.out.println("aborting thread");
+						//System.out.println("aborting thread");
 						worker.interrupt();
 						worker.join();
-						System.out.println(" .. done");
+						//System.out.println(" .. done");
 					}
 				} catch (InterruptedException ex) {
 					Logger.getLogger(AsyncVideoLoader.class.getName()).log(Level.SEVERE, null, ex);
 				}
 			}
+			Runnable setIcon = new Runnable() {
+
+				public void run() {
+					if (thumb.getIcon() == null) {
+						thumb.setIcon(new ImageIcon(preview));
+					} else {
+						thumb.repaint();
+					}
+				}
+			};
 
 			@Override
 			public void run() {
-				AVFormatContext format = null;
+				JJMediaReader mr = null;
+				JJMediaReader.JJReaderVideo vr = null;
+				BufferedImage preview_tmp;
 
 				try {
 					info.setText(null);
@@ -189,58 +193,27 @@ public class JJFileChooser extends JFileChooser {
 					Graphics2D gg = preview.createGraphics();
 					gg.setColor(Color.black);
 					gg.fillRect(0, 0, preview.getWidth(), preview.getHeight());
-					gg.dispose();
 
-					format = AVFormatContext.openInputFile(image.getPath());
+					mr = new JJMediaReader(image.getPath());
+					vr = mr.openFirstVideoStream();
 
-					if (format.findStreamInfo() < 0) {
+					if (vr == null) {
 						thumb.setText("<empty>");
 						return;
 					}
 
-					AVStream stream = null;
-					AVCodecContext codecContext = null;
-					int videoStream = -1;
-					int nstreams = format.getNBStreams();
-					for (int i = 0; i < nstreams; i++) {
-						AVStream s = format.getStreamAt(i);
-						codecContext = s.getCodec();
-						if (codecContext.getCodecType() == AVCodecContext.AVMEDIA_TYPE_VIDEO) {
-							videoStream = i;
-							stream = s;
-							break;
-						}
+					int height = vr.getHeight();
+					int width = vr.getWidth();
+					PixelFormat fmt = vr.getPixelFormat();
+
+					info.setText(String.format("<html><b>Type:</b> %s<br><b>Size:</b> %dx%d<br><b>Format:</b> %s\n", vr.getCodec().getName(), width, height, fmt));
+
+					int delay = (int) (1000 * vr.getContext().getTimeBase().q2d());
+
+					if (delay < 10) {
+						System.out.printf("suspect time delay = %d, resetting to 20ms\n", delay);
+						delay = 40;
 					}
-
-					if (stream == null) {
-						info.setText("not video");
-						return;
-					}
-
-					// find decoder for the video stream
-					AVCodec codec = AVCodec.findDecoder(codecContext.getCodecID());
-					if (codec == null) {
-						info.setText("unsupported video codec");
-						return;
-					}
-
-					codecContext.open(codec);
-
-					final AVFrame frame = AVFrame.create();
-					AVPacket packet = AVPacket.create();
-
-					final int height = codecContext.getHeight();
-					final int width = codecContext.getWidth();
-					PixelFormat fmt = codecContext.getPixFmt();
-
-					info.setText(String.format("<html><b>Type:</b> %s<br><b>Size:</b> %dx%d<br><b>Format:</b> %s\n", codec.getName(), width, height, fmt));
-
-					//if (fmt != PixelFormat.PIX_FMT_YUV420P
-					//		&& fmt != PixelFormat.PIX_FMT_YUVJ420P
-					//		&& fmt != PixelFormat.PIX_FMT_YUVJ422P) {
-					//	info.setText("preview unavailable");
-					//	return;
-					//}
 
 					final int w, h;
 					if (width > height) {
@@ -251,69 +224,37 @@ public class JJFileChooser extends JFileChooser {
 						h = 256;
 					}
 
-					final AVFrame iconFrame = AVFrame.create(PixelFormat.PIX_FMT_BGR24, w, h);
-
-					final SwsContext scale = SwsContext.create(width, height, fmt, w, h, PixelFormat.PIX_FMT_BGR24, SwsContext.SWS_BILINEAR);
+					vr.setOutputFormat(PixelFormat.PIX_FMT_BGR24, w, h);
+					preview_tmp = vr.createImage();
 
 					// preview video until cancelled
-					// TODO: loop
 					int count = 0;
-					while (!cancelled && format.readFrame(packet) >= 0) {
-						try {
-							if (packet.getStreamIndex() == videoStream) {
-								boolean frameFinished = codecContext.decodeVideo(frame, packet);
 
-								if (frameFinished) {
-									final AVPlane plane = frame.getPlaneAt(0, fmt, width, height);
+					while (!cancelled && (vr = (JJReaderVideo) mr.readFrame()) != null) {
+						vr.getOutputFrame(preview_tmp);
 
-									SwingUtilities.invokeAndWait(new Runnable() {
+						// Use java to centre it
+						gg.setColor(Color.black);
+						gg.fillRect(0, 0, preview.getWidth(), preview.getHeight());
+						int l = (preview.getWidth() - w) / 2;
+						int t = (preview.getHeight() - h) / 2;
+						gg.drawImage(preview_tmp, l, t, l + w, t + h, 0, 0, w, h, null);
 
-										public void run() {
-											// Use SWS Scale to convert/scale result
-											scale.scale(frame, 0, height, iconFrame);
-											AVPlane splane = iconFrame.getPlaneAt(0, PixelFormat.PIX_FMT_BGR24, w, h);
-											byte[] data = ((DataBufferByte) preview_tmp.getRaster().getDataBuffer()).getData();
+						SwingUtilities.invokeAndWait(setIcon);
 
-											splane.data.get(data, 0, Math.min(data.length, splane.data.capacity()));
-											splane.data.rewind();
+						Thread.sleep(delay);
 
-											// Use java to centre it
-											Graphics2D gg = preview.createGraphics();
-											gg.setColor(Color.black);
-											gg.fillRect(0, 0, preview.getWidth(), preview.getHeight());
-											int l = (preview.getWidth() - w) / 2;
-											int t = (preview.getHeight() - h) / 2;
-											gg.drawImage(preview_tmp, l, t, l + w, t + h, 0, 0, w, h, null);
-											gg.dispose();
-
-											if (thumb.getIcon() == null) {
-												thumb.setIcon(new ImageIcon(preview));
-											} else {
-												thumb.repaint();
-											}
-										}
-									});
-
-									Thread.sleep(20);
-
-									count++;
-								}
-							}
-						} finally {
-							packet.freePacket();
-						}
+						count++;
 					}
-					//thumb.setIcon(new ImageIcon(ii));
-					//thumb.setText(null);
 				} catch (InterruptedException x) {
 				} catch (Exception x) {
 					System.out.println("ex reading image" + x);
 					info.setText("Unable to read video");
 					x.printStackTrace();
 				} finally {
-					if (format != null) {
-						System.out.println("closing video file");
-						format.closeInputFile();
+					if (mr != null) {
+						//System.out.println("closing video file");
+						mr.dispose();
 					}
 				}
 			}

@@ -677,9 +677,6 @@ abstract class SwsContextNativeAbstract extends AVNative {
 abstract class SwsContextAbstract extends AVObject {
 	// Fields
 	// Public Methods
-	static public SwsContext getContext(int srcW, int srcH, PixelFormat srcFormat, int dstW, int dstH, PixelFormat dstFormat, int flags, SwsFilter srcFilter, SwsFilter dstFilter, DoubleBuffer param) {
-		return SwsContext.create(SwsContextNativeAbstract.getContext(srcW, srcH, srcFormat.toC(), dstW, dstH, dstFormat.toC(), flags, srcFilter != null ? srcFilter.n.p : null, dstFilter != null ? dstFilter.n.p : null, param));
-	}
 	public void freeContext() {
 		SwsContextNativeAbstract.freeContext(n.p);
 	}

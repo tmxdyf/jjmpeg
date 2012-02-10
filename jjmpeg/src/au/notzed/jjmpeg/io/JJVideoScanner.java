@@ -38,6 +38,9 @@ import java.nio.ByteBuffer;
 
 /**
  * High level interface for scanning video frames.
+ * 
+ * This will deprecated in the future once JJMediaReader
+ * has the seeking stuff in it.
  * @author notzed
  */
 public class JJVideoScanner {
