@@ -5,23 +5,18 @@ javah=$(JDK_HOME)/bin/javah
 CFLAGS=-I$(JDK_HOME)/include -I$(JDK_HOME)/include/linux -I/usr/include/ffmpeg -fPIC -Wall -g
 LIBS=#-lavcodec -lavformat -lavutil
 
-CLASSES=au.notzed.jjmpeg.AVFormatContext\
- au.notzed.jjmpeg.AVCodec\
+# classes containing native methods
+# TODO: incomplete
+CLASSES=au.notzed.jjmpeg.AVFormatContextNative\
+ au.notzed.jjmpeg.AVCodecNative\
  au.notzed.jjmpeg.AVCodecContext\
- au.notzed.jjmpeg.AVFrame\
- au.notzed.jjmpeg.AVPacket\
- au.notzed.jjmpeg.AVStream \
+ au.notzed.jjmpeg.AVFrameNative\
+ au.notzed.jjmpeg.AVPacketNative\
+ au.notzed.jjmpeg.AVStreamNative \
  au.notzed.jjmpeg.AVNative \
- au.notzed.jjmpeg.AVRational \
- au.notzed.jjmpeg.SwsContext
+ au.notzed.jjmpeg.SwsContextNative
 
-HEADERS=au_notzed_jjmpeg_AVCodecContext.h \
- au_notzed_jjmpeg_AVCodec.h\
- au_notzed_jjmpeg_AVFormatContext.h\
- au_notzed_jjmpeg_AVFrame.h\
- au_notzed_jjmpeg_AVNative.h\
- au_notzed_jjmpeg_AVPacket.h\
- au_notzed_jjmpeg_AVStream.h
+HEADERS=$(patsubst %,%.h,$(subst .,_,$(CLASSES)))
 
 WRAPPERS=AVAbstract.java jjmpeg-jni.c
 WRAPPERS_DVB=DVBAbstract.java jjdvb-jni.c

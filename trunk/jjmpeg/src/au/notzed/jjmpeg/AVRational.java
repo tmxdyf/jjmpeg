@@ -46,7 +46,7 @@ public class AVRational extends AVRationalAbstract {
 	public static final AVRational AV_TIME_BASE_Q = create(1, 1000000);
 
 	public double q2d() {
-		return getNum() / (double) getDen();
+		return (double) getNum() / (double) getDen();
 	}
 
 	static public long rescaleQ(long a, AVRational bq, AVRational cq) {

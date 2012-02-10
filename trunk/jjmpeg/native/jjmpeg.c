@@ -55,6 +55,9 @@ static int (*dav_probe_input_buffer)(AVIOContext *pb, AVInputFormat **fmt,
 static int (*dsws_scale)(struct SwsContext *context, const uint8_t* const srcSlice[], const int srcStride[],
 			 int srcSliceY, int srcSliceH, uint8_t* const dst[], const int dstStride[]);
 
+static int (*davpicture_fill)(AVPicture *picture, uint8_t *ptr,
+			      enum PixelFormat pix_fmt, int width, int height);
+
 static int64_t (*dav_rescale_q)(int64_t a, AVRational bq, AVRational cq);
 static void * (*dav_malloc)(int size);
 static void (*dav_free)(void *mem);
@@ -81,6 +84,7 @@ static int init_local(JNIEnv *env) {
 	MAPDL(avcodec_encode_video, avcodec_lib);
 	MAPDL(av_init_packet, avcodec_lib);
 	MAPDL(sws_scale, swscale_lib);
+	MAPDL(avpicture_fill, avcodec_lib);
 
 	MAPDL(av_rescale_q, avutil_lib);
 	MAPDL(av_malloc, avutil_lib);
@@ -201,6 +205,7 @@ JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVFrameNative_getPlaneAt
 	AVFrame *cptr = ADDR(jptr);
 
 	// FIXME: this depends on pixel format
+	// TODO: keep this in java?
 	if (index > 0)
 		height /= 2;
 
@@ -270,6 +275,68 @@ JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_SwsContextNative_scale
 				dst->data, dst->linesize);
 
 	return res;
+}
+
+static int scaleArray(JNIEnv *env, SwsContext *sws, AVFrame *src, jint srcSliceY, jint srcSliceH, jarray jdst, int dsize, jint fmt, jint width, jint height) {
+	struct AVPicture dst;
+	void *cdst;
+	int res = -1;
+
+	if ((*env)->GetArrayLength(env, jdst) * dsize < CALLDL(avpicture_fill)(&dst, NULL, fmt, width, height)) {
+		fprintf(stderr, "array too small for scaleIntArray");
+		fflush(stderr);
+		// FIXME: exception
+		return -1;
+	}
+
+	cdst = (*env)->GetPrimitiveArrayCritical(env, jdst, NULL);
+
+	if (!cdst)
+		// FIXME: exception
+		return res;
+
+	CALLDL(avpicture_fill)(&dst, cdst, fmt, width, height);
+
+	res = CALLDL(sws_scale)(sws, (const uint8_t * const *)src->data, src->linesize,
+				srcSliceY, srcSliceH,
+				dst.data, dst.linesize);
+
+	(*env)->ReleasePrimitiveArrayCritical(env, jdst, cdst, 0);
+
+	return res;}
+
+
+JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_SwsContextNative_scaleIntArray
+(JNIEnv *env, jclass jc, jobject jptr, jobject jsrc, jint srcSliceY, jint srcSliceH, jintArray jdst, jint fmt, jint width, jint height) {
+	struct SwsContext *sws = ADDR(jptr);
+	struct AVFrame *src = ADDR(jsrc);
+
+	return scaleArray(env, sws, src, srcSliceY, srcSliceH, jdst, 4, fmt, width, height);
+	/*
+	cdst = (*env)->GetPrimitiveArrayCritical(env, jdst, NULL);
+
+	if (!cdst)
+		// FIXME: exception
+		return res;
+
+	CALLDL(avpicture_fill)(&dst, cdst, fmt, width, height);
+
+	res = CALLDL(sws_scale)(sws, (const uint8_t * const *)src->data, src->linesize,
+				srcSliceY, srcSliceH,
+				dst.data, dst.linesize);
+
+	(*env)->ReleasePrimitiveArrayCritical(env, jdst, cdst, 0);
+
+	return res;
+	*/
+}
+
+JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_SwsContextNative_scaleByteArray
+(JNIEnv *env, jclass jc, jobject jptr, jobject jsrc, jint srcSliceY, jint srcSliceH, jintArray jdst, jint fmt, jint width, jint height) {
+	struct SwsContext *sws = ADDR(jptr);
+	struct AVFrame *src = ADDR(jsrc);
+
+	return scaleArray(env, sws, src, srcSliceY, srcSliceH, jdst, 1, fmt, width, height);
 }
 
 /* ********************************************************************** */

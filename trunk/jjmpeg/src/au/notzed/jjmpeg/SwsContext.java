@@ -27,6 +27,9 @@ import java.nio.ByteBuffer;
  */
 public class SwsContext extends SwsContextAbstract {
 
+	final int dstW;
+	final int dstH;
+	final PixelFormat dstFormat;
 	public static final int SWS_FAST_BILINEAR = 1;
 	public static final int SWS_BILINEAR = 2;
 	public static final int SWS_BICUBIC = 4;
@@ -39,21 +42,33 @@ public class SwsContext extends SwsContextAbstract {
 	public static final int SWS_LANCZOS = 0x200;
 	public static final int SWS_SPLINE = 0x400;
 
-	protected SwsContext(ByteBuffer p) {
+	protected SwsContext(ByteBuffer p, int dstW, int dstH, PixelFormat dstFormat) {
 		setNative(new SwsContextNative(this, p));
+
+		this.dstW = dstW;
+		this.dstH = dstH;
+		this.dstFormat = dstFormat;
 	}
 
-	static SwsContext create(ByteBuffer p) {
-		return new SwsContext(p);
+	static SwsContext create(ByteBuffer p, int dstW, int dstH, PixelFormat dstFormat) {
+		return new SwsContext(p, dstW, dstH, dstFormat);
 	}
 
 	static public SwsContext create(int srcW, int srcH, PixelFormat srcFormat, int dstW, int dstH, PixelFormat dstFormat, int flags) {
 		//return getContext(srcW, srcH, srcFormat, dstW, dstH, dstFormat, flags, null, null, null);
-		return SwsContext.create(SwsContextNativeAbstract.getContext(srcW, srcH, srcFormat.toC(), dstW, dstH, dstFormat.toC(), flags, null, null, null));
+		return SwsContext.create(SwsContextNativeAbstract.getContext(srcW, srcH, srcFormat.toC(), dstW, dstH, dstFormat.toC(), flags, null, null, null), dstW, dstH, dstFormat);
 	}
 
 	public int scale(AVFrame src, int srcSliceY, int srcSliceH, AVFrame dst) {
 		return SwsContextNative.scale(n.p, src.n.p, srcSliceY, srcSliceH, dst.n.p);
+	}
+
+	public int scale(AVFrame src, int srcSliceY, int srcSliceH, int[] dst) {
+		return SwsContextNative.scaleIntArray(n.p, src.n.p, srcSliceY, srcSliceH, dst, dstFormat.toC(), dstW, dstH);
+	}
+
+	public int scale(AVFrame src, int srcSliceY, int srcSliceH, byte[] dst) {
+		return SwsContextNative.scaleByteArray(n.p, src.n.p, srcSliceY, srcSliceH, dst, dstFormat.toC(), dstW, dstH);
 	}
 }
 
@@ -64,6 +79,10 @@ class SwsContextNative extends SwsContextNativeAbstract {
 	}
 
 	static native int scale(ByteBuffer p, ByteBuffer srcFrame, int srcSliceY, int srcSliceH, ByteBuffer dstFrame);
+
+	static native int scaleIntArray(ByteBuffer p, ByteBuffer srcFrame, int srcSliceY, int srcSliceH, int[] dst, int pixfmt, int width, int height);
+
+	static native int scaleByteArray(ByteBuffer p, ByteBuffer srcFrame, int srcSliceY, int srcSliceH, byte[] dst, int pixfmt, int width, int height);
 
 	@Override
 	public void dispose() {

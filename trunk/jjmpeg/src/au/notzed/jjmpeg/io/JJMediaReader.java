@@ -24,7 +24,6 @@ import au.notzed.jjmpeg.AVCodecContext;
 import au.notzed.jjmpeg.AVFormatContext;
 import au.notzed.jjmpeg.AVFrame;
 import au.notzed.jjmpeg.AVPacket;
-import au.notzed.jjmpeg.AVPlane;
 import au.notzed.jjmpeg.AVRational;
 import au.notzed.jjmpeg.AVSamples;
 import au.notzed.jjmpeg.AVStream;
@@ -49,6 +48,7 @@ import java.util.List;
  */
 public class JJMediaReader {
 
+	static final boolean dump = false;
 	LinkedList<JJReaderStream> streams = new LinkedList<JJReaderStream>();
 	HashMap<Integer, JJReaderStream> streamsByID = new HashMap<Integer, JJReaderStream>();
 	AVFormatContext format;
@@ -121,6 +121,19 @@ public class JJMediaReader {
 		}
 	}
 
+	/**
+	 * Find and open the first video stream.
+	 */
+	public JJReaderVideo openFirstVideoStream() throws AVInvalidCodecException, AVIOException {
+		for (JJReaderStream m : streams) {
+			if (m.getType() == AVCodecContext.AVMEDIA_TYPE_VIDEO) {
+				m.open();
+				return (JJReaderVideo) m;
+			}
+		}
+		return null;
+	}
+
 	public List<JJReaderStream> getStreams() {
 		return streams;
 	}
@@ -128,7 +141,7 @@ public class JJMediaReader {
 	public JJReaderStream getStreamByID(int id) {
 		return streamsByID.get(id);
 	}
-	
+
 	public void dispose() {
 		for (JJReaderStream m : streams) {
 			m.dispose();
@@ -294,14 +307,20 @@ public class JJMediaReader {
 		}
 
 		public void dispose() {
-			codec.dispose();
+			if (codec != null) {
+				codec.dispose();
+			}
 			c.dispose();
 		}
 
 		public AVCodecContext getContext() {
 			return c;
 		}
-		
+
+		public AVCodec getCodec() {
+			return codec;
+		}
+
 		/**
 		 * Retrieve duration of sequence, in milliseconds.
 		 * @return 
@@ -367,11 +386,14 @@ public class JJMediaReader {
 
 		@Override
 		public void open() throws AVInvalidCodecException, AVIOException {
-			System.out.println("Open video reader");
-			System.out.printf(" video size %dx%d\n",
-					c.getWidth(),
-					c.getHeight());
-			System.out.println(" video codec id = " + c.getCodecID());
+			if (dump) {
+				System.out.println("Open video reader");
+				System.out.printf(" video size %dx%d\n",
+						c.getWidth(),
+						c.getHeight());
+				System.out.println(" video codec id = " + c.getCodecID());
+				System.out.println(" pixel format: " + c.getPixFmt());
+			}
 
 			// find decoder for the video stream
 			codec = AVCodec.findDecoder(c.getCodecID());
@@ -382,7 +404,6 @@ public class JJMediaReader {
 
 			c.open(codec);
 
-			System.out.println(" pixel format: " + c.getPixFmt());
 
 			iframe = AVFrame.create();
 
@@ -435,7 +456,7 @@ public class JJMediaReader {
 		public PixelFormat getPixelFormat() {
 			return fmt;
 		}
-		
+
 		/**
 		 * Set the output format for use with getOutputFrame()
 		 * 
@@ -458,11 +479,11 @@ public class JJMediaReader {
 		}
 
 		/**
-		 * Allocate an image suitable for readFrame()
+		 * Allocate an image suitable for getOutputFrame()
 		 * @return 
 		 */
 		public BufferedImage createImage() {
-			return new BufferedImage(width, height, BufferedImage.TYPE_3BYTE_BGR);
+			return new BufferedImage(swidth, sheight, BufferedImage.TYPE_3BYTE_BGR);
 		}
 
 		/**
@@ -488,13 +509,16 @@ public class JJMediaReader {
 		 * @return dst
 		 */
 		public BufferedImage getOutputFrame(BufferedImage dst) {
-			AVFrame frame = getOutputFrame();
-			AVPlane splane = frame.getPlaneAt(0, ofmt, swidth, sheight);
+			assert (dst.getType() == BufferedImage.TYPE_3BYTE_BGR);
+
+			if (ofmt == null) {
+				setOutputFormat(PixelFormat.PIX_FMT_BGR24, width, height);
+			}
+
+			// Scale directly to target image
 			byte[] data = ((DataBufferByte) dst.getRaster().getDataBuffer()).getData();
-
-			splane.data.get(data, 0, Math.min(data.length, splane.data.capacity()));
-			splane.data.rewind();
-
+			scale.scale(iframe, 0, height, data);
+			
 			return dst;
 		}
 
@@ -533,7 +557,7 @@ public class JJMediaReader {
 			System.out.println(" codec : " + codec.getName());
 			System.out.println(" sampleformat : " + c.getSampleFmt());
 			System.out.println(" samplerate : " + c.getSampleRate());
-			
+
 			apacket = AVAudioPacket.create();
 			samples = new AVSamples(c.getSampleFmt());
 		}
@@ -556,7 +580,7 @@ public class JJMediaReader {
 		public SampleFormat getSampleFormat() {
 			return c.getSampleFmt();
 		}
-		
+
 		/**
 		 * Retrieve the next block of decoded samples: this will return
 		 * a new AVSamples until there are no more samples left.
@@ -569,7 +593,6 @@ public class JJMediaReader {
 				}
 			}
 			return null;
-
 		}
 	}
 }

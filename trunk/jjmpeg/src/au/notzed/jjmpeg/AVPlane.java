@@ -19,6 +19,7 @@
 package au.notzed.jjmpeg;
 
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 /**
  * Represents a single raw plane
@@ -32,6 +33,7 @@ public class AVPlane {
 	public final int height;
 
 	public AVPlane(ByteBuffer data, int lineSize, int width, int height) {
+		data.order(ByteOrder.nativeOrder());
 		this.data = data;
 		this.lineSize = lineSize;
 		this.width = width;
