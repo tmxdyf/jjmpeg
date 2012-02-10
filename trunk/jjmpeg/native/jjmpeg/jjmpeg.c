@@ -71,8 +71,8 @@ static jmethodID byteio_seek;
 
 static int init_local(JNIEnv *env) {
 
-	DLOPEN(avcodec_lib, "avcodec", LIBAVCODEC_VERSION_MAJOR);
 	DLOPEN(avutil_lib, "avutil", LIBAVUTIL_VERSION_MAJOR);
+	DLOPEN(avcodec_lib, "avcodec", LIBAVCODEC_VERSION_MAJOR);
 	DLOPEN(avformat_lib, "avformat", LIBAVFORMAT_VERSION_MAJOR);
 	DLOPEN(swscale_lib, "swscale", LIBSWSCALE_VERSION_MAJOR);
 

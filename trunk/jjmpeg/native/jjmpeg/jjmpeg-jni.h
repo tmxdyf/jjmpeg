@@ -22,11 +22,13 @@
 
 #include <jni.h>
 
-#ifdef WIN64
+// If any more of these added: time to move it to a per-arch file
+
+#if defined(WIN64) || defined(WIN32)
 #  include <windows.h>
 
-#define _TOSTR(x) #x
-#define TOSTR(x) _TOSTR(x)
+#  define _TOSTR(x) #x
+#  define TOSTR(x) _TOSTR(x)
 
 #  define DLOPEN(x, lib, ver) do { x = LoadLibrary(lib "-"  _TOSTR(ver) ".dll"); if (x == NULL) { fprintf(stderr, "cannot open %s\n",  lib "-" TOSTR(ver) ".dll"); fflush(stderr); return 0; } } while(0)
 #  define CALLDL(x) (*d ## x)
@@ -34,7 +36,13 @@
 #else
 #  include <dlfcn.h>
 
-#  define DLOPEN(x, lib, ver) x = dlopen("lib" lib ".so", RTLD_LAZY|RTLD_GLOBAL); do { if (x == NULL) { fprintf(stderr, "cannot open %s\n", lib ".so"); fflush(stderr); return 0; } } while (0)
+#  if (defined (__APPLE__) && defined (__MACH__))
+#    define SO ".dylib"
+#  else
+#    define SO ".so"
+#  endif
+
+#  define DLOPEN(x, lib, ver) x = dlopen("lib" lib SO, RTLD_LAZY|RTLD_GLOBAL); do { if (x == NULL) { fprintf(stderr, "cannot open %s\n", lib ".so"); fflush(stderr); return 0; } } while (0)
 #  define CALLDL(x) (*d ## x)
 #  define MAPDL(x, lib) do { if ((d ## x = dlsym(lib, #x)) == NULL) { fprintf(stderr, "cannot resolve %s\n", #x); fflush(stderr); return 0; } } while (0)
 #endif
@@ -53,7 +61,7 @@
 
 static int init_local(JNIEnv *env);
 
-// swscale leavves SwsContext opaque.  We just need a dummy type for the binding library.
+// swscale leaves SwsContext opaque.  We just need a dummy type for the binding library.
 #include <libswscale/swscale.h>
 struct SwsContext {
 	int dummy;
