@@ -78,6 +78,11 @@ Makefile.libs
 Generator Configuration
 -----------------------
 
+Unfortunately, the newer ffmpeg libraries added a whole bunch of
+annoying conventions which make the binding and description of the
+binding a lot more complicated.  Needing the addition of the inout and
+out pseudo-keywords.
+
 Format is one or more of the following:
 class <classname>
 <fields>
@@ -120,11 +125,20 @@ name, and also defines which library the methods are loaded from (for dlopen).
 
 Plain C prototypes then follow, with the following limitations and alterations:
  - struct types are not allowed, only typedef'd types.
- - optional keywords which must appear in this order
+ - optional method keywords which must appear in this order
    - `native' indicates no auto-generated binding in the public object
    - `protected' indicates the public object binding is protected
    - `static' indicates package scope, and that the method must not take the ByteBuffer
      object wrapper pointer.
+ - optional argument keywords which must appear in this order
+   - `out' an out-only parameter.
+   - `inout' an in-out parameter.
+ - out and inout parameters must have one '*' removed from their type, so that the type
+   reflects the target type and not the reference.
+( not implemented yet
+ - array parameters must end with [], and remove one '*' from their type.
+    e.g. AVDictionary **foo -> AVDictionary *foo[]
+ - array parameters can have 'inout' set, if they are to be modified )
  - only a limited number of types work.  Any struct types must match one of
    the classes defined in the file, or some other java class at compile time.
 

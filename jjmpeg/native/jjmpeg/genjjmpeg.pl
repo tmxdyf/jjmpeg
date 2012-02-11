@@ -58,6 +58,26 @@ open IN,"<$conf";
     "const double *" => "DoubleBuffer"
     );
 
+# j type to holder type
+# hmm, do i want the right type here?
+%jhtype = (
+    "ByteBuffer", "ObjectHolder",
+    "IntBuffer", "ObjectHolder",
+    "ShortBuffer", "ObjectHolder",
+    "StringBuffer", "ObjectHolder",
+    );
+
+# function to get the value of a holder type, based on source type (jntype)
+# :o is replaced with the object name
+# :v is replaced with the value name
+%holderGet = (
+    "ObjectHolder" => "(:o != NULL ? (*env)->GetObjectField(env, :o, ObjectHolder_value) : NULL)"
+    );
+
+%holderSet = (
+    "ObjectHolder" => "if (:o != NULL) { (*env)->SetObjectField(env, :o, ObjectHolder_value, :v) }"
+    );
+
 sub trim($) {
     my $val = shift;
     $val =~ s/^\s+//;
@@ -255,12 +275,12 @@ while (<IN>) {
 		my $dofunc = 1;
 
 		@args = split(/,/,$args);
-		# first arg is alwauys object pointer
+		# first arg is always object pointer
 		if (!$static) {
-		    shift @args;
+		    my $first = shift @args;
 		}
 		foreach $a (@args) {
-		    ($type, $name) = $a =~ m/^(.*[ \*])(\w+)$/;
+		    ($type, $name, $array) = $a =~ m/^(.*[ \*])(\w+)([\[\]]*)$/;
 
 		    $type = trim($type);
 		    $name = trim($name);
@@ -269,10 +289,20 @@ while (<IN>) {
 		    my $deref = 0;
 		    my $deenum = 0;
 
+		    if ($type =~ m/inout (.*)/) {
+			# TODO: force jtype to be object
+			$argdata{direction} = "inout";
+			$type = $1;
+
+			# force this to be 'native' in scope since we don't want to expose the holders
+			$methodinfo{scope} = "native";
+		    }
+
+		    $argdata{array} = $array eq "[]";
 		    $argdata{type} = $type;
 		    $argdata{name} = $name;
 
-		    if ($type =~ m/(.*) \*$/) {
+		    if ($type =~ m/(.*) \*(\*?)$/) {
 			$ntype = $cntype{$type};
 			if ($ntype eq "") {
 			    $ntype = "jobject";
@@ -285,6 +315,14 @@ while (<IN>) {
 			    $deref = 1;
 			} else {
 			    $argdata{jntype} = $jtype;
+			}
+			# over-ride jntype for (in)out parameters
+			if ($argdata{direction} =~ m/out/) {
+			    my $ht = $jhtype{$jtype};
+			    if ($ht eq "") {
+				$ht = "ObjectHolder";
+			    }
+			    $argdata{jntype} = $ht;
 			}
 			$argdata{jtype} = $jtype;
 			$argdata{nname} = "j$name";
@@ -535,11 +573,21 @@ foreach $classinfo (@classes) {
 	# wrap/converty any jni args to c args
 	foreach $argdata (@arginfo) {
 	    %ai = %{$argdata};
-	    if ($ai{ntype} eq "jobject") {
-		print "\t$ai{type} $ai{name} = ADDR($ai{nname});\n";
-	    }
-	    if ($ai{ntype} eq "jstring") {
-		print "\t$ai{type} $ai{name} = STR($ai{nname});\n";
+	    if ($ai{direction} eq "inout") {
+		my $hg = $holderGet{$ai{jntype}};
+
+		$hg =~ s/:o/$ai{nname}/g;
+
+		print "\t$ai{type} $ai{name} = $hg;\n";
+	    } elsif ($ai{direction} eq "out") {
+		print "\t$ai{type} $ai{name};\n";
+	    } else {
+		if ($ai{ntype} eq "jobject") {
+		    print "\t$ai{type} $ai{name} = ADDR($ai{nname});\n";
+		}
+		if ($ai{ntype} eq "jstring") {
+		    print "\t$ai{type} $ai{name} = STR($ai{nname});\n";
+		}
 	    }
 	}
 	print "\n";
@@ -571,6 +619,9 @@ foreach $classinfo (@classes) {
 	    if ($count > 0) {
 		print ", ";
 	    }
+	    if ($ai{direction} =~ m/out/) {
+		print "&";
+	    }
 	    print "$ai{name}";
 	    $count++;
 	}
@@ -579,10 +630,26 @@ foreach $classinfo (@classes) {
 	    print ", sizeof($mi{ctype}))";
 	}
 	print ";\n";
-
-	# free any resources mapped (strings)
+	print "\n";
+	# post-process arguments
 	foreach $argdata (@arginfo) {
 	    %ai = %{$argdata};
+	    # handle out paramters
+	    if ($ai{direction} =~ m/out/) {
+		my $hs = $holderSet{$ai{jntype}};
+
+		$hs =~ s/:o/$ai{nname}/g;
+
+		if ($ai{ntype} eq "jobject") {
+		    $hs =~ s/:v/WRAP($ai{name}, sizeof(*$ai{name}))/;
+		} else {
+		    $hs =~ s/:v/$ai{name}/g;
+		}
+
+		print "\t$hs\n";
+	    }
+
+	    # free strings
 	    if ($ai{ntype} eq "jstring") {
 		print "\tRSTR($ai{nname}, $ai{name});\n";
 	    }
