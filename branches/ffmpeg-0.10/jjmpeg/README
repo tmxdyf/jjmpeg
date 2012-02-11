@@ -1,4 +1,12 @@
 
+README FFmpeg-0.10
+------------------
+
+This is from the development branch for FFmpeg 0.10 compatability with
+deprecated functions removed.
+
+It is still work in progress, do not use this version.
+
 README 1st
 ----------
 

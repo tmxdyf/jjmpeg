@@ -106,7 +106,7 @@ abstract public class AVNative extends WeakReference<AVObject> {
 			count += 1;
 		}
 	}
-
+	
 	/**
 	 * Dispose of this resource.  It must be safe to call this multiple times.
 	 * 

@@ -67,6 +67,12 @@ static jmethodID byteio_readPacket;
 static jmethodID byteio_writePacket;
 static jmethodID byteio_seek;
 
+// holder fields
+static jfieldID ObjectHolder_value;
+static jfieldID LongHolder_value;
+static jfieldID IntHolder_value;
+
+
 /* ********************************************************************** */
 
 static int init_local(JNIEnv *env) {
@@ -96,6 +102,20 @@ static int init_local(JNIEnv *env) {
 	byteio_readPacket = (*env)->GetMethodID(env, byteioclass, "readPacket", "(Ljava/nio/ByteBuffer;)I");
 	byteio_writePacket = (*env)->GetMethodID(env, byteioclass, "writePacket", "(Ljava/nio/ByteBuffer;)I");
 	byteio_seek = (*env)->GetMethodID(env, byteioclass, "seek", "(JI)J");
+
+	jclass class;
+	class = (*env)->FindClass(env, "au/notzed/jjmpeg/ObjectHolder");
+	if (class != NULL) {
+		ObjectHolder_value = (*env)->GetFieldID(env, class, "value", "Ljava/lang/Object;");
+	}
+	class = (*env)->FindClass(env, "au/notzed/jjmpeg/LongHolder");
+	if (class != NULL) {
+		LongHolder_value = (*env)->GetFieldID(env, class, "value", "J");
+	}
+	class = (*env)->FindClass(env, "au/notzed/jjmpeg/IntHolder");
+	if (class != NULL) {
+		IntHolder_value = (*env)->GetFieldID(env, class, "value", "I");
+	}
 
 	return 1;
 }
@@ -195,6 +215,35 @@ JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVFormatContextNative_openInputS
 
 	return res;
 }
+
+JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_AVFormatContextNative_findStreamInfo
+(JNIEnv *env, jclass jc, jobject jptr, jobjectArray joptions) {
+	AVFormatContext *ptr = ADDR(jptr);
+	int len = 0;
+	AVDictionary **options = NULL;
+	int res;
+
+	if (joptions != NULL) {
+		len = (*env)->GetArrayLength(env, joptions);
+		options = alloca(sizeof(*options) * len);
+		for (int i=0;i<len;i++) {
+			options[i] = ADDR((*env)->GetObjectArrayElement(env, joptions, i));
+		}
+	}
+	
+	res = CALLDL(avformat_find_stream_info)(ptr, options);
+
+	if (joptions != NULL) {
+		for (int i=0;i<len;i++) {
+			jobject e = WRAP(options[i], sizeof(*options[i]));
+
+			(*env)->SetObjectArrayElement(env, joptions, i, e);
+		}
+	}
+
+	return res;
+}
+
 
 /* ********************************************************************** */
 
@@ -436,7 +485,9 @@ JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVIOContextNative_allocContext
 						      AVIOContext_seek);
 
 	if (res != NULL) {
-		res->is_streamed = (flags & ALLOC_STREAMED) != 0;
+		// this is deprecated, although i don't know if i should still set it anyway
+		//res->is_streamed = (flags & ALLOC_STREAMED) != 0;
+		res->seekable = (flags & ALLOC_STREAMED) ? 0 : AVIO_SEEKABLE_NORMAL;
 	}
 
 	d(printf(" = %p\n", res));

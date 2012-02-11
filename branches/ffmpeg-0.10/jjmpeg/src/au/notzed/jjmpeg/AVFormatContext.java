@@ -45,15 +45,51 @@ public class AVFormatContext extends AVFormatContextAbstract {
 		return new AVFormatContext(p, type);
 	}
 
+	static public AVFormatContext open(String name) throws AVIOException {
+		ObjectHolder obj = new ObjectHolder(null);
+
+		int err = AVFormatContextNative.open_input(obj, name, null, null);
+
+		if (err != 0) {
+			throw new AVIOException(err, "Opening: " + name);
+		}
+
+		return create((ByteBuffer) obj.value, 3);
+	}
+
+	public void findStreamInfo(AVDictionary[] options) throws AVIOException {
+		ByteBuffer[] noptions = null;
+		
+		if (options != null && options.length > 0) {
+			noptions = new ByteBuffer[options.length];
+			for (int i=0;i<options.length;i++) {
+				noptions[i] = options[i].n.p;
+			}
+		}
+		int res = AVFormatContextNative.findStreamInfo(n.p, options);
+		
+		if (res < 0)
+			throw new AVIOException(res);
+		
+		if (noptions != null) {
+			for (int i=0;i<options.length;i++) {
+				options[i].n.p = noptions[i];
+			}
+		}
+	}
+	
+	@Deprecated
 	static public AVFormatContext openInputFile(String name) throws AVIOException {
 		return openInputFile(name, null, 0, null);
 	}
 
+	@Deprecated
 	static public AVFormatContext openInputStream(AVIOContext pb, String name, AVInputFormat fmt) {
 		return openInputStream(pb, name, fmt, null);
 	}
 
 	// TODO: this stuff has been deprecated in newer libavformat
+	@Deprecated
 	static AVFormatContext openInputFile(String name, AVInputFormat fmt, int buf_size, AVFormatParameters ap) throws AVIOException {
 		ByteBuffer res = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder());
 		ByteBuffer context;
@@ -67,11 +103,8 @@ public class AVFormatContext extends AVFormatContextAbstract {
 		return create(context, 1);
 	}
 
-	// TODO: this stuff has been deprecated in newer libavformat
 	/**
 	 * Open an input stream from a byteiocontext.
-	 * 
-	 * THIS IS BROKEN AND WILL NOT WORK
 	 * 
 	 * @param ioc
 	 * @param name
@@ -79,6 +112,7 @@ public class AVFormatContext extends AVFormatContextAbstract {
 	 * @param ap
 	 * @return 
 	 */
+	@Deprecated
 	static AVFormatContext openInputStream(AVIOContext ioc, String name, AVInputFormat fmt, AVFormatParameters ap) {
 		ByteBuffer res = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder());
 		ByteBuffer context;
@@ -125,7 +159,7 @@ class AVFormatContextNative extends AVFormatContextNativeAbstract {
 
 	AVFormatContextNative(AVObject o, ByteBuffer p, int type) {
 		super(o, p);
-		this.type = type;
+		this.type = type;		
 	}
 
 	@Override
@@ -141,6 +175,8 @@ class AVFormatContextNative extends AVFormatContextNativeAbstract {
 				case 2:
 					close_input_stream(p);
 					break;
+				case 3:
+					close_input(new ObjectHolder(p));
 			}
 			super.dispose();
 		}
@@ -149,4 +185,6 @@ class AVFormatContextNative extends AVFormatContextNativeAbstract {
 	static native ByteBuffer openInputFile(String name, ByteBuffer fmt, int buf_size, ByteBuffer fmtParameters, ByteBuffer error_ptr);
 
 	static native ByteBuffer openInputStream(ByteBuffer pb, String name, ByteBuffer fmt, ByteBuffer fmtPArameters, ByteBuffer error_ptr);
+	
+	static native int findStreamInfo(ByteBuffer p, Object[] options);
 }
