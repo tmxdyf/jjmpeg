@@ -112,11 +112,6 @@ public class JJMediaWriter {
 	 * @throws AVIOException 
 	 */
 	public void open() throws AVInvalidFormatException, AVInvalidCodecException, AVIOException {
-		/* set the output parameters (must be done even if no parameters). */
-		if (oc.setParameters(null) < 0) {
-			throw new AVInvalidFormatException("Unable to set parameters");
-		}
-
 		/* now that all the parameters are set, we can open the audio and
 		video codecs and allocate the necessary encode buffers */
 		for (JJWriterStream sd : streams) {
@@ -129,7 +124,7 @@ public class JJMediaWriter {
 		oc.setIOContext(output);
 
 		/* write the stream header, if any */
-		oc.writeHeader();
+		oc.writeHeader(null);
 	}
 
 	/**
@@ -161,8 +156,8 @@ public class JJMediaWriter {
 		AVStream st;
 
 		System.out.printf("adding video %s [%d %dx%d@%d]\n", codec_id, streamid, width, height, frame_rate);
-
-		st = oc.newStream(streamid);
+		
+		st = oc.newStream(AVCodec.findEncoder(codec_id));
 		if (st == null) {
 			throw new AVInvalidStreamException("Unable to create stream");
 		}
@@ -218,7 +213,7 @@ public class JJMediaWriter {
 		AVCodecContext c;
 		AVStream st;
 
-		st = oc.newStream(streamid);
+		st = oc.newStream(AVCodec.findEncoder(codec_id));
 		if (st == null) {
 			throw new AVInvalidStreamException("Unable to create stream");
 		}
@@ -439,12 +434,7 @@ public class JJMediaWriter {
 				packet.setData(outputBuffer, out_size);
 
 				/* write the compressed frame in the media file */
-				int ret = oc.interleavedWriteFrame(packet);
-				//int ret = oc.writeFrame(pkt);
-
-				if (ret < 0) {
-					throw new AVIOException(ret);
-				}
+				oc.interleavedWriteFrame(packet);
 			}
 		}
 
@@ -527,11 +517,7 @@ public class JJMediaWriter {
 
 			packet.setStreamIndex(stream.getIndex());
 			packet.setData(outputBuffer, out_size);
-			int ret = oc.interleavedWriteFrame(packet);
-
-			if (ret < 0) {
-				throw new AVIOException(ret);
-			}
+			oc.interleavedWriteFrame(packet);
 		}
 	}
 }

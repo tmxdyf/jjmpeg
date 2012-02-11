@@ -74,11 +74,9 @@ public class JJVideoScanner {
 
 	public JJVideoScanner(String name) throws AVInvalidStreamException, AVIOException, AVInvalidCodecException {
 		//AVFormatContext.registerAll();
-		format = AVFormatContext.openInputFile(name);
+		format = AVFormatContext.open(name);
 
-		if (format.findStreamInfo() < 0) {
-			throw new AVInvalidStreamException("No streams found");
-		}
+		format.findStreamInfo();
 
 		// find first video stream
 		AVStream stream = null;

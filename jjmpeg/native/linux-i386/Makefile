@@ -3,7 +3,7 @@ TARGET=linux-i386
 
 include $(SRC)/config.make
 
-FFMPEG_HOME=/usr/include/ffmpeg
+#FFMPEG_HOME=/usr/include/ffmpeg
 
 CROSS=
 TARGET_JNI_CFLAGS = -I$(SRC)/jni/linux

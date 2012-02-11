@@ -59,25 +59,38 @@ public class AVFormatContext extends AVFormatContextAbstract {
 
 	public void findStreamInfo(AVDictionary[] options) throws AVIOException {
 		ByteBuffer[] noptions = null;
-		
+
 		if (options != null && options.length > 0) {
 			noptions = new ByteBuffer[options.length];
-			for (int i=0;i<options.length;i++) {
+			for (int i = 0; i < options.length; i++) {
 				noptions[i] = options[i].n.p;
 			}
 		}
 		int res = AVFormatContextNative.findStreamInfo(n.p, options);
-		
-		if (res < 0)
+
+		if (res < 0) {
 			throw new AVIOException(res);
-		
+		}
+
 		if (noptions != null) {
-			for (int i=0;i<options.length;i++) {
+			for (int i = 0; i < options.length; i++) {
 				options[i].n.p = noptions[i];
 			}
 		}
 	}
-	
+
+	public void findStreamInfo() throws AVIOException {
+		findStreamInfo(null);
+	}
+
+	public void interleavedWriteFrame(AVPacket pkt) throws AVIOException {
+		int res = AVFormatContextNativeAbstract.interleaved_write_frame(n.p, pkt.n.p);
+
+		if (res < 0) {
+			throw new AVIOException("error writing frame");
+		}
+	}
+
 	@Deprecated
 	static public AVFormatContext openInputFile(String name) throws AVIOException {
 		return openInputFile(name, null, 0, null);
@@ -147,8 +160,12 @@ public class AVFormatContext extends AVFormatContextAbstract {
 		return res;
 	}
 
-	@Override
+	@Deprecated
 	public void closeInputFile() {
+		closeInput();
+	}
+
+	public void closeInput() {
 		dispose();
 	}
 }
@@ -159,7 +176,7 @@ class AVFormatContextNative extends AVFormatContextNativeAbstract {
 
 	AVFormatContextNative(AVObject o, ByteBuffer p, int type) {
 		super(o, p);
-		this.type = type;		
+		this.type = type;
 	}
 
 	@Override
@@ -170,10 +187,10 @@ class AVFormatContextNative extends AVFormatContextNativeAbstract {
 					free_context(p);
 					break;
 				case 1:
-					close_input_file(p);
+					//close_input_file(p);
 					break;
 				case 2:
-					close_input_stream(p);
+					//close_input_stream(p);
 					break;
 				case 3:
 					close_input(new ObjectHolder(p));
@@ -185,6 +202,6 @@ class AVFormatContextNative extends AVFormatContextNativeAbstract {
 	static native ByteBuffer openInputFile(String name, ByteBuffer fmt, int buf_size, ByteBuffer fmtParameters, ByteBuffer error_ptr);
 
 	static native ByteBuffer openInputStream(ByteBuffer pb, String name, ByteBuffer fmt, ByteBuffer fmtPArameters, ByteBuffer error_ptr);
-	
+
 	static native int findStreamInfo(ByteBuffer p, Object[] options);
 }

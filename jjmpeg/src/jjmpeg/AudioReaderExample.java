@@ -37,10 +37,8 @@ public class AudioReaderExample {
 	public AudioReaderExample(String file) throws FileNotFoundException, AVIOException {
 		this.file = file;
 
-		format = AVFormatContext.openInputFile(file);
-		if (format.findStreamInfo() < 0) {
-			return;
-		}
+		format = AVFormatContext.open(file);
+		format.findStreamInfo();
 
 		int nstreams = format.getNBStreams();
 		for (int i = 0; i < nstreams; i++) {
@@ -110,7 +108,7 @@ public class AudioReaderExample {
 
 		System.out.printf("total decoded samples = %d   seconds = %d?\n", total, total / actx.getSampleRate());
 
-		format.closeInputFile();
+		format.closeInput();
 	}
 
 	public static void main(String[] args) throws FileNotFoundException, AVIOException {

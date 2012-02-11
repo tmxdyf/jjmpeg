@@ -126,6 +126,8 @@ name, and also defines which library the methods are loaded from (for dlopen).
 Plain C prototypes then follow, with the following limitations and alterations:
  - struct types are not allowed, only typedef'd types.
  - optional method keywords which must appear in this order
+   - `internal' no auto-generated binding at all, but a dlsym internal binding
+      for custom C code is generated.
    - `native' indicates no auto-generated binding in the public object
    - `protected' indicates the public object binding is protected
    - `static' indicates package scope, and that the method must not take the ByteBuffer
@@ -143,3 +145,5 @@ Plain C prototypes then follow, with the following limitations and alterations:
    the classes defined in the file, or some other java class at compile time.
 
 A blank line is required to terminate a class definition.
+
+Lines beggining with # are comments.
