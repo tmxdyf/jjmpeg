@@ -26,6 +26,7 @@
 //#define d(x) x; fflush(stdout)
 #define d(x)
 
+/* Most of these can be moved to the .conf file, using the 'internal' qualifier */
 static int (*dav_open_input_file)(AVFormatContext **ic_ptr, const char *filename,
 				  AVInputFormat *fmt,
 				  int buf_size,
@@ -66,12 +67,6 @@ static void (*dav_init_packet)(AVPacket *);
 static jmethodID byteio_readPacket;
 static jmethodID byteio_writePacket;
 static jmethodID byteio_seek;
-
-// holder fields
-static jfieldID ObjectHolder_value;
-static jfieldID LongHolder_value;
-static jfieldID IntHolder_value;
-
 
 /* ********************************************************************** */
 
@@ -222,11 +217,19 @@ JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_AVFormatContextNative_findStreamInf
 	int len = 0;
 	AVDictionary **options = NULL;
 	int res;
+	int i;
 
 	if (joptions != NULL) {
 		len = (*env)->GetArrayLength(env, joptions);
+
+		if (len != ptr->nb_streams) {
+			fprintf(stderr, "invalid number of stream options\n");
+			fflush(stderr);
+			return -1;
+		}
+
 		options = alloca(sizeof(*options) * len);
-		for (int i=0;i<len;i++) {
+		for (i=0;i<len;i++) {
 			options[i] = ADDR((*env)->GetObjectArrayElement(env, joptions, i));
 		}
 	}
@@ -234,7 +237,7 @@ JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_AVFormatContextNative_findStreamInf
 	res = CALLDL(avformat_find_stream_info)(ptr, options);
 
 	if (joptions != NULL) {
-		for (int i=0;i<len;i++) {
+		for (i=0;i<len;i++) {
 			jobject e = WRAP(options[i], sizeof(*options[i]));
 
 			(*env)->SetObjectArrayElement(env, joptions, i, e);

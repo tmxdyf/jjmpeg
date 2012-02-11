@@ -33,12 +33,9 @@ public class VideoReaderExample {
 		String name = "/home/notzed/Videos/mike0.avi";
 
 		AVFormatContext.registerAll();
-		AVFormatContext format = AVFormatContext.openInputFile(name);
+		AVFormatContext format = AVFormatContext.open(name);
 
-		if (format.findStreamInfo() < 0) {
-			System.err.println("Could not find stream information");
-			System.exit(1);
-		}
+		format.findStreamInfo();
 
 		// find first video stream
 		AVStream stream = null;

@@ -271,20 +271,16 @@ abstract class AVFormatContextNativeAbstract extends AVNative {
 	static native int getFlags(ByteBuffer p);
 	static native int setFlags(ByteBuffer p, int val);
 	// Native Methods
-	static native void close_input_file(ByteBuffer p);
-	static native void close_input_stream(ByteBuffer p);
 	static native int seek_frame(ByteBuffer p, int stream_index, long timestamp, int flags);
 	static native int read_frame(ByteBuffer p, ByteBuffer pkt);
-	static native int find_stream_info(ByteBuffer p);
-	static native ByteBuffer new_stream(ByteBuffer p, int id);
-	static native int set_parameters(ByteBuffer p, ByteBuffer ap);
-	static native int write_header(ByteBuffer p);
 	static native int write_frame(ByteBuffer p, ByteBuffer pkt);
 	static native int interleaved_write_frame(ByteBuffer p, ByteBuffer pkt);
 	static native int write_trailer(ByteBuffer p);
 	static native void register_all();
 	static native int open_input(ObjectHolder ps, String filename, ByteBuffer fmt, ObjectHolder options);
 	static native void close_input(ObjectHolder s);
+	static native ByteBuffer new_stream(ByteBuffer p, ByteBuffer codec);
+	static native int write_header(ByteBuffer p, ObjectHolder options);
 	static native int seek_file(ByteBuffer p, int stream_index, long min_ts, long ts, long max_ts, int flags);
 	static native ByteBuffer alloc_context();
 	static native void free_context(ByteBuffer p);
@@ -332,41 +328,26 @@ abstract class AVFormatContextAbstract extends AVObject {
 		AVFormatContextNativeAbstract.setFlags(n.p, val);
 	}
 	// Public Methods
-	public void closeInputFile() {
-		AVFormatContextNativeAbstract.close_input_file(n.p);
-	}
-	public void closeInputStream() {
-		AVFormatContextNativeAbstract.close_input_stream(n.p);
-	}
 	public int seekFrame(int stream_index, long timestamp, int flags) {
 		return AVFormatContextNativeAbstract.seek_frame(n.p, stream_index, timestamp, flags);
 	}
 	public int readFrame(AVPacket pkt) {
 		return AVFormatContextNativeAbstract.read_frame(n.p, pkt != null ? pkt.n.p : null);
 	}
-	public int findStreamInfo() {
-		return AVFormatContextNativeAbstract.find_stream_info(n.p);
-	}
-	public AVStream newStream(int id) {
-		return AVStream.create(AVFormatContextNativeAbstract.new_stream(n.p, id));
-	}
-	public int setParameters(AVFormatParameters ap) {
-		return AVFormatContextNativeAbstract.set_parameters(n.p, ap != null ? ap.n.p : null);
-	}
-	public int writeHeader() {
-		return AVFormatContextNativeAbstract.write_header(n.p);
-	}
 	public int writeFrame(AVPacket pkt) {
 		return AVFormatContextNativeAbstract.write_frame(n.p, pkt != null ? pkt.n.p : null);
-	}
-	public int interleavedWriteFrame(AVPacket pkt) {
-		return AVFormatContextNativeAbstract.interleaved_write_frame(n.p, pkt != null ? pkt.n.p : null);
 	}
 	public int writeTrailer() {
 		return AVFormatContextNativeAbstract.write_trailer(n.p);
 	}
 	static public void registerAll() {
 		AVFormatContextNativeAbstract.register_all();
+	}
+	public AVStream newStream(AVCodec codec) {
+		return AVStream.create(AVFormatContextNativeAbstract.new_stream(n.p, codec != null ? codec.n.p : null));
+	}
+	public int writeHeader(ObjectHolder options) {
+		return AVFormatContextNativeAbstract.write_header(n.p, options);
 	}
 	public int seekFile(int stream_index, long min_ts, long ts, long max_ts, int flags) {
 		return AVFormatContextNativeAbstract.seek_file(n.p, stream_index, min_ts, ts, max_ts, flags);

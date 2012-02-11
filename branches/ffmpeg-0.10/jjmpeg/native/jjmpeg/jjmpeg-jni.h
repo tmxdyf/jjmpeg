@@ -74,9 +74,20 @@ struct ReSampleContext {
 };
 //typedef struct ReSampleContext ReSampleContext;
 
+// and AVDictionary
+struct AVDictionary {
+	void *dummy;
+};
 
 /**  Library handles */
 static void *avutil_lib;
 static void *avcodec_lib;
 static void *avformat_lib;
 static void *swscale_lib;
+
+/* Holder fields */
+static jfieldID ObjectHolder_value;
+static jfieldID LongHolder_value;
+static jfieldID IntHolder_value;
+
+

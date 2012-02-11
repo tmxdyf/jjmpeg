@@ -59,7 +59,7 @@ open IN,"<$conf";
     );
 
 # j type to holder type
-# hmm, do i want the right type here?
+# hmm, do i want the specific type here?
 %jhtype = (
     "ByteBuffer", "ObjectHolder",
     "IntBuffer", "ObjectHolder",
@@ -71,11 +71,11 @@ open IN,"<$conf";
 # :o is replaced with the object name
 # :v is replaced with the value name
 %holderGet = (
-    "ObjectHolder" => "(:o != NULL ? (*env)->GetObjectField(env, :o, ObjectHolder_value) : NULL)"
+    "ObjectHolder" => "(:o != NULL ? ADDR((*env)->GetObjectField(env, :o, ObjectHolder_value)) : NULL)"
     );
 
 %holderSet = (
-    "ObjectHolder" => "if (:o != NULL) { (*env)->SetObjectField(env, :o, ObjectHolder_value, :v) }"
+    "ObjectHolder" => "if (:o != NULL) { (*env)->SetObjectField(env, :o, ObjectHolder_value, :v); }"
     );
 
 sub trim($) {
@@ -134,6 +134,7 @@ $nativeprefix = "Java_au_notzed_jjmpeg";
 %classes = ();
 
 while (<IN>) {
+    next if (m/^#/);
     if (m/class (.*)/) {
 	$class = $1;
 
@@ -145,6 +146,7 @@ while (<IN>) {
 
 	# read fields
 	while (<IN>) {
+	    next if (m/^#/);
 	    last if (m/^$/) || (m/^methods$/);
 
 	    my %fieldinfo = ();
@@ -204,6 +206,7 @@ while (<IN>) {
 	    $funcprefix = "";
 	    $library = "avformat";
 	    while (<IN>) {
+		next if (m/^#/);
 		last if (m/^$/);
 
 		if (m/^prefix (\w*) (\w*)/) {
@@ -225,12 +228,13 @@ while (<IN>) {
 
 		$type = trim($type);
 
-		if ($type =~ m/protected (.*)/) {
+		if ($type =~ m/internal (.*)/) {
+		    $scope = "internal";
+		    $type = $1;
+		} elsif ($type =~ m/protected (.*)/) {
 		    $scope = "protected";
 		    $type = $1;
-		}
-
-		if ($type =~ m/native (.*)/) {
+		} elsif ($type =~ m/native (.*)/) {
 		    $scope = "native";
 		    $type = $1;
 		}
@@ -255,10 +259,17 @@ while (<IN>) {
 		    $jtype = $cjtype{$type};
 		}
 
+		$rawargs = $args;
+		if ($rawargs =~ m/inout/) {
+		    # need to fix up our pseudo-prototype to the real one
+		    $rawargs =~ s/inout ([^,\)]* \*?)(\w+)/\1*\2/g;
+		    $rawargs =~ s/(\w*)\[\]/*\1/g;
+		}
+
 		$methodinfo{wraptype} = $wraptype;
 		$methodinfo{scope} = $scope;
 		$methodinfo{static} = $static;
-		$methodinfo{rawargs} = $args;
+		$methodinfo{rawargs} = $rawargs;
 		$methodinfo{type} = $type;
 		$methodinfo{ntype} = $ntype;
 		$methodinfo{name} = $name;
@@ -293,9 +304,6 @@ while (<IN>) {
 			# TODO: force jtype to be object
 			$argdata{direction} = "inout";
 			$type = $1;
-
-			# force this to be 'native' in scope since we don't want to expose the holders
-			$methodinfo{scope} = "native";
 		    }
 
 		    $argdata{array} = $array eq "[]";
@@ -323,6 +331,8 @@ while (<IN>) {
 				$ht = "ObjectHolder";
 			    }
 			    $argdata{jntype} = $ht;
+			    $deref = 0;
+			    $jtype = $ht;
 			}
 			$argdata{jtype} = $jtype;
 			$argdata{nname} = "j$name";
@@ -551,6 +561,8 @@ foreach $classinfo (@classes) {
 	my %mi = %{$methodinfo};
 	my @arginfo = @{$mi{args}};
 
+	next if ($mi{scope} eq "internal");
+
 	print "JNIEXPORT $mi{ntype} JNICALL ${nativeprefix}_${class}${npostfix}_$mi{nname}\n";
 	if ($mi{static}) {
 	    print "(JNIEnv *env, jclass jc";
@@ -722,6 +734,8 @@ foreach $classinfo (@classes) {
 	my $name = $mi{pname};
 	my $scope = "";
 
+	next if ($mi{scope} eq "internal");
+
 	if ($mi{static}) {
 	    $scope = "static ".$scope;
 	}
@@ -813,6 +827,7 @@ foreach $classinfo (@classes) {
 	my $scope = $mi{scope};
 
 	next if ($scope eq "native");
+	next if ($scope eq "internal");
 
 	if(!$mi{dofunc}) {
 	    $scope = "";

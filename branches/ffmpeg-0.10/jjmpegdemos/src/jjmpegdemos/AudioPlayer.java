@@ -28,6 +28,8 @@ import au.notzed.jjmpeg.AVStream;
 import au.notzed.jjmpeg.exception.AVDecodingError;
 import au.notzed.jjmpeg.exception.AVIOException;
 import com.jogamp.openal.AL;
+import com.jogamp.openal.ALC;
+import com.jogamp.openal.ALCdevice;
 import com.jogamp.openal.ALException;
 import com.jogamp.openal.ALFactory;
 import com.jogamp.openal.util.ALut;
@@ -66,7 +68,7 @@ public class AudioPlayer {
 		ALut.alutInit();
 		al = ALFactory.getAL();
 		al.alGetError();
-
+		
 		al.alGenBuffers(buffers.length, buffers, 0);
 		if (al.alGetError() != AL.AL_NO_ERROR) {
 			throw new ALException("Unable to generate buffer");
@@ -136,10 +138,8 @@ public class AudioPlayer {
 
 		inital();
 
-		format = AVFormatContext.openInputFile(file);
-		if (format.findStreamInfo() < 0) {
-			return;
-		}
+		format = AVFormatContext.open(file);
+		format.findStreamInfo();
 
 		int nstreams = format.getNBStreams();
 		for (int i = 0; i < nstreams; i++) {
@@ -202,7 +202,7 @@ public class AudioPlayer {
 		} finally {
 		}
 
-		format.closeInputFile();
+		format.closeInput();
 	}
 
 	public static void main(String[] args) {

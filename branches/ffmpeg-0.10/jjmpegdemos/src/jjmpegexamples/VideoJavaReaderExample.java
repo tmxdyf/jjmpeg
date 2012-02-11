@@ -73,10 +73,7 @@ public class VideoJavaReaderExample {
 
 		AVFormatContext format = AVFormatContext.openInputStream(jjfis, name, ifmt);
 
-		if (format.findStreamInfo() < 0) {
-			System.err.println("Could not find stream information");
-			System.exit(1);
-		}
+		format.findStreamInfo();
 
 		// find first video stream
 		AVStream stream = null;
@@ -147,7 +144,7 @@ public class VideoJavaReaderExample {
 			}
 		}
 
-		format.closeInputStream();
+		format.closeInput();
 
 		System.out.printf("Read %d frames\n", count);
 	}

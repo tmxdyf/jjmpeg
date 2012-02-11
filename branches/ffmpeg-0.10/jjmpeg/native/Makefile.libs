@@ -54,8 +54,8 @@ $(jjmpeg_lib): jjmpeg.o
 jjmpeg.o: jjmpeg.c $(JJMPEG_HEADERS) jjmpeg-jni.c jjmpeg-jni.h
 	$(CC) -c -o $@ $(CFLAGS) $(JJMPEG_CFLAGS) $<
 
-jjmpeg-jni.c AVAbstract.java: native-jjmpeg.conf
-	$(SRC)/jjmpeg/genjjmpeg.pl $^ AVAbstract.java jjmpeg-jni.c
+jjmpeg-jni.c AVAbstract.java: native-jjmpeg.conf $(SRC)/jjmpeg/genjjmpeg.pl
+	$(SRC)/jjmpeg/genjjmpeg.pl $< AVAbstract.java jjmpeg-jni.c
 
 $(JJMPEG_HEADERS): $(SRC)/../dist/jjmpeg.jar
 	$(javah) -classpath $< $(JJMPEG_CLASSES)
@@ -90,7 +90,7 @@ jjdvb.o: jjdvb.c $(JJDVB_HEADERS) jjdvb-jni.c jjdvb-jni.h
 	$(CC) -c -o $@ $(CFLAGS) $(JJDVB_CFLAGS) $<
 
 jjdvb-jni.c DVBAbstract.java: native-jjdvb.conf
-	$(SRC)/jjdvb/gendvb.pl $^ DVBAbstract.java jjdvb-jni.c
+	$(SRC)/jjdvb/gendvb.pl $< DVBAbstract.java jjdvb-jni.c
 
 
 $(JJDVB_HEADERS): $(SRC)/../dist/jjmpeg.jar
