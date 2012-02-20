@@ -295,7 +295,6 @@ public class JJVideoScanner {
 		AVFrame frame = readAVFrame();
 
 		if (frame != null) {
-			System.out.printf("scaling height %d\n", height);
 			scale.scale(frame, 0, height, target);
 			return pts;
 		}
