@@ -5,7 +5,7 @@
  * Copyright (c) 2011 Michael Zucchi
  *
  * This file is part of jjmpegdemos.
- * 
+ *
  * jjmpegdemos is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -56,7 +56,11 @@ import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingUtilities;
 
 /**
+ * Simple raw mpeg writer based on ffmpeg examples.
  *
+ * This shows how the base api is used, but JJMediaWriter can be used
+ * to create formats supported by libavformat in a more java-friendly way.
+ * 
  * @author notzed
  */
 public class TitleWriter {
@@ -127,10 +131,10 @@ public class TitleWriter {
 			Rectangle2D rect = font.getStringBounds(title, gg.getFontRenderContext());
 
 			int offSize = (int) Math.round(rect.getWidth());
-			
+
 			int frameCount = (int) ((rect.getWidth() + width) / stepsize);
 
-			int i= 0;			
+			int i= 0;
 			for (i = 0; (width - i*stepsize) > (-offSize); i++) {
 				// Prepare dummy image
 				gg.setColor(Color.black);
@@ -182,7 +186,7 @@ public class TitleWriter {
 			JSpinner height;
 			JSpinner fps;
 			JColorChooser colour;
-			
+
 			@Override
 			public void run() {
 				Object[] msg = new Object[]{"Title", text = new JTextField(),

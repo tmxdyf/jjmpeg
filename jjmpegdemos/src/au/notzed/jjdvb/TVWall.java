@@ -20,31 +20,39 @@ package au.notzed.jjdvb;
 
 import au.notzed.jjdvb.util.DVBChannel;
 import au.notzed.jjdvb.util.DVBChannels;
+import au.notzed.jjmpeg.AVCodecContext;
+import au.notzed.jjmpeg.PixelFormat;
+import au.notzed.jjmpeg.exception.AVException;
 import au.notzed.jjmpeg.exception.AVIOException;
 import au.notzed.jjmpeg.io.JJMediaReader;
-import au.notzed.jjmpeg.mediaplayer.MediaPlayer;
+import java.awt.BorderLayout;
 import java.awt.Graphics2D;
+import java.awt.GridLayout;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.ImageIcon;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 
 /**
- * Uses jjdvb to tune and jjmpeg to display DVB-T station.
+ * Uses jjdvb to tune and jjmpeg to display all the video streams
+ * present in a given bouquet (or whatever it's called).
  * 
  * It takes a long time to start the video output as libavformat
  * is scanning a lot of signal for stream information.
  * 
  * If the kernel buffer overflows, read() returns EOVERFLOW
- * and libavformat just gives up.  This version attempts
- * to buffer frames instead of images: it still doesn't keep up.
- * 
- * Note that this just takes the first audio and video streams
- * it finds, so they wont align!
+ * and libavformat just gives up.  I can't seem to set
+ * the buffer size on the dvr, or maybe it doesn't matter
+ * if the decoding is too slow.  Need to have a separate
+ * frame-only thread, as in au.notzed.jjmpeg.mediaplayer.
  * 
  * The timing isn't very good, but it works ok for a demo.
  * 
@@ -52,90 +60,127 @@ import javax.swing.SwingUtilities;
  * from tzap.
  * @author notzed
  */
-public class TVWindow {
+public class TVWall {
 
 	DVBChannels channels;
 	ReaderThread reader;
 	ViewerThread viewer;
 	JJMediaReader mr;
-	JJMediaReader.JJReaderVideo vs;
 	//
 	JFrame frame;
-	JLabel label;
-	BufferedImage iconImage;
-	BufferedImage image;
+	LinkedList<ViewerThread> viewers = new LinkedList<ViewerThread>();
+	HashMap<Integer, ViewerThread> viewersID = new HashMap<Integer, ViewerThread>();
 
 	public void start() {
 		try {
 			channels = new DVBChannels("../jjmpeg/channels.list");
-			DVBChannel c = channels.getChannels().get(1);
+
 			// open frontend
 			FE fe = FE.create("/dev/dvb/adapter0/frontend0");
 
-			setChannel(fe, c);
+			setChannel(fe, channels.getChannels().get(0));
 
 			// Open demux
 			DMX dmx = DMX.create("/dev/dvb/adapter0/demux0");
 
 			// set filter to take whole stream
 			DMXPESFilterParams filter = DMXPESFilterParams.create();
-			filter.setPid((short) c.vpid);
+			filter.setPid((short) 0x2000);
 			//filter.setPid((short) 0x90a);
 			filter.setInput(DMXInput.DMX_IN_FRONTEND);
 			filter.setOutput(DMXOutput.DMX_OUT_TS_TAP);
-			filter.setPesType(DMXPESType.DMX_PES_OTHER);
-			//filter.setPesType(DMXPESType.DMX_PES_VIDEO0);
+			//filter.setPesType(DMXPESType.DMX_PES_OTHER);
+			filter.setPesType(DMXPESType.DMX_PES_VIDEO0);
 			filter.setFlags(DMXPESFilterParams.DMX_IMMEDIATE_START);
 			dmx.setPESFilter(filter);
-			dmx.addPID((short) c.apid);
 			dmx.setBufferSize(1024 * 1024);
 
-			MediaPlayer mp = new MediaPlayer("/dev/dvb/adapter0/dvr0");
-
-			mp.start();
-			/*			
 			mr = new JJMediaReader("/dev/dvb/adapter0/dvr0");
+
+			reader = new ReaderThread();
+
+			JPanel panel = new JPanel();
+
+			// Find out how many we have.
+			int count = 0;
+			for (JJMediaReader.JJReaderStream rs : mr.getStreams()) {
+				System.out.printf("Stream  %s\n", rs);
+				if (rs.getType() == AVCodecContext.AVMEDIA_TYPE_VIDEO) {
+					JJMediaReader.JJReaderVideo vs = (JJMediaReader.JJReaderVideo) rs;
+					try {
+						vs.open();
+						count++;
+					} catch (Throwable t) {
+					}
+				}
+			}
+
+			if (count == 0) {
+				return;
+			}
+
+			// determine size limits based on
+			int ncols = Math.max(1, (int) Math.sqrt(count));
+			int nrows = count / ncols;
+
+			panel.setLayout(new GridLayout(nrows, ncols));
+
+			int maxWidth = 1920 - 100;
+			int maxHeight = 1200 - 100;
+
+			int width = maxWidth / ncols;
+			int height = maxHeight / nrows;
+
+			width = 400;
+			height = 280;
 			
 			for (JJMediaReader.JJReaderStream rs : mr.getStreams()) {
-			System.out.printf("Stream  %s\n", rs);
+				System.out.printf("Stream  %s\n", rs);
+				if (rs.getType() == AVCodecContext.AVMEDIA_TYPE_VIDEO) {
+					JJMediaReader.JJReaderVideo vs = (JJMediaReader.JJReaderVideo) rs;
+
+					try {
+						//vs.open();
+						vs.setOutputFormat(PixelFormat.PIX_FMT_BGR24, width, height);
+
+						if (buffer.size() == 0) {
+							for (int i = 0; i < 100; i++) {
+								buffer.add(new VideoFrame(-1, vs.createImage()));
+							}
+						}
+
+						BufferedImage iconImage = vs.createImage();
+						JLabel label = new JLabel(new ImageIcon(iconImage));
+
+						ViewerThread vt = new ViewerThread(label, iconImage);
+						viewers.add(vt);
+						viewersID.put(vs.getStream().getIndex(), vt);
+
+						vt.start();
+						panel.add(label);
+					} catch (Throwable t) {
+					}
+				}
 			}
-			
-			vs = mr.openFirstVideoStream();
-			
-			if (vs == null) {
-			System.exit(1);
-			}
-			
-			vs.setOutputFormat(PixelFormat.PIX_FMT_BGR24, vs.getWidth(), vs.getHeight());
-			
-			image = vs.createImage();
-			iconImage = vs.createImage();
-			
-			for (int i = 0; i < 100; i++) {
-			buffer.add(new VideoFrame(-1, vs.createImage()));
-			}
-			
-			viewer = new ViewerThread();
-			viewer.start();
-			
-			
+
+
 			frame = new JFrame("TV");
 			frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-			label = new JLabel(new ImageIcon(iconImage));
 			frame.getContentPane().setLayout(new BorderLayout());
-			frame.getContentPane().add(label, BorderLayout.CENTER);
+			frame.getContentPane().add(panel, BorderLayout.CENTER);
 			frame.pack();
 			frame.setVisible(true);
-			
-			reader = new ReaderThread();
+
 			reader.start();
-			 */
+
+		} catch (AVException ex) {
+			Logger.getLogger(TVWall.class.getName()).log(Level.SEVERE, null, ex);
 		} catch (AVIOException ex) {
-			Logger.getLogger(TVWindow.class.getName()).log(Level.SEVERE, null, ex);
+			Logger.getLogger(TVWall.class.getName()).log(Level.SEVERE, null, ex);
 		} catch (InterruptedException ex) {
-			Logger.getLogger(TVWindow.class.getName()).log(Level.SEVERE, null, ex);
+			Logger.getLogger(TVWall.class.getName()).log(Level.SEVERE, null, ex);
 		} catch (IOException ex) {
-			Logger.getLogger(TVWindow.class.getName()).log(Level.SEVERE, null, ex);
+			Logger.getLogger(TVWall.class.getName()).log(Level.SEVERE, null, ex);
 		}
 	}
 
@@ -177,48 +222,70 @@ public class TVWindow {
 		}
 	}
 	LinkedBlockingQueue<VideoFrame> buffer = new LinkedBlockingQueue<VideoFrame>();
-	LinkedBlockingQueue<VideoFrame> frames = new LinkedBlockingQueue<VideoFrame>();
 
 	class ReaderThread extends Thread {
 
+		public ReaderThread() {
+			super("reader thread");
+		}
 		boolean cancelled = false;
 
 		@Override
 		public void run() {
 			JJMediaReader.JJReaderVideo vr;
 			int dropped = 0;
-			while (!cancelled && (vr = (JJMediaReader.JJReaderVideo) mr.readFrame()) != null) {
-				VideoFrame outFrame = null;
-				try {
-					outFrame = buffer.poll();
+			try {
+				while (!cancelled && (vr = (JJMediaReader.JJReaderVideo) mr.readFrame()) != null) {
+					VideoFrame outFrame = null;
 
-					if (outFrame != null) {
-						vr.getOutputFrame(outFrame.image);
-						outFrame.pts = vr.convertPTS(mr.getPTS());
-						frames.add(outFrame);
-						outFrame = null;
-					} else {
-						// Now, I think because libavcodec probing so far it gets too many images
-						// in the queue and it never ctaches up: this just flushes the queue and helps
-						// things work a bit better.
-						dropped++;
-						if (dropped > 10) {
-							System.out.println("dropped frame, reset buffer");
-							frames.drainTo(buffer);
+					try {
+						outFrame = buffer.poll();
+
+						ViewerThread vt = viewersID.get(vr.getStream().getIndex());
+
+						if (vr == null) {
+							continue;
+						}
+
+						if (outFrame != null) {
+							vr.getOutputFrame(outFrame.image);
+							outFrame.pts = vr.convertPTS(mr.getPTS());
+
+							vt.frames.add(outFrame);
+							outFrame = null;
+						} else {
+							// Now, I think because libavcodec probing so far it gets too many images
+							// in the queue and it never ctaches up: this just flushes the queue and helps
+							// things work a bit better.
+							dropped++;
+							if (dropped > 10) {
+								System.out.println("dropped frame, reset buffer");
+								vt.frames.drainTo(buffer);
+							}
+						}
+					} finally {
+						if (outFrame != null) {
+							buffer.add(outFrame);
 						}
 					}
 
-				} finally {
-					if (outFrame != null) {
-						buffer.add(outFrame);
-					}
 				}
+			} catch (Throwable ex) {
+				ex.printStackTrace();
 			}
 		}
 	}
 
 	class ViewerThread extends Thread {
 
+		LinkedBlockingQueue<VideoFrame> frames = new LinkedBlockingQueue<VideoFrame>();
+		JLabel label;
+		BufferedImage iconImage;
+
+		public ViewerThread(JLabel label, BufferedImage iconImage) {
+			this.iconImage = iconImage;
+			this.label = label;
+		}
 		boolean cancelled = false;
 
 		@Override
@@ -254,7 +321,7 @@ public class TVWindow {
 
 					label.repaint();
 				} catch (InterruptedException ex) {
-					Logger.getLogger(TVWindow.class.getName()).log(Level.SEVERE, null, ex);
+					Logger.getLogger(TVWall.class.getName()).log(Level.SEVERE, null, ex);
 				} finally {
 					if (inFrame != null) {
 						inFrame.pts = -1;
@@ -269,7 +336,7 @@ public class TVWindow {
 		SwingUtilities.invokeLater(new Runnable() {
 
 			public void run() {
-				TVWindow tv = new TVWindow();
+				TVWall tv = new TVWall();
 
 				tv.start();
 			}

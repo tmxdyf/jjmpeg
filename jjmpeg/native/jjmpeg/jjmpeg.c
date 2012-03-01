@@ -281,9 +281,11 @@ static int scaleArray(JNIEnv *env, SwsContext *sws, AVFrame *src, jint srcSliceY
 	struct AVPicture dst;
 	void *cdst;
 	int res = -1;
+	jsize alength = (*env)->GetArrayLength(env, jdst) * dsize;
+	int flength = CALLDL(avpicture_fill)(&dst, NULL, fmt, width, height);
 
-	if ((*env)->GetArrayLength(env, jdst) * dsize < CALLDL(avpicture_fill)(&dst, NULL, fmt, width, height)) {
-		fprintf(stderr, "array too small for scaleIntArray");
+	if (alength < flength) {
+		fprintf(stderr, "array too small for scaleArray, have %d require %d\n", (int)alength, flength);
 		fflush(stderr);
 		// FIXME: exception
 		return -1;
