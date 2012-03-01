@@ -70,7 +70,6 @@ public class MediaPlayer {
 
 	public MediaPlayer(String name) throws IOException {
 
-		//reader = new AVReader("/home/notzed/Videos/Invader Zim - 1 - 01 - The Nightmare Begins.avi");
 		reader = new MediaReader(name);
 		playert = new MediaPlayerThread(reader);
 		reader.createDefaultDecoders(playert);

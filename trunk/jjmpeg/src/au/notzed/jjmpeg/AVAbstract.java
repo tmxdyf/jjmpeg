@@ -396,6 +396,7 @@ abstract class AVInputFormatNativeAbstract extends AVNative {
 	static native String getName(ByteBuffer p);
 	static native String getLongName(ByteBuffer p);
 	// Native Methods
+	static native ByteBuffer find_input_format(String short_name);
 }
 
 abstract class AVInputFormatAbstract extends AVObject {
@@ -407,6 +408,9 @@ abstract class AVInputFormatAbstract extends AVObject {
 		return AVInputFormatNativeAbstract.getLongName(n.p);
 	}
 	// Public Methods
+	static public AVInputFormat findInputFormat(String short_name) {
+		return AVInputFormat.create(AVInputFormatNativeAbstract.find_input_format(short_name));
+	}
 }
 abstract class AVOutputFormatNativeAbstract extends AVNative {
 	protected AVOutputFormatNativeAbstract(AVObject o, ByteBuffer p) {

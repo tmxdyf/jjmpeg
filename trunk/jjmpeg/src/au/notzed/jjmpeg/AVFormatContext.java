@@ -54,7 +54,7 @@ public class AVFormatContext extends AVFormatContextAbstract {
 	}
 
 	// TODO: this stuff has been deprecated in newer libavformat
-	static AVFormatContext openInputFile(String name, AVInputFormat fmt, int buf_size, AVFormatParameters ap) throws AVIOException {
+	public static AVFormatContext openInputFile(String name, AVInputFormat fmt, int buf_size, AVFormatParameters ap) throws AVIOException {
 		ByteBuffer res = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder());
 		ByteBuffer context;
 

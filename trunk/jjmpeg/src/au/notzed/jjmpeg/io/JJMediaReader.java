@@ -18,18 +18,7 @@
  */
 package au.notzed.jjmpeg.io;
 
-import au.notzed.jjmpeg.AVAudioPacket;
-import au.notzed.jjmpeg.AVCodec;
-import au.notzed.jjmpeg.AVCodecContext;
-import au.notzed.jjmpeg.AVFormatContext;
-import au.notzed.jjmpeg.AVFrame;
-import au.notzed.jjmpeg.AVPacket;
-import au.notzed.jjmpeg.AVRational;
-import au.notzed.jjmpeg.AVSamples;
-import au.notzed.jjmpeg.AVStream;
-import au.notzed.jjmpeg.PixelFormat;
-import au.notzed.jjmpeg.SampleFormat;
-import au.notzed.jjmpeg.SwsContext;
+import au.notzed.jjmpeg.*;
 import au.notzed.jjmpeg.exception.AVDecodingError;
 import au.notzed.jjmpeg.exception.AVIOException;
 import au.notzed.jjmpeg.exception.AVInvalidCodecException;
@@ -42,61 +31,90 @@ import java.util.List;
 
 /**
  * High level interface for scanning audio and video frames.
- * 
+ *
  * TODO: handle all frames.
+ *
  * @author notzed
  */
 public class JJMediaReader {
 
-	static final boolean dump = false;
+	static final boolean dump = true;
 	LinkedList<JJReaderStream> streams = new LinkedList<JJReaderStream>();
 	HashMap<Integer, JJReaderStream> streamsByID = new HashMap<Integer, JJReaderStream>();
 	AVFormatContext format;
 	private AVPacket packet;
 	private boolean freePacket = false;
+	private boolean autoScan = false;
+	HashMap<Integer, JJReaderStream> discovered = new HashMap<Integer, JJReaderStream>();
 	//
 	long seekid = -1;
+	long seekms = -1;
 	//
 
+	/**
+	 * Create a new media reader, will scan the file for available streams.
+	 *
+	 * @param name
+	 * @throws AVInvalidStreamException
+	 * @throws AVIOException
+	 * @throws AVInvalidCodecException
+	 */
 	public JJMediaReader(String name) throws AVInvalidStreamException, AVIOException, AVInvalidCodecException {
-		//AVFormatContext.registerAll();
-		format = AVFormatContext.openInputFile(name);
+		this(name, null, true);
+	}
 
-		if (format.findStreamInfo() < 0) {
-			throw new AVInvalidStreamException("No streams found");
-		}
+	/**
+	 *
+	 * @param name
+	 * @param scanStreams if true, scan for streams on open, if false, then streams are discovered as they are read. This is broken, and probably will never
+	 * work.
+	 * @throws AVInvalidStreamException
+	 * @throws AVIOException
+	 * @throws AVInvalidCodecException
+	 * @deprecated This is experimental, and I might not keep it
+	 */
+	@Deprecated
+	public JJMediaReader(String name, AVInputFormat fmt, boolean scanStreams) throws AVInvalidStreamException, AVIOException, AVInvalidCodecException {
+		format = AVFormatContext.openInputFile(name, fmt, 0, null);
 
-		// find first video/audio stream
-		AVStream vstream = null;
-		AVStream astream = null;
-		int nstreams = format.getNBStreams();
-		for (int i = 0; i < nstreams && (vstream == null | astream == null); i++) {
-			AVStream s = format.getStreamAt(i);
-			AVCodecContext cc = s.getCodec();
-			switch (cc.getCodecType()) {
-				case AVCodecContext.AVMEDIA_TYPE_VIDEO:
-					JJReaderVideo vs = new JJReaderVideo(s);
-					streams.add(vs);
-					streamsByID.put(s.getIndex(), vs);
-					break;
-				case AVCodecContext.AVMEDIA_TYPE_AUDIO:
-					JJReaderAudio as = new JJReaderAudio(s);
-					streams.add(as);
-					streamsByID.put(s.getIndex(), as);
-					break;
+		if (scanStreams) {
+			if (format.findStreamInfo() < 0) {
+				throw new AVInvalidStreamException("No streams found");
 			}
-		}
 
-		if (streams.isEmpty()) {
-			throw new AVInvalidStreamException("No audio or video streams found");
-		}
+			//  find all streams
+			AVStream vstream = null;
+			AVStream astream = null;
+			int nstreams = format.getNBStreams();
+			for (int i = 0; i < nstreams && (vstream == null | astream == null); i++) {
+				AVStream s = format.getStreamAt(i);
+				AVCodecContext cc = s.getCodec();
+				switch (cc.getCodecType()) {
+					case AVCodecContext.AVMEDIA_TYPE_VIDEO:
+						JJReaderVideo vs = new JJReaderVideo(s);
+						streams.add(vs);
+						streamsByID.put(s.getIndex(), vs);
+						break;
+					case AVCodecContext.AVMEDIA_TYPE_AUDIO:
+						JJReaderAudio as = new JJReaderAudio(s);
+						streams.add(as);
+						streamsByID.put(s.getIndex(), as);
+						break;
+				}
+			}
 
+			if (streams.isEmpty()) {
+				throw new AVInvalidStreamException("No audio or video streams found");
+			}
+		} else {
+			autoScan = true;
+		}
 		packet = AVPacket.create();
 	}
 
 	/**
 	 * Opens the first video and audio stream found
-	 * 
+	 *
 	 * TODO: could open the first one we know how to decode
 	 */
 	public void openDefaultStreams() throws AVInvalidCodecException, AVIOException {
@@ -150,27 +168,9 @@ public class JJMediaReader {
 	}
 
 	/**
-	 * Set output rendered size.
-	 * 
-	 * If this is changed, must re-call createImage(), getOutputFrame(), etc.
-	 * @param swidth
-	 * @param sheight 
-	 */
-	/*
-	public void setSize(int swidth, int sheight) {
-	oframe.dispose();
-	scale.dispose();
-	this.swidth = swidth;
-	this.sheight = sheight;
-	
-	oframe = AVFrame.create(PixelFormat.PIX_FMT_BGR24, swidth, sheight);
-	scale = SwsContext.create(width, height, fmt, swidth, sheight, PixelFormat.PIX_FMT_BGR24, SwsContext.SWS_BILINEAR);
-	}
-	 * 
-	 */
-	/**
-	 * Get raw format for images.
-	 * @return 
+	 * Get source AVFormatContext.
+	 *
+	 * @return
 	 */
 	public AVFormatContext getFormat() {
 		return format;
@@ -179,18 +179,114 @@ public class JJMediaReader {
 
 	/**
 	 * Retrieve (calculated) pts of the last frame decoded.
-	 * 
+	 *
 	 * Well be -1 at EOF
-	 * @return 
+	 *
+	 * @return
 	 */
 	public long getPTS() {
 		return pts;
 	}
 
 	/**
-	 * Reads and decodes packets until data is ready in one
-	 * of the opened streams.
-	 * @return 
+	 * call flushBuffers() on all opened streams codecs.
+	 *
+	 * e.g. after a seek.
+	 */
+	public void flushCodec() {
+		for (JJReaderStream rs : streams) {
+			rs.flushCodec();
+		}
+	}
+
+	/**
+	 * Attempt to seek to the nearest millisecond.
+	 *
+	 * The next frame will have pts (in milliseconds) >= stamp.
+	 *
+	 * @param stamp
+	 * @throws AVIOException
+	 */
+	public void seekMS(long stamp) throws AVIOException {
+		int res;
+
+		res = format.seekFile(-1, 0, stamp * 1000, stamp * 1000, 0);
+		if (res < 0) {
+			throw new AVIOException(res, "Cannot seek");
+		}
+
+		seekms = stamp;
+
+		flushCodec();
+	}
+
+	/**
+	 * Seek in stream units
+	 *
+	 * The next frame will have pts >= stamp
+	 *
+	 * @param stamp
+	 * @throws AVIOException
+	 */
+	public void seek(long stamp) throws AVIOException {
+		int res;
+
+		res = format.seekFile(-1, 0, stamp, stamp, 0);
+		if (res < 0) {
+			throw new AVIOException(res, "Cannot seek");
+		}
+
+		seekid = stamp;
+
+		flushCodec();
+	}
+
+	/**
+	 * This is invoked by readFrame when a new stream is discovered, if and only if JJMediaReader was created with scanStreams == false.
+	 *
+	 * If the reader wishes to process the stream in question, it should create and return a new valid and opened JJReaderStream, or return null if it is not
+	 * interested.
+	 *
+	 * By default all audio/video streams are added and opened for processing.
+	 *
+	 * Experimental auto-scan stuff
+	 *
+	 * @param stream
+	 * @param cc
+	 * @return
+	 */
+	protected JJReaderStream addStream(AVStream stream) {
+		AVCodecContext cc = stream.getCodec();
+		JJReaderStream rs = null;
+
+		if (cc != null) {
+			try {
+				switch (cc.getCodecType()) {
+					case AVCodecContext.AVMEDIA_TYPE_AUDIO:
+						System.out.println("opening discovered audio stream\n");
+						rs = new JJReaderAudio(stream);
+						rs.open();
+						break;
+					case AVCodecContext.AVMEDIA_TYPE_VIDEO:
+						System.out.println("opening discovered video stream\n");
+						rs = new JJReaderVideo(stream);
+						rs.open();
+						break;
+				}
+			} catch (Exception x) {
+				if (rs != null) {
+					rs.dispose();
+				}
+				rs = null;
+			}
+		}
+		return rs;
+	}
+
+	/**
+	 * Reads and decodes packets until data is ready in one of the opened streams.
+	 *
+	 * @return
 	 */
 	public JJReaderStream readFrame() {
 
@@ -202,8 +298,24 @@ public class JJMediaReader {
 		while (format.readFrame(packet) >= 0) {
 			//System.out.println("read packet");
 			try {
-				JJReaderStream ms = streamsByID.get(packet.getStreamIndex());
+				int index = packet.getStreamIndex();
+				JJReaderStream ms = streamsByID.get(index);
 
+				// Experimental auto-scan stuff
+				if (autoScan && ms == null) {
+					ms = discovered.get(index);
+					if (ms == null) {
+						AVStream stream = format.getStreamAt(index);
+						ms = addStream(stream);
+						if (ms != null) {
+							streams.add(ms);
+							streamsByID.put(index, ms);
+							discovered.put(index, ms);
+						} else {
+							discovered.put(index, new JJReaderUnknown(stream));
+						}
+					}
+				}
 				if (ms != null) {
 					if (ms.decode(packet)) {
 						pts = packet.getDTS();
@@ -212,8 +324,12 @@ public class JJMediaReader {
 						if (seekid != -1
 								&& pts < seekid) {
 							continue;
+						} else if (seekms != -1
+								&& ms.convertPTS(pts) < seekms) {
+							continue;
 						}
 						seekid = -1;
+						seekms = -1;
 						freePacket = true;
 						return ms;
 					}
@@ -230,53 +346,13 @@ public class JJMediaReader {
 		return null;
 	}
 
-	/**
-	 * Attempt to seek to the nearest millisecond.
-	 * 
-	 * The next frame read should match the stamp.
-	 * 
-	 * This only seeks to key frames
-	 * 
-	 * TODO: unimplemented
-	 * @param stamp
-	 * @throws AVIOException 
-	 */
-	public void seekMS(long stamp) throws AVIOException {
-		int res;
-
-		res = format.seekFile(-1, 0, stamp * 1000, stamp * 1000, 0);
-		if (res < 0) {
-			throw new AVIOException(res, "Cannot seek");
-		}
-
-		//vcontext.flushBuffers();
-	}
-
-	/**
-	 * Seek in stream units
-	 * 
-	 * UNIMPLEMENTED
-	 * @param stamp
-	 * @throws AVIOException 
-	 */
-	public void seek(long stamp) throws AVIOException {
-		int res;
-
-		//res = format.seekFile(videoStream, 0, stamp, stamp, 0);
-		//if (res < 0) {
-		//	throw new AVIOException(res, "Cannot seek");
-		//}
-
-		//seekid = stamp;
-		//vcontext.flushBuffers();
-	}
-
 	public abstract class JJReaderStream {
 
 		AVStream stream;
 		AVCodecContext c;
 		int streamID = -1;
-		AVCodec codec;
+		protected AVCodec codec;
+		protected boolean opened = false;
 		// timebase
 		int tb_Num;
 		int tb_Den;
@@ -317,13 +393,18 @@ public class JJMediaReader {
 			return c;
 		}
 
+		public AVStream getStream() {
+			return stream;
+		}
+
 		public AVCodec getCodec() {
 			return codec;
 		}
 
 		/**
 		 * Retrieve duration of sequence, in milliseconds.
-		 * @return 
+		 *
+		 * @return
 		 */
 		public long getDurationMS() {
 			return durationms;
@@ -331,50 +412,137 @@ public class JJMediaReader {
 
 		/**
 		 * Get duration in timebase units (i.e. frames?)
-		 * @return 
+		 *
+		 * @return
 		 */
 		public long getDuration() {
 			return duration;
 		}
 
+		public boolean isOpened() {
+			return opened;
+		}
+
 		/**
-		 * Convert the 'pts' provided to milliseconds relative to the start of the
-		 * stream.
+		 * Convert the 'pts' provided to milliseconds relative to the start of the stream.
+		 *
 		 * @param pts
-		 * @return 
+		 * @return
 		 */
 		public long convertPTS(long pts) {
 			return AVRational.starSlash(pts * 1000, tb_Num, tb_Den) - startms;
 		}
 
 		/**
-		 * Decode a packet.  Returns true if data is now ready.
-		 * 
+		 * Decode a packet. Returns true if data is now ready.
+		 *
 		 * It is ok to call this on an unopened stream: return false.
+		 *
 		 * @param packet
-		 * @return 
+		 * @return
 		 */
 		abstract public boolean decode(AVPacket packet) throws AVDecodingError;
 
 		/**
 		 * Retreive the AVMEDIA_TYPE_* for this stream.
-		 * @return 
+		 *
+		 * @return
 		 */
 		abstract public int getType();
+
+		void flushCodec() {
+			if (opened) {
+				c.flushBuffers();
+			}
+		}
+
+		/**
+		 * Attempt to seek relative to this stream, to the nearest millisecond.
+		 *
+		 * The next frame will have pts (in milliseconds) >= stamp.
+		 *
+		 * This doesn't seem to work very well, use JJMediaReader.seekMS()
+		 *
+		 * @param stamp
+		 * @throws AVIOException
+		 */
+		public void seekMS(long stamp) throws AVIOException {
+			int res;
+
+			res = format.seekFile(stream.getIndex(), 0, stamp * 1000, stamp * 1000, 0);
+			if (res < 0) {
+				throw new AVIOException(res, "Cannot seek");
+			}
+
+			seekms = stamp;
+
+			c.flushBuffers();
+		}
+
+		/**
+		 * Seek relative to this stream, in stream units
+		 *
+		 * The next frame will have pts >= stamp
+		 *
+		 * This doesn't seem to work very well, use JJMediaReader.seek()
+		 *
+		 * @param stamp
+		 * @throws AVIOException
+		 */
+		public void seek(long stamp) throws AVIOException {
+			int res;
+
+			res = format.seekFile(stream.getIndex(), 0, stamp, stamp, 0);
+			if (res < 0) {
+				throw new AVIOException(res, "Cannot seek");
+			}
+
+			seekid = stamp;
+			c.flushBuffers();
+		}
+	}
+
+	public class JJReaderUnknown extends JJReaderStream {
+
+		public JJReaderUnknown(AVStream stream) {
+			super(stream);
+		}
+
+		@Override
+		public boolean decode(AVPacket packet) throws AVDecodingError {
+			throw new UnsupportedOperationException("Not supported yet.");
+		}
+
+		@Override
+		public int getType() {
+			return AVCodecContext.AVMEDIA_TYPE_UNKNOWN;
+		}
+
+		@Override
+		void flushCodec() {
+		}
 	}
 
 	public class JJReaderVideo extends JJReaderStream {
 
-		int swidth;
-		int sheight;
-		SwsContext scale;
+		// scaled output
+		int owidth;
+		int oheight;
+		SwsContext oscale;
+		PixelFormat ofmt;
+		AVFrame oframe;
+		// icon scaled output
+		int cwidth;
+		int cheight;
+		SwsContext cscale;
+		PixelFormat cfmt;
+		AVFrame cframe;
+		// format info
 		int height;
 		int width;
 		PixelFormat fmt;
 		AVFrame iframe;
 		//
-		PixelFormat ofmt;
-		AVFrame oframe;
 		/**
 		 * Is the scaled/converted frame stale
 		 */
@@ -402,8 +570,13 @@ public class JJMediaReader {
 				throw new AVInvalidCodecException("Unable to decode video stream");
 			}
 
+			if (dump) {
+				System.out.println(" video codec: " + codec.getName());
+			}
+
 			c.open(codec);
 
+			opened = true;
 
 			iframe = AVFrame.create();
 
@@ -411,8 +584,8 @@ public class JJMediaReader {
 			width = c.getWidth();
 			fmt = c.getPixFmt();
 
-			swidth = width;
-			sheight = height;
+			owidth = width;
+			oheight = height;
 		}
 
 		@Override
@@ -421,9 +594,14 @@ public class JJMediaReader {
 
 			iframe.dispose();
 
-			if (scale != null) {
-				scale.dispose();
+			if (oscale != null) {
+				oscale.dispose();
 				oframe.dispose();
+			}
+
+			if (cscale != null) {
+				cscale.dispose();
+				cframe.dispose();
 			}
 		}
 
@@ -459,41 +637,122 @@ public class JJMediaReader {
 
 		/**
 		 * Set the output format for use with getOutputFrame()
-		 * 
-		 * If using the BufferedImage version of getOutputFrame, currently ofmt
-		 * must be PIX_FMT_BGR24.
+		 *
+		 * If using the BufferedImage version of getOutputFrame, currently ofmt must be PIX_FMT_BGR24 or PIX_FMT_GRAY8 although if one is using the raw version
+		 * of getOutputFrame() it may be any format.
+		 *
+		 * Invoking this will invalidate any images previously made from createImage() (insofar as it pertains to using them with getOutputFrame(image).)
+		 *
 		 * @param ofmt
-		 * @param swidth
-		 * @param sheight 
+		 * @param owidth
+		 * @param oheight
 		 */
-		public void setOutputFormat(PixelFormat ofmt, int swidth, int sheight) {
-			if (scale != null) {
-				scale.dispose();
+		public void setOutputFormat(PixelFormat ofmt, int owidth, int oheight) {
+			if (oscale != null) {
+				oscale.dispose();
 				oframe.dispose();
 			}
-			this.swidth = swidth;
-			this.sheight = sheight;
+			this.owidth = owidth;
+			this.oheight = oheight;
 			this.ofmt = ofmt;
-			oframe = AVFrame.create(ofmt, swidth, sheight);
-			scale = SwsContext.create(width, height, fmt, swidth, sheight, ofmt, SwsContext.SWS_BILINEAR);
+			oframe = AVFrame.create(ofmt, owidth, oheight);
+			oscale = SwsContext.create(width, height, fmt, owidth, oheight, ofmt, SwsContext.SWS_BILINEAR);
+		}
+
+		/**
+		 * Set the output size for generating an icon with getOutputIcon().
+		 *
+		 * This will preserve the aspect ratio and generate an icon within the given bounds.
+		 *
+		 * TODO: it only assumes square pixels at the moment.
+		 *
+		 * @param maxwidth
+		 * @param maxheight
+		 */
+		public void setIconSize(int maxwidth, int maxheight) {
+			if (oscale != null) {
+				oscale.dispose();
+				oframe.dispose();
+			}
+			float wfactor = width / (float) maxwidth;
+			float hfactor = height / (float) maxheight;
+
+			if (wfactor < hfactor) {
+				cwidth = (int) (maxheight * (long) width / height);
+				cheight = maxheight;
+			} else {
+				cheight = (int) (maxwidth * (long) height / width);
+				cwidth = maxwidth;
+			}
+			cfmt = PixelFormat.PIX_FMT_BGR24;
+			cframe = AVFrame.create(cfmt, cwidth, cheight);
+			cscale = SwsContext.create(width, height, fmt, cwidth, cheight, cfmt, SwsContext.SWS_BILINEAR);
+		}
+
+		/**
+		 * Determine the BufferedImage type for a pixel format
+		 *
+		 * @param fmt
+		 * @return
+		 */
+		public int formatToType(PixelFormat fmt) {
+			switch (fmt) {
+				case PIX_FMT_BGR24:
+					return BufferedImage.TYPE_3BYTE_BGR;
+				case PIX_FMT_GRAY8:
+					return BufferedImage.TYPE_BYTE_GRAY;
+			}
+			throw new RuntimeException("Unsupported Java image conversion format");
+		}
+
+		/**
+		 * Determine PixelFormat for a BufferedImage type
+		 *
+		 * @param type
+		 * @return
+		 */
+		public PixelFormat typeToFormat(int type) {
+			switch (type) {
+				case BufferedImage.TYPE_3BYTE_BGR:
+					return PixelFormat.PIX_FMT_BGR24;
+				case BufferedImage.TYPE_BYTE_GRAY:
+					return PixelFormat.PIX_FMT_GRAY8;
+			}
+			throw new RuntimeException("Unsupported Java image conversion format");
+		}
+
+		protected boolean canConvert(PixelFormat fmt) {
+			return fmt == PixelFormat.PIX_FMT_BGR24
+					| fmt == PixelFormat.PIX_FMT_GRAY8;
+		}
+
+		protected boolean canConvert(int type) {
+			return type == BufferedImage.TYPE_3BYTE_BGR
+					| type == BufferedImage.TYPE_BYTE_GRAY;
 		}
 
 		/**
 		 * Allocate an image suitable for getOutputFrame()
-		 * @return 
+		 *
+		 * @return
 		 */
 		public BufferedImage createImage() {
-			return new BufferedImage(swidth, sheight, BufferedImage.TYPE_3BYTE_BGR);
+			if (ofmt == null) {
+				setOutputFormat(PixelFormat.PIX_FMT_BGR24, width, height);
+			}
+
+			return new BufferedImage(owidth, oheight, formatToType(ofmt));
 		}
 
 		/**
 		 * Retrieve the scaled frame, or just the raw frame if no output format set
-		 * @return 
+		 *
+		 * @return
 		 */
 		public AVFrame getOutputFrame() {
 			if (oframe != null) {
 				if (stale) {
-					scale.scale(iframe, 0, height, oframe);
+					oscale.scale(iframe, 0, height, oframe);
 					stale = false;
 				}
 
@@ -504,27 +763,58 @@ public class JJMediaReader {
 
 		/**
 		 * Get the output frame into a buffered image.
-		 * TODO: only works with FIX_FMT_BGR24!
+		 *
+		 * dst must match setOutputFormat() type.
+		 *
 		 * @param dst
 		 * @return dst
 		 */
 		public BufferedImage getOutputFrame(BufferedImage dst) {
-			assert (dst.getType() == BufferedImage.TYPE_3BYTE_BGR);
-
 			if (ofmt == null) {
-				setOutputFormat(PixelFormat.PIX_FMT_BGR24, width, height);
+				setOutputFormat(typeToFormat(dst.getType()), width, height);
 			}
 
-			// Scale directly to target image
-			byte[] data = ((DataBufferByte) dst.getRaster().getDataBuffer()).getData();
-			scale.scale(iframe, 0, height, data);
-			
+			// TODO: for 0.10 version, this isn't required. but for 0.7 it will add palette info
+			if (ofmt == PixelFormat.PIX_FMT_GRAY8) {
+				// Scale to oframe, then copy across
+				AVFrame frame = getOutputFrame();
+				AVPlane splane = frame.getPlaneAt(0, ofmt, owidth, oheight);
+				byte[] data = ((DataBufferByte) dst.getRaster().getDataBuffer()).getData();
+
+				splane.data.get(data, 0, Math.min(data.length, splane.data.capacity()));
+				splane.data.rewind();
+			} else {
+				// Scale directly to target image
+				byte[] data = ((DataBufferByte) dst.getRaster().getDataBuffer()).getData();
+				oscale.scale(iframe, 0, height, data);
+			}
+
 			return dst;
 		}
 
 		/**
+		 * Allocates an icon and scales the output frame to it.
+		 *
+		 * Icon size must already have been set.
+		 *
+		 * @return
+		 */
+		public BufferedImage getOutputIcon() throws IllegalStateException {
+			if (cframe == null) {
+				throw new IllegalStateException("Icon size not set");
+			}
+
+			BufferedImage icon = new BufferedImage(cwidth, cheight, BufferedImage.TYPE_3BYTE_BGR);
+			byte[] data = ((DataBufferByte) icon.getRaster().getDataBuffer()).getData();
+			cscale.scale(iframe, 0, height, data);
+
+			return icon;
+		}
+
+		/**
 		 * Retrieve the decoded frame.
-		 * @return 
+		 *
+		 * @return
 		 */
 		public AVFrame getFrame() {
 			return iframe;
@@ -554,6 +844,8 @@ public class JJMediaReader {
 
 			c.open(codec);
 
+			opened = true;
+
 			System.out.println(" codec : " + codec.getName());
 			System.out.println(" sampleformat : " + c.getSampleFmt());
 			System.out.println(" samplerate : " + c.getSampleRate());
@@ -582,8 +874,7 @@ public class JJMediaReader {
 		}
 
 		/**
-		 * Retrieve the next block of decoded samples: this will return
-		 * a new AVSamples until there are no more samples left.
+		 * Retrieve the next block of decoded samples: this will return a new AVSamples until there are no more samples left.
 		 */
 		public AVSamples getSamples() throws AVDecodingError {
 			while (apacket.getSize() > 0) {

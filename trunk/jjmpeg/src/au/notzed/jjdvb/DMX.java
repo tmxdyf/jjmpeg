@@ -46,10 +46,18 @@ public class DMX extends DMXAbstract {
 		super.finalize();
 		_free(p);
 	}
+	// TODO: use the real numbers
 	static final int DMX_START = 0;
 	static final int DMX_STOP = 1;
 	static final int DMX_SET_FILTER = 2;
 	static final int DMX_SET_PES_FILTER = 3;
+	static final int DMX_SET_BUFFER_SIZE = 4;
+	//static final int DMX_GET_PES_PIDS = 5;//         _IOR('o', 47, __u16[5])
+	//static final int DMX_GET_CAPS = 6;//             _IOR('o', 48, dmx_caps_t)
+	//static final int DMX_SET_SOURCE = 7;//           _IOW('o', 49, dmx_source_t)
+	//static final int DMX_GET_STC = 8;//              _IOWR('o', 50, struct dmx_stc)
+	static final int DMX_ADD_PID = 9;//             _IOW('o', 51, __u16)
+	static final int DMX_REMOVE_PID = 10;//           _IOW('o', 52, __u16)
 
 	static native ByteBuffer dmx_open(String path);
 
@@ -57,7 +65,9 @@ public class DMX extends DMXAbstract {
 
 	native int dmx_ioctl(int id);
 
-	native int dmx_ioctl(int id, ByteBuffer bb);
+	native int dmx_ioctl(int id, long v);
+
+	native int dmx_ioctl(int id, ByteBuffer Sbb);
 
 	public void close() {
 		dmx_close();
@@ -72,6 +82,24 @@ public class DMX extends DMXAbstract {
 	}
 
 	public void setPESFilter(DMXPESFilterParams filter) {
-		dmx_ioctl(DMX_SET_PES_FILTER, filter.p);
+		if (dmx_ioctl(DMX_SET_PES_FILTER, filter.p) != 0) {
+			System.err.println("setPESFilter failed");
+		}
+	}
+
+	public void addPID(short pid) {
+		dmx_ioctl(DMX_ADD_PID, pid);
+	}
+
+	public void setBufferSize(long size) {
+		int res;
+
+		stop();
+		res = dmx_ioctl(DMX_SET_BUFFER_SIZE, size);
+		start();
+
+		if ((res) != 0) {
+			System.err.println("setBufferSize failed " + res);
+		}
 	}
 }
