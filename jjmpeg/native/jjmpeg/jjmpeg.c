@@ -26,17 +26,6 @@
 //#define d(x) x; fflush(stdout)
 #define d(x)
 
-/* Most of these can be moved to the .conf file, using the 'internal' qualifier */
-static int (*dav_open_input_file)(AVFormatContext **ic_ptr, const char *filename,
-				  AVInputFormat *fmt,
-				  int buf_size,
-				  AVFormatParameters *ap);
-
-static int (*dav_open_input_stream)(AVFormatContext **ic_ptr,
-				    AVIOContext *pb, const char *filename,
-				    AVInputFormat *fmt,
-				    AVFormatParameters *ap);
-
 static int (*davcodec_encode_video)(AVCodecContext *avctx, uint8_t *buf, int buf_size, AVFrame *pict);
 static int (*davio_open)(AVIOContext **s, const char *url, int flags);
 
@@ -77,8 +66,6 @@ static int init_local(JNIEnv *env) {
 	DLOPEN(avformat_lib, "avformat", LIBAVFORMAT_VERSION_MAJOR);
 	DLOPEN(swscale_lib, "swscale", LIBSWSCALE_VERSION_MAJOR);
 
-	MAPDL(av_open_input_file, avformat_lib);
-	MAPDL(av_open_input_stream, avformat_lib);
 	MAPDL(avio_alloc_context, avformat_lib);
 	MAPDL(avio_open, avformat_lib);
 	MAPDL(av_probe_input_buffer, avformat_lib);
@@ -167,49 +154,6 @@ JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_AVNative_getVersions
 
 
 /* ********************************************************************** */
-
-JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVFormatContextNative_openInputFile
-(JNIEnv *env, jclass jc, jstring jname, jobject jfmt, jint buf_size, jobject jap, jobject jerror_buf) {
-	const char *name = STR(jname);
-	AVFormatContext *context;
-	int *resp = ADDR(jerror_buf);
-	AVInputFormat *fmt = ADDR(jfmt);
-	AVFormatParameters *ap = ADDR(jap);
-	jobject res = NULL;
-
-	resp[0] = CALLDL(av_open_input_file)(&context, name, fmt, buf_size, ap);
-
-	if (resp[0] == 0) {
-		res = WRAP(context, sizeof(*context));
-	}
-
-	RSTR(jname, name);
-
-	return res;
-}
-
-JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVFormatContextNative_openInputStream
-(JNIEnv *env, jclass jc, jobject jpb, jstring jname, jobject jfmt, jobject jap, jobject jerror_buf) {
-	AVIOContext *pb = ADDR(jpb);
-	const char *name = STR(jname);
-	AVFormatContext *context = NULL;
-	int *resp = ADDR(jerror_buf);
-	AVInputFormat *fmt = ADDR(jfmt);
-	AVFormatParameters *ap = ADDR(jap);
-	jobject res = NULL;
-
-	d(printf("open input stream  pb=%p name=%s fmt=%p ap=%p\n", pb, name, fmt, ap));
-	resp[0] = CALLDL(av_open_input_stream)(&context, pb, name, fmt, ap);
-	d(printf("open input stream = %d\n", resp[0]));
-
-	if (resp[0] == 0) {
-		res = WRAP(context, sizeof(*context));
-	}
-
-	RSTR(jname, name);
-
-	return res;
-}
 
 JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_AVFormatContextNative_findStreamInfo
 (JNIEnv *env, jclass jc, jobject jptr, jobjectArray joptions) {
