@@ -28,7 +28,7 @@ import java.util.logging.Logger;
 
 /**
  * This tries to read from a Java file and feed it into ffmpeg.
- * 
+ *
  * @author notzed
  */
 public class VideoJavaReaderExample {
@@ -71,7 +71,8 @@ public class VideoJavaReaderExample {
 			System.exit(1);
 		}
 
-		AVFormatContext format = AVFormatContext.openInputStream(jjfis, name, ifmt);
+		AVFormatContext format = AVFormatContext.allocContext();
+		format.openInput(name, ifmt);
 
 		format.findStreamInfo();
 

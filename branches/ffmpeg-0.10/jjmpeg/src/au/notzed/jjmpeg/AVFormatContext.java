@@ -7,7 +7,7 @@
  * it under the terms of the GNU Lesser General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * jjmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -20,7 +20,6 @@ package au.notzed.jjmpeg;
 
 import au.notzed.jjmpeg.exception.AVIOException;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 
 /**
  *
@@ -57,6 +56,24 @@ public class AVFormatContext extends AVFormatContextAbstract {
 		return create((ByteBuffer) obj.value, 3);
 	}
 
+	/**
+	 * This form allows the AVIOContext to be set manually.
+	 *
+	 * TODO: I don't pass the dictionary because for some inane reason the api
+	 * is an in/out parameter ...
+	 * @param name
+	 * @param fmt
+	 * @throws AVIOException
+	 */
+	public void openInput(String name, AVInputFormat fmt) throws AVIOException {
+		ObjectHolder obj = new ObjectHolder(this.n.p);
+		int err = AVFormatContextNative.open_input(obj, name, fmt != null ? fmt.n.p : null, null);
+
+		if (err != 0) {
+			throw new AVIOException(err, "Opening: " + name);
+		}
+	}
+
 	public void findStreamInfo(AVDictionary[] options) throws AVIOException {
 		ByteBuffer[] noptions = null;
 
@@ -89,55 +106,6 @@ public class AVFormatContext extends AVFormatContextAbstract {
 		if (res < 0) {
 			throw new AVIOException("error writing frame");
 		}
-	}
-
-	@Deprecated
-	static public AVFormatContext openInputFile(String name) throws AVIOException {
-		return openInputFile(name, null, 0, null);
-	}
-
-	@Deprecated
-	static public AVFormatContext openInputStream(AVIOContext pb, String name, AVInputFormat fmt) {
-		return openInputStream(pb, name, fmt, null);
-	}
-
-	// TODO: this stuff has been deprecated in newer libavformat
-	@Deprecated
-	static AVFormatContext openInputFile(String name, AVInputFormat fmt, int buf_size, AVFormatParameters ap) throws AVIOException {
-		ByteBuffer res = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder());
-		ByteBuffer context;
-
-		context = AVFormatContextNative.openInputFile(name, fmt != null ? fmt.n.p : null, buf_size, ap != null ? ap.n.p : null, res);
-		if (context == null) {
-			// throw new AVFormatException based on error id
-			throw new AVIOException(res.getInt(0));
-		}
-
-		return create(context, 1);
-	}
-
-	/**
-	 * Open an input stream from a byteiocontext.
-	 * 
-	 * @param ioc
-	 * @param name
-	 * @param fmt
-	 * @param ap
-	 * @return 
-	 */
-	@Deprecated
-	static AVFormatContext openInputStream(AVIOContext ioc, String name, AVInputFormat fmt, AVFormatParameters ap) {
-		ByteBuffer res = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder());
-		ByteBuffer context;
-
-		System.out.println("open input stream");
-		context = AVFormatContextNative.openInputStream(ioc.n.p, name, fmt != null ? fmt.n.p : null, ap != null ? ap.n.p : null, res);
-		if (context == null) {
-			// throw new AVFormatException based on error id
-			throw new RuntimeException("failed");
-		}
-
-		return create(context, 2);
 	}
 
 	@Override
