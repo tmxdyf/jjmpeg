@@ -128,11 +128,6 @@ public class AVFormatContext extends AVFormatContextAbstract {
 		return res;
 	}
 
-	@Deprecated
-	public void closeInputFile() {
-		closeInput();
-	}
-
 	public void closeInput() {
 		dispose();
 	}
@@ -166,10 +161,6 @@ class AVFormatContextNative extends AVFormatContextNativeAbstract {
 			super.dispose();
 		}
 	}
-
-	static native ByteBuffer openInputFile(String name, ByteBuffer fmt, int buf_size, ByteBuffer fmtParameters, ByteBuffer error_ptr);
-
-	static native ByteBuffer openInputStream(ByteBuffer pb, String name, ByteBuffer fmt, ByteBuffer fmtPArameters, ByteBuffer error_ptr);
 
 	static native int findStreamInfo(ByteBuffer p, Object[] options);
 }
