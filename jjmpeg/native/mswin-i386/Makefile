@@ -5,10 +5,10 @@ TARGET=mswin-amd64
 
 include $(SRC)/config.make
 
-FFMPEG_HOME=/home/notzed/Downloads/ffmpeg-git-9c2651a-win64-dev/include
+FFMPEG_HOME=/home/notzed/restore/home/notzed/Downloads/ffmpeg-git-9c2651a-win64-dev/include
 jjmpeg_lib=jjmpeg.dll
 
-CROSS=x86_64-w64-mingw32-
+CROSS=i686-pc-mingw32-
 
 TARGET_JNI_CFLAGS = -I$(SRC)/jni/win32
 TARGET_CFLAGS = -DWIN32 -m32

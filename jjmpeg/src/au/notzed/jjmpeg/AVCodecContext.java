@@ -32,6 +32,7 @@ import java.nio.ShortBuffer;
  */
 public class AVCodecContext extends AVCodecContextAbstract {
 
+	// TODO: move these to an interface
 	public static final int AVMEDIA_TYPE_UNKNOWN = -1;
 	public static final int AVMEDIA_TYPE_VIDEO = 0;
 	public static final int AVMEDIA_TYPE_AUDIO = 1;
@@ -42,7 +43,7 @@ public class AVCodecContext extends AVCodecContextAbstract {
 	//
 	public static final int FF_MB_DECISION_SIMPLE = 0;        ///< uses mb_cmp
 	public static final int FF_MB_DECISION_BITS = 1;       ///< chooses the one which needs the fewest bits
-	public static final int FF_MB_DECISION_RD = 2;        ///< rate distortion	public static final int 
+	public static final int FF_MB_DECISION_RD = 2;        ///< rate distortion	public static final int
 	//
 	///< Use fixed qscale.
 	public static final int CODEC_FLAG_QSCALE = 0x0002;
@@ -70,8 +71,8 @@ public class AVCodecContext extends AVCodecContextAbstract {
 	///< error[?] variables will be set during encoding.
 	public static final int CODEC_FLAG_PSNR = 0x8000;
 	/** Input bitstream might be truncated at a random
-	public static final int CODEC_FLAG_TRUNCATED       = 0x00010000;
-	location instead of only at frame boundaries. */
+	 * public static final int CODEC_FLAG_TRUNCATED = 0x00010000;
+	 * location instead of only at frame boundaries. */
 	///< Normalize adaptive quantization.
 	public static final int CODEC_FLAG_NORMALIZE_AQP = 0x00020000;
 	///< Use interlaced DCT.
@@ -150,6 +151,11 @@ public class AVCodecContext extends AVCodecContextAbstract {
 	///< Use periodic insertion of intra blocks instead of keyframes.
 	public static final int CODEC_FLAG2_INTRA_REFRESH = 0x00200000;
 	//
+	public static final int FF_LAMBDA_SHIFT = 7;
+	public static final int FF_LAMBDA_SCALE = (1 << FF_LAMBDA_SHIFT);
+	public static final int FF_QP2LAMBDA = 118; ///< factor to convert from H.263 QP to lambda
+	public static final int FF_LAMBDA_MAX = (256 * 128 - 1);
+	//
 	public static final long AV_TIME_BASE = 1000000;
 	public static final long AV_NOPTS_VALUE = (0x8000000000000000L);
 	public static final int AVCODEC_MAX_AUDIO_FRAME_SIZE = 192000; // 1 second of 48khz 32bit audio
@@ -185,6 +191,7 @@ public class AVCodecContext extends AVCodecContextAbstract {
 
 	/**
 	 * Returns true if decoding frame complete.
+	 *
 	 * @param frame
 	 * @param packet
 	 * @return
@@ -205,9 +212,10 @@ public class AVCodecContext extends AVCodecContextAbstract {
 	 * Encode video, writing result to buf.
 	 *
 	 * Note that it always writes to the start of the buffer, ignoring the position and limit.
+	 *
 	 * @param buf
 	 * @param pict Picture to encode, use null to flush encoded frames.
-	 * @return number of bytes written.  When 0 with a null picture, encoding is complete.
+	 * @return number of bytes written. When 0 with a null picture, encoding is complete.
 	 * @throws au.notzed.jjmpeg.exception.AVEncodingError
 	 */
 	public int encodeVideo(ByteBuffer buf, AVFrame pict) throws AVEncodingError {
@@ -236,7 +244,7 @@ public class AVCodecContext extends AVCodecContextAbstract {
 		ByteBuffer buf = samples.getBuffer();
 
 		buf.limit(buf.capacity());
-		
+
 		ShortBuffer s = (ShortBuffer) samples.getSamples();
 
 		while (data == 0 && packet.getSize() > 0) {
@@ -258,13 +266,13 @@ public class AVCodecContext extends AVCodecContextAbstract {
 
 		return data;
 	}
-	
+
 	public int encodeAudio(ByteBuffer buf, AVSamples samples) throws AVEncodingError {
 		int buf_size = buf.capacity();
-		int len = encodeAudio(buf, buf_size, (ShortBuffer)samples.getSamples());
+		int len = encodeAudio(buf, buf_size, (ShortBuffer) samples.getSamples());
 
 		assert (len < buf_size);
-		
+
 		if (len >= 0) {
 			buf.limit(len);
 			buf.position(0);

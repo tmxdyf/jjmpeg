@@ -54,6 +54,8 @@ abstract class AVCodecContextNativeAbstract extends AVNative {
 	static native int setIdctAlgo(ByteBuffer p, int val);
 	static native int getErrorConcealment(ByteBuffer p);
 	static native int setErrorConcealment(ByteBuffer p, int val);
+	static native int getGlobalQuality(ByteBuffer p);
+	static native int setGlobalQuality(ByteBuffer p, int val);
 	static native int getMbDecision(ByteBuffer p);
 	static native int setMbDecision(ByteBuffer p, int val);
 	static native ByteBuffer getCodedFrame(ByteBuffer p);
@@ -196,6 +198,12 @@ abstract class AVCodecContextAbstract extends AVObject {
 	}
 	public  void setErrorConcealment(int val) {
 		AVCodecContextNativeAbstract.setErrorConcealment(n.p, val);
+	}
+	public  int getGlobalQuality() {
+		return AVCodecContextNativeAbstract.getGlobalQuality(n.p);
+	}
+	public  void setGlobalQuality(int val) {
+		AVCodecContextNativeAbstract.setGlobalQuality(n.p, val);
 	}
 	public  int getMbDecision() {
 		return AVCodecContextNativeAbstract.getMbDecision(n.p);
@@ -592,10 +600,19 @@ abstract class AVStreamNativeAbstract extends AVNative {
 	static native int getIndex(ByteBuffer p);
 	static native ByteBuffer getCodec(ByteBuffer p);
 	static native long getNBFrames(ByteBuffer p);
+	static native float getQuality(ByteBuffer p);
+	static native float setQuality(ByteBuffer p, float val);
 	static native long getStartTime(ByteBuffer p);
+	static native long setStartTime(ByteBuffer p, long val);
 	static native long getDuration(ByteBuffer p);
+	static native long setDuration(ByteBuffer p, long val);
 	static native ByteBuffer getRFrameRate(ByteBuffer p);
 	static native ByteBuffer getTimeBase(ByteBuffer p);
+	static native ByteBuffer getSampleAspectRatio(ByteBuffer p);
+	static native int getSampleAspectRatioNum(ByteBuffer p);
+	static native int setSampleAspectRatioNum(ByteBuffer p, int val);
+	static native int getSampleAspectRatioDen(ByteBuffer p);
+	static native int setSampleAspectRatioDen(ByteBuffer p, int val);
 	// Native Methods
 }
 
@@ -610,17 +627,44 @@ abstract class AVStreamAbstract extends AVObject {
 	public  long getNBFrames() {
 		return AVStreamNativeAbstract.getNBFrames(n.p);
 	}
+	public  float getQuality() {
+		return AVStreamNativeAbstract.getQuality(n.p);
+	}
+	public  void setQuality(float val) {
+		AVStreamNativeAbstract.setQuality(n.p, val);
+	}
 	public  long getStartTime() {
 		return AVStreamNativeAbstract.getStartTime(n.p);
 	}
+	public  void setStartTime(long val) {
+		AVStreamNativeAbstract.setStartTime(n.p, val);
+	}
 	public  long getDuration() {
 		return AVStreamNativeAbstract.getDuration(n.p);
+	}
+	public  void setDuration(long val) {
+		AVStreamNativeAbstract.setDuration(n.p, val);
 	}
 	public  AVRational getRFrameRate() {
 		return AVRational.create(AVStreamNativeAbstract.getRFrameRate(n.p));
 	}
 	public  AVRational getTimeBase() {
 		return AVRational.create(AVStreamNativeAbstract.getTimeBase(n.p));
+	}
+	public  AVRational getSampleAspectRatio() {
+		return AVRational.create(AVStreamNativeAbstract.getSampleAspectRatio(n.p));
+	}
+	public  int getSampleAspectRatioNum() {
+		return AVStreamNativeAbstract.getSampleAspectRatioNum(n.p);
+	}
+	public  void setSampleAspectRatioNum(int val) {
+		AVStreamNativeAbstract.setSampleAspectRatioNum(n.p, val);
+	}
+	public  int getSampleAspectRatioDen() {
+		return AVStreamNativeAbstract.getSampleAspectRatioDen(n.p);
+	}
+	public  void setSampleAspectRatioDen(int val) {
+		AVStreamNativeAbstract.setSampleAspectRatioDen(n.p, val);
 	}
 	// Public Methods
 }
