@@ -530,7 +530,9 @@ public class JJMediaReader {
 		int oheight;
 		SwsContext oscale;
 		PixelFormat ofmt;
-		AVFrame oframe;
+		int oframeCount = 1;
+		int oframeIndex = -1;
+		AVFrame oframe[];
 		// icon scaled output
 		int cwidth;
 		int cheight;
@@ -596,13 +598,35 @@ public class JJMediaReader {
 
 			if (oscale != null) {
 				oscale.dispose();
-				oframe.dispose();
 			}
+
+			clearOutputFrames();
 
 			if (cscale != null) {
 				cscale.dispose();
 				cframe.dispose();
 			}
+		}
+
+		final void clearOutputFrames() {
+			if (oframe != null) {
+				for (int i = 0; i < oframe.length; i++) {
+					AVFrame of = oframe[i];
+					if (of != null) {
+						of.dispose();
+					}
+				}
+				oframe = null;
+			}
+		}
+
+		final void initOutputFrames() {
+			clearOutputFrames();
+			oframe = new AVFrame[oframeCount];
+			for (int i = 0; i < oframeCount; i++) {
+				oframe[i] = AVFrame.create(ofmt, owidth, oheight);
+			}
+			oframeIndex = -1;
 		}
 
 		@Override
@@ -636,6 +660,55 @@ public class JJMediaReader {
 		}
 
 		/**
+		 * Set the number of buffers to use for buffering when using getOutputFrame()
+		 *
+		 * @param count
+		 */
+		public void setOutputFrameCount(int count) {
+			oframeCount = count;
+		}
+
+		public int getOutputFrameCount() {
+			return oframeCount;
+		}
+
+		/**
+		 * Current output frame buffer index.
+		 *
+		 * @return
+		 */
+		public int getOutputFrameIndex() {
+			return oframeIndex;
+		}
+
+		/**
+		 * Retrieve the index of the next frame which will be decoded into.
+		 * @return
+		 */
+		public int getNextOutputFrameIndex() {
+			int oi = oframeIndex + 1;
+			if (oi >= oframeCount) {
+				oi = 0;
+			}
+			return oi;
+		}
+
+		public AVFrame getOutputFrameAt(int index) {
+			if (oframe == null) {
+				initOutputFrames();
+			}
+			return oframe[index];
+		}
+
+		int nextOutputFrame() {
+			oframeIndex++;
+			if (oframeIndex >= oframeCount) {
+				oframeIndex = 0;
+			}
+			return oframeIndex;
+		}
+
+		/**
 		 * Set the output format for use with getOutputFrame()
 		 *
 		 * If using the BufferedImage version of getOutputFrame, currently ofmt must be PIX_FMT_BGR24 or PIX_FMT_GRAY8 although if one is using the raw version
@@ -650,12 +723,12 @@ public class JJMediaReader {
 		public void setOutputFormat(PixelFormat ofmt, int owidth, int oheight) {
 			if (oscale != null) {
 				oscale.dispose();
-				oframe.dispose();
+				clearOutputFrames();
 			}
 			this.owidth = owidth;
 			this.oheight = oheight;
 			this.ofmt = ofmt;
-			oframe = AVFrame.create(ofmt, owidth, oheight);
+			//oframe = AVFrame.create(ofmt, owidth, oheight);
 			oscale = SwsContext.create(width, height, fmt, owidth, oheight, ofmt, SwsContext.SWS_BILINEAR);
 		}
 
@@ -670,9 +743,9 @@ public class JJMediaReader {
 		 * @param maxheight
 		 */
 		public void setIconSize(int maxwidth, int maxheight) {
-			if (oscale != null) {
-				oscale.dispose();
-				oframe.dispose();
+			if (cscale != null) {
+				cscale.dispose();
+				cframe.dispose();
 			}
 			float wfactor = width / (float) maxwidth;
 			float hfactor = height / (float) maxheight;
@@ -732,7 +805,7 @@ public class JJMediaReader {
 		}
 
 		/**
-		 * Allocate an image suitable for getOutputFrame()
+		 * Allocate an image suitable for getOutputFrame(BufferedImage)
 		 *
 		 * @return
 		 */
@@ -745,18 +818,22 @@ public class JJMediaReader {
 		}
 
 		/**
-		 * Retrieve the scaled frame, or just the raw frame if no output format set
+		 * Retrieve the scaled/converted frame, or just the raw frame if no output format set
 		 *
 		 * @return
 		 */
 		public AVFrame getOutputFrame() {
-			if (oframe != null) {
+			if (ofmt != null) {
+				if (oframe == null) {
+					initOutputFrames();
+				}
+
 				if (stale) {
-					oscale.scale(iframe, 0, height, oframe);
+					oscale.scale(iframe, 0, height, oframe[nextOutputFrame()]);
 					stale = false;
 				}
 
-				return oframe;
+				return oframe[getOutputFrameIndex()];
 			}
 			return iframe;
 		}
