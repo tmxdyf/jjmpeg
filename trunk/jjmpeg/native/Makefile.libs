@@ -50,6 +50,7 @@ JJMPEG_HEADERS=$(patsubst %,%.h,$(subst .,_,$(JJMPEG_CLASSES)))
 
 $(jjmpeg_lib): jjmpeg.o
 	$(CC) $(LDFLAGS) -shared $(JJMPEG_LDFLAGS) -o $@ $^ $(LIBS) $(JJMPEG_LIBS)
+	$(SRC)/jjmpeg/getversions.pl $(FFMPEG_HOME)/*/*.h > README.FFmpeg-version
 
 jjmpeg.o: jjmpeg.c $(JJMPEG_HEADERS) jjmpeg-jni.c jjmpeg-jni.h
 	$(CC) -c -o $@ $(CFLAGS) $(JJMPEG_CFLAGS) $<
@@ -59,9 +60,6 @@ jjmpeg-jni.c AVAbstract.java: native-jjmpeg.conf
 
 $(JJMPEG_HEADERS): $(SRC)/../dist/jjmpeg.jar
 	$(javah) -classpath $< $(JJMPEG_CLASSES)
-
-$(SRC)/../dist/jjmpeg.jar:
-	( cd .. ; ant )
 
 $(jjmpeg_jar): $(jjmpeg_lib)
 	$(jar) cf $(jjmpeg_jar) $(jjmpeg_lib)
@@ -93,7 +91,7 @@ jjdvb-jni.c DVBAbstract.java: native-jjdvb.conf
 	$(SRC)/jjdvb/gendvb.pl $^ DVBAbstract.java jjdvb-jni.c
 
 
-$(JJDVB_HEADERS): $(SRC)/../dist/jjmpeg.jar
+$(JJDVB_HEADERS): $(SRC)/../dist/jjdvb.jar
 	$(javah) -classpath $< $(JJDVB_CLASSES)
 
 # ###############################################################################
