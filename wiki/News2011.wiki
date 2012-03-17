@@ -1,0 +1,67 @@
+#summary Archived News from 2011
+
+The front-page News updates until the end of 2011.
+
+*30-11-11*
+ I've added a bunch of stuff required to be able to write avformat containers.  I've only implemented video so far but have a helper class to make it easy to create videos using Java2D and a few lines of code. e.g. see [http://code.google.com/p/jjmpeg/source/browse/trunk/jjmpegdemos/src/au/notzed/jjmpeg/streamwriter/VideoWriter.java VideoWriter in jjmpegdemos].
+
+ This was a little more involved than i'd hoped, but isn't too bad now it's done.  It's pretty much a straight port of output-example.c from the ffmpeg distribution.  I've tried to remove the need for transient object creation, although there is probably a bit more I could do.
+
+ I also renamed a few helper classes and took a stab at cleaning up the exception types a bit, although as with most else they are still yet to be solidified.
+*26-10-11*
+ Yep, the project still lives.  Just not enough hours in a week to fit everything in but I managed to snarf a few hours i'll never get back from other pursuits less deserving and got a few more things sussed out.
+
+ The big one is that I just did a major overhaul of the object lifecycle management [http://a-hackers-craic.blogspot.com/2011/10/gc-finalisers.html as described over on the blog].  In some limited testing it seems to function pretty well, at least with hotspot.  The option still exists to invoke dispose() if necessary - maybe for the bigger objects.
+
+ I also finally worked out the AVIOContext stuff: [http://code.google.com/p/jjmpeg/source/browse/trunk/jjmpeg/src/au/notzed/jjmpeg/io/JJFileInputStream.java JJFileInputStream] now works and you can read directly from a Java FileInputStream.  This means jjmpeg now needs avformat.so.52 or newer too.  I fixed the [http://code.google.com/p/jjmpeg/source/browse/trunk/jjmpegdemos/src/jjmpegexamples/VideoJavaReaderExample.java existing example which uses it].  As can be seen from JJFileInputStream there isn't much to it, although in this case the automatic lifecycle can't work and you need to call dispose() explicitly.
+ 
+ And finally I added another simple utility class: A [http://code.google.com/p/jjmpeg/source/browse/trunk/jjmpeg/src/au/notzed/jjmpeg/util/VideoScanner.java VideoScanner] that lets you open and read video frames in a couple of lines of Java.  Another [http://code.google.com/p/jjmpeg/source/browse/trunk/jjmpegdemos/src/au/notzed/jjmpeg/videoscanner/Main.java demo for that] was also added to jjmpegdemos.
+
+*11-8-11*
+ Added a more complete 'audio/video' media player to [http://code.google.com/p/jjmpeg/source/browse/trunk/jjmpegdemos/src/au/notzed/jjmpeg/mediaplayer/ jjmpegdemos].  This is based on some code I was playing with for other reasons but it seemed good enough for a demo.  It includes seeking, pausing, and audio/video sync.  Uses separate threads for a/v rendering.
+
+ Screenshot:
+ http://jjmpeg.googlecode.com/svn/wiki/images/jjmpeg-player-0.jpg
+
+ I also committed a failed attempt at writing a Java IO input stream.  This stuff seems fluid in libavformat anyway so perhaps i should wait until I update locally and use the newer interfaces.
+
+*4-8-11*
+ Created a mailing list at http://groups.google.com/group/jjmpeg-discuss
+
+ I hardly expect this to be brimming with content, but it is a more suitable forum to contact the project rather than sending me email.
+
+*1-8-11*
+ I took the VideoWriterExample and added a braindead front-end to it and added another demo to the web-start application.  This lets you set the text, colour, speed, framerate, and size of the video to create.  See http://code.google.com/p/jjmpeg/source/browse/trunk/jjmpegdemos/src/jjmpegdemos/TitleWriter.java.
+
+*1-8-11*
+ Trying out Java webstart:
+
+ http://jjmpeg.googlecode.com/svn/webstart/jjmpegdemos.jnlp
+
+ This should launch the current demo applicaiton - which includes a single tool to play a music file.  I tested this on linux-amd64 with oracle's jvm, and linux-x86 with openjdk, and both worked fine - although you have to hit a lot of 'yes i know it's not signed' dialog boxes.  On windows you must use the 64-bit jvm as i haven't build a 32-bit version yet, and the code failed to open the audio driver (openal error) in my virtualbox instance.
+
+ Actually on microsoft windows you need the (right version of the) FFMPEG libraries installed too, so this probably wont work there yet.
+
+*28-07-11*
+ Added support for windows-64 builds using a cross compiler and pre-built 64-bit ffmpeg libraries.
+
+ Cross compiler for windows builds:
+ http://sourceforge.net/projects/mingw-w64/files/mingw-w64/mingw-w64-snapshot/
+
+ FFMPEG builds for windows:
+ http://ffmpeg.zeranoe.com/builds/
+
+ You need the dev packages to (re)compile the native library, otherwise
+ you just need the shared version.
+
+*12-06-11*
+ Started work on a Linux DVB interface.  Still needs work.
+
+*12-06-11*
+ Added support for audio-encoding.  Created a new top-level directory to hold larger examples, and included a simple music player using OpenAL for output.
+
+*10-06-11*
+ Added initial audio-decoding interfaces, and stuff required for video seeking and time-stamp calculations.
+
+*03-06-11*
+ I performed a major overhaul of the binding mechanism.  Now a big perl script generates the accessors and most of the functions.  Now includes a video-writing demo application and a file-selector with video-preview.  It also runs on both 32 and 64 bit platforms.
