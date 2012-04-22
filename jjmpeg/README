@@ -1,4 +1,9 @@
 
+README android
+--------------
+
+This is work in progress for an android port.
+
 README FFmpeg-0.10
 ------------------
 
@@ -86,26 +91,17 @@ jjmpeg is hosted on google code at the following url:
 A log of development activity and thoughts:
  http://a-hackers-craic.blogspot.com/search/label/jjmpeg
 
-Cross compiler for windows builds:
- http://sourceforge.net/projects/mingw-w64/files/mingw-w64/mingw-w64-snapshot/
-
-FFMPEG builds for windows:
- http://ffmpeg.zeranoe.com/builds/
-
- You need the dev packages to (re)compile the native library, otherwise
- you just need the shared version.
-
 LICENSE
 -------
 
 jjmpeg is free software: you can redistribute it and/or modify it
-under the terms of the GNU Lesser General Public License as published
+under the terms of the GNU General Public License as published
 by the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
 jjmpeg is distributed in the hope that it will be useful, but WITHOUT
 ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
+FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
 License for more details.
 
-See the file COPYING.LESSER and COPYING for terms of use.
+See the file COPYING for terms of use.
