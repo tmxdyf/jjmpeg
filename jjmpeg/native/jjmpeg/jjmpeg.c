@@ -26,16 +26,6 @@
 //#define d(x) x; fflush(stdout)
 #define d(x)
 
-static int (*dav_open_input_file)(AVFormatContext **ic_ptr, const char *filename,
-				  AVInputFormat *fmt,
-				  int buf_size,
-				  AVFormatParameters *ap);
-
-static int (*dav_open_input_stream)(AVFormatContext **ic_ptr,
-				    AVIOContext *pb, const char *filename,
-				    AVInputFormat *fmt,
-				    AVFormatParameters *ap);
-
 static int (*davcodec_encode_video)(AVCodecContext *avctx, uint8_t *buf, int buf_size, AVFrame *pict);
 static int (*davio_open)(AVIOContext **s, const char *url, int flags);
 
@@ -76,8 +66,6 @@ static int init_local(JNIEnv *env) {
 	DLOPEN(avformat_lib, "avformat", LIBAVFORMAT_VERSION_MAJOR);
 	DLOPEN(swscale_lib, "swscale", LIBSWSCALE_VERSION_MAJOR);
 
-	MAPDL(av_open_input_file, avformat_lib);
-	MAPDL(av_open_input_stream, avformat_lib);
 	MAPDL(avio_alloc_context, avformat_lib);
 	MAPDL(avio_open, avformat_lib);
 	MAPDL(av_probe_input_buffer, avformat_lib);
@@ -96,6 +84,20 @@ static int init_local(JNIEnv *env) {
 	byteio_readPacket = (*env)->GetMethodID(env, byteioclass, "readPacket", "(Ljava/nio/ByteBuffer;)I");
 	byteio_writePacket = (*env)->GetMethodID(env, byteioclass, "writePacket", "(Ljava/nio/ByteBuffer;)I");
 	byteio_seek = (*env)->GetMethodID(env, byteioclass, "seek", "(JI)J");
+
+	jclass class;
+	class = (*env)->FindClass(env, "au/notzed/jjmpeg/ObjectHolder");
+	if (class != NULL) {
+		ObjectHolder_value = (*env)->GetFieldID(env, class, "value", "Ljava/lang/Object;");
+	}
+	class = (*env)->FindClass(env, "au/notzed/jjmpeg/LongHolder");
+	if (class != NULL) {
+		LongHolder_value = (*env)->GetFieldID(env, class, "value", "J");
+	}
+	class = (*env)->FindClass(env, "au/notzed/jjmpeg/IntHolder");
+	if (class != NULL) {
+		IntHolder_value = (*env)->GetFieldID(env, class, "value", "I");
+	}
 
 	return 1;
 }
@@ -153,48 +155,42 @@ JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_AVNative_getVersions
 
 /* ********************************************************************** */
 
-JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVFormatContextNative_openInputFile
-(JNIEnv *env, jclass jc, jstring jname, jobject jfmt, jint buf_size, jobject jap, jobject jerror_buf) {
-	const char *name = STR(jname);
-	AVFormatContext *context;
-	int *resp = ADDR(jerror_buf);
-	AVInputFormat *fmt = ADDR(jfmt);
-	AVFormatParameters *ap = ADDR(jap);
-	jobject res = NULL;
+JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_AVFormatContextNative_findStreamInfo
+(JNIEnv *env, jclass jc, jobject jptr, jobjectArray joptions) {
+	AVFormatContext *ptr = ADDR(jptr);
+	int len = 0;
+	AVDictionary **options = NULL;
+	int res;
+	int i;
 
-	resp[0] = CALLDL(av_open_input_file)(&context, name, fmt, buf_size, ap);
+	if (joptions != NULL) {
+		len = (*env)->GetArrayLength(env, joptions);
 
-	if (resp[0] == 0) {
-		res = WRAP(context, sizeof(*context));
+		if (len != ptr->nb_streams) {
+			fprintf(stderr, "invalid number of stream options\n");
+			fflush(stderr);
+			return -1;
+		}
+
+		options = alloca(sizeof(*options) * len);
+		for (i=0;i<len;i++) {
+			options[i] = ADDR((*env)->GetObjectArrayElement(env, joptions, i));
+		}
 	}
+	
+	res = CALLDL(avformat_find_stream_info)(ptr, options);
 
-	RSTR(jname, name);
+	if (joptions != NULL) {
+		for (i=0;i<len;i++) {
+			jobject e = WRAP(options[i], sizeof(*options[i]));
+
+			(*env)->SetObjectArrayElement(env, joptions, i, e);
+		}
+	}
 
 	return res;
 }
 
-JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVFormatContextNative_openInputStream
-(JNIEnv *env, jclass jc, jobject jpb, jstring jname, jobject jfmt, jobject jap, jobject jerror_buf) {
-	AVIOContext *pb = ADDR(jpb);
-	const char *name = STR(jname);
-	AVFormatContext *context = NULL;
-	int *resp = ADDR(jerror_buf);
-	AVInputFormat *fmt = ADDR(jfmt);
-	AVFormatParameters *ap = ADDR(jap);
-	jobject res = NULL;
-
-	d(printf("open input stream  pb=%p name=%s fmt=%p ap=%p\n", pb, name, fmt, ap));
-	resp[0] = CALLDL(av_open_input_stream)(&context, pb, name, fmt, ap);
-	d(printf("open input stream = %d\n", resp[0]));
-
-	if (resp[0] == 0) {
-		res = WRAP(context, sizeof(*context));
-	}
-
-	RSTR(jname, name);
-
-	return res;
-}
 
 /* ********************************************************************** */
 
@@ -281,11 +277,9 @@ static int scaleArray(JNIEnv *env, SwsContext *sws, AVFrame *src, jint srcSliceY
 	struct AVPicture dst;
 	void *cdst;
 	int res = -1;
-	jsize alength = (*env)->GetArrayLength(env, jdst) * dsize;
-	int flength = CALLDL(avpicture_fill)(&dst, NULL, fmt, width, height);
 
-	if (alength < flength) {
-		fprintf(stderr, "array too small for scaleArray, have %d require %d\n", (int)alength, flength);
+	if ((*env)->GetArrayLength(env, jdst) * dsize < CALLDL(avpicture_fill)(&dst, NULL, fmt, width, height)) {
+		fprintf(stderr, "array too small for scaleIntArray");
 		fflush(stderr);
 		// FIXME: exception
 		return -1;
@@ -438,7 +432,9 @@ JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVIOContextNative_allocContext
 						      AVIOContext_seek);
 
 	if (res != NULL) {
-		res->is_streamed = (flags & ALLOC_STREAMED) != 0;
+		// this is deprecated, although i don't know if i should still set it anyway
+		//res->is_streamed = (flags & ALLOC_STREAMED) != 0;
+		res->seekable = (flags & ALLOC_STREAMED) ? 0 : AVIO_SEEKABLE_NORMAL;
 	}
 
 	d(printf(" = %p\n", res));

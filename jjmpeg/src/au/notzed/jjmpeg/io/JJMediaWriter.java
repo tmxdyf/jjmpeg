@@ -68,13 +68,13 @@ public class JJMediaWriter {
 
 	/**
 	 * Create a new stream for writing to a file.
-	 *
+	 * 
 	 * Once created, call addVideoStream, (addAudioStream) and so on, before calling open().
 	 * Frames are then added using the various addFrame() methods until finished,
 	 * and then call close().
-	 *
+	 * 
 	 * @param filename
-	 * @throws AVInvalidFormatException
+	 * @throws AVInvalidFormatException 
 	 */
 	public JJMediaWriter(String filename) throws AVInvalidFormatException {
 		this.filename = filename;
@@ -99,7 +99,7 @@ public class JJMediaWriter {
 
 	/**
 	 * Get the output format being used.
-	 * @return
+	 * @return 
 	 */
 	public AVOutputFormat getFormat() {
 		return format;
@@ -109,14 +109,9 @@ public class JJMediaWriter {
 	 * The stream must be opened after adding streams and before writing to them.
 	 * @throws AVInvalidFormatException
 	 * @throws AVInvalidCodecException
-	 * @throws AVIOException
+	 * @throws AVIOException 
 	 */
 	public void open() throws AVInvalidFormatException, AVInvalidCodecException, AVIOException {
-		/* set the output parameters (must be done even if no parameters). */
-		if (oc.setParameters(null) < 0) {
-			throw new AVInvalidFormatException("Unable to set parameters");
-		}
-
 		/* now that all the parameters are set, we can open the audio and
 		video codecs and allocate the necessary encode buffers */
 		for (JJWriterStream sd : streams) {
@@ -129,7 +124,7 @@ public class JJMediaWriter {
 		oc.setIOContext(output);
 
 		/* write the stream header, if any */
-		oc.writeHeader();
+		oc.writeHeader(null);
 	}
 
 	/**
@@ -140,7 +135,7 @@ public class JJMediaWriter {
 	 * @param frame_rate
 	 * @param bit_rate
 	 * @return
-	 * @throws AVInvalidStreamException
+	 * @throws AVInvalidStreamException 
 	 */
 	public JJWriterVideo addVideoStream(int width, int height, int frame_rate, int bit_rate) throws AVInvalidStreamException {
 		return addVideoStream(format.getVideoCodec(), streams.size(), width, height, frame_rate, bit_rate);
@@ -154,15 +149,15 @@ public class JJMediaWriter {
 	 * @param frame_rate
 	 * @param bit_rate
 	 * @return
-	 * @throws AVInvalidStreamException
+	 * @throws AVInvalidStreamException 
 	 */
 	public JJWriterVideo addVideoStream(int codec_id, int streamid, int width, int height, int frame_rate, int bit_rate) throws AVInvalidStreamException {
 		AVCodecContext c;
 		AVStream st;
 
 		System.out.printf("adding video %s [%d %dx%d@%d]\n", codec_id, streamid, width, height, frame_rate);
-
-		st = oc.newStream(streamid);
+		
+		st = oc.newStream(AVCodec.findEncoder(codec_id));
 		if (st == null) {
 			throw new AVInvalidStreamException("Unable to create stream");
 		}
@@ -212,13 +207,13 @@ public class JJMediaWriter {
 	 * @param sample_rate
 	 * @param bit_rate
 	 * @return
-	 * @throws AVInvalidStreamException
+	 * @throws AVInvalidStreamException 
 	 */
 	public JJWriterAudio addAudioStream(int codec_id, int streamid, SampleFormat fmt, int sample_rate, int channels, int bit_rate) throws AVInvalidStreamException {
 		AVCodecContext c;
 		AVStream st;
 
-		st = oc.newStream(streamid);
+		st = oc.newStream(AVCodec.findEncoder(codec_id));
 		if (st == null) {
 			throw new AVInvalidStreamException("Unable to create stream");
 		}
@@ -288,7 +283,7 @@ public class JJMediaWriter {
 
 		/**
 		 * Retrieve the av stream.
-		 * @return
+		 * @return 
 		 */
 		public AVStream getStream() {
 			return stream;
@@ -296,7 +291,7 @@ public class JJMediaWriter {
 
 		/**
 		 * Retrieve the codec context for this stream.
-		 * @return
+		 * @return 
 		 */
 		public AVCodecContext getContext() {
 			return c;
@@ -380,7 +375,7 @@ public class JJMediaWriter {
 
 		/**
 		 * Convert bufferedimage to matching output format
-		 * @param bi
+		 * @param bi 
 		 */
 		private AVFrame loadImage(BufferedImage bi) {
 			int height = c.getHeight();
@@ -417,7 +412,7 @@ public class JJMediaWriter {
 		 * @param sd
 		 * @param frame format must match the codec pixel format
 		 * @throws AVEncodingError
-		 * @throws AVIOException
+		 * @throws AVIOException 
 		 */
 		public void addFrame(AVFrame frame) throws AVEncodingError, AVIOException {
 			// TODO: raw video case
@@ -439,12 +434,7 @@ public class JJMediaWriter {
 				packet.setData(outputBuffer, out_size);
 
 				/* write the compressed frame in the media file */
-				int ret = oc.interleavedWriteFrame(packet);
-				//int ret = oc.writeFrame(pkt);
-
-				if (ret < 0) {
-					throw new AVIOException(ret);
-				}
+				oc.interleavedWriteFrame(packet);
 			}
 		}
 
@@ -453,7 +443,7 @@ public class JJMediaWriter {
 		 * @param sd
 		 * @param bi Should be created with createImage.
 		 * @throws AVEncodingError
-		 * @throws AVIOException
+		 * @throws AVIOException 
 		 */
 		public void addFrame(BufferedImage bi) throws AVEncodingError, AVIOException {
 			// TODO: check image is the right size and format
@@ -489,7 +479,7 @@ public class JJMediaWriter {
 			}
 
 			System.out.println("audio codec framesize = " + c.getFrameSize());
-
+			
 			this.outputBuffer = ByteBuffer.allocateDirect(AVCodecContext.FF_MIN_BUFFER_SIZE).order(ByteOrder.nativeOrder());
 		}
 
@@ -500,7 +490,7 @@ public class JJMediaWriter {
 
 		/**
 		 * Create a samples buffer suitable for storing raw samples
-		 * @return
+		 * @return 
 		 */
 		public AVSamples createSamples() {
 			return new AVSamples(c.getSampleFmt(), c.getChannels(), c.getFrameSize());
@@ -508,11 +498,11 @@ public class JJMediaWriter {
 
 		/**
 		 * Write a new audio frame to the stream.
-		 *
+		 * 
 		 * It is up to the caller to interleave audio/video properly
 		 * @param samples
 		 * @throws AVEncodingError
-		 * @throws AVIOException
+		 * @throws AVIOException 
 		 */
 		int n = 0;
 		public void addFrame(AVSamples samples) throws AVEncodingError, AVIOException {
@@ -527,11 +517,7 @@ public class JJMediaWriter {
 
 			packet.setStreamIndex(stream.getIndex());
 			packet.setData(outputBuffer, out_size);
-			int ret = oc.interleavedWriteFrame(packet);
-
-			if (ret < 0) {
-				throw new AVIOException(ret);
-			}
+			oc.interleavedWriteFrame(packet);
 		}
 	}
 }

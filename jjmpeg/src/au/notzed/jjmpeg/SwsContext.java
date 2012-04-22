@@ -23,7 +23,6 @@ import java.nio.ByteBuffer;
 
 /**
  * Used to convert between formats and optionally scale at the same time.
- *
  * @author notzed
  */
 public class SwsContext extends SwsContextAbstract {

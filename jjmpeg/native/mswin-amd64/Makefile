@@ -3,7 +3,7 @@ TARGET=mswin-amd64
 
 include $(SRC)/config.make
 
-FFMPEG_HOME=/home/notzed/restore/home/notzed/Downloads/ffmpeg-git-9c2651a-win64-dev/include
+FFMPEG_HOME=/home/notzed/cross/src/ffmpeg-git-01fcbdf-win64-dev/include
 jjmpeg_lib=jjmpeg.dll
 
 CROSS=x86_64-w64-mingw32-

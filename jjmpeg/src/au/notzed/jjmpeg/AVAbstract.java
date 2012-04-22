@@ -48,14 +48,10 @@ abstract class AVCodecContextNativeAbstract extends AVNative {
 	static native int setTimeBaseDen(ByteBuffer p, int val);
 	static native int getStrictStdCompliance(ByteBuffer p);
 	static native int setStrictStdCompliance(ByteBuffer p, int val);
-	static native int getErrorRecognition(ByteBuffer p);
-	static native int setErrorRecognition(ByteBuffer p, int val);
 	static native int getIdctAlgo(ByteBuffer p);
 	static native int setIdctAlgo(ByteBuffer p, int val);
 	static native int getErrorConcealment(ByteBuffer p);
 	static native int setErrorConcealment(ByteBuffer p, int val);
-	static native int getGlobalQuality(ByteBuffer p);
-	static native int setGlobalQuality(ByteBuffer p, int val);
 	static native int getMbDecision(ByteBuffer p);
 	static native int setMbDecision(ByteBuffer p, int val);
 	static native ByteBuffer getCodedFrame(ByteBuffer p);
@@ -181,12 +177,6 @@ abstract class AVCodecContextAbstract extends AVObject {
 	public  void setStrictStdCompliance(int val) {
 		AVCodecContextNativeAbstract.setStrictStdCompliance(n.p, val);
 	}
-	public  int getErrorRecognition() {
-		return AVCodecContextNativeAbstract.getErrorRecognition(n.p);
-	}
-	public  void setErrorRecognition(int val) {
-		AVCodecContextNativeAbstract.setErrorRecognition(n.p, val);
-	}
 	public  int getIdctAlgo() {
 		return AVCodecContextNativeAbstract.getIdctAlgo(n.p);
 	}
@@ -198,12 +188,6 @@ abstract class AVCodecContextAbstract extends AVObject {
 	}
 	public  void setErrorConcealment(int val) {
 		AVCodecContextNativeAbstract.setErrorConcealment(n.p, val);
-	}
-	public  int getGlobalQuality() {
-		return AVCodecContextNativeAbstract.getGlobalQuality(n.p);
-	}
-	public  void setGlobalQuality(int val) {
-		AVCodecContextNativeAbstract.setGlobalQuality(n.p, val);
 	}
 	public  int getMbDecision() {
 		return AVCodecContextNativeAbstract.getMbDecision(n.p);
@@ -283,23 +267,20 @@ abstract class AVFormatContextNativeAbstract extends AVNative {
 	static native ByteBuffer getStreamAt(ByteBuffer p, int index);
 	static native long getStartTime(ByteBuffer p);
 	static native long getDuration(ByteBuffer p);
-	static native long getFileSize(ByteBuffer p);
 	static native int getBitRate(ByteBuffer p);
 	static native int getFlags(ByteBuffer p);
 	static native int setFlags(ByteBuffer p, int val);
 	// Native Methods
-	static native void close_input_file(ByteBuffer p);
-	static native void close_input_stream(ByteBuffer p);
 	static native int seek_frame(ByteBuffer p, int stream_index, long timestamp, int flags);
 	static native int read_frame(ByteBuffer p, ByteBuffer pkt);
-	static native int find_stream_info(ByteBuffer p);
-	static native ByteBuffer new_stream(ByteBuffer p, int id);
-	static native int set_parameters(ByteBuffer p, ByteBuffer ap);
-	static native int write_header(ByteBuffer p);
 	static native int write_frame(ByteBuffer p, ByteBuffer pkt);
 	static native int interleaved_write_frame(ByteBuffer p, ByteBuffer pkt);
 	static native int write_trailer(ByteBuffer p);
 	static native void register_all();
+	static native int open_input(ObjectHolder ps, String filename, ByteBuffer fmt, ObjectHolder options);
+	static native void close_input(ObjectHolder s);
+	static native ByteBuffer new_stream(ByteBuffer p, ByteBuffer codec);
+	static native int write_header(ByteBuffer p, ObjectHolder options);
 	static native int seek_file(ByteBuffer p, int stream_index, long min_ts, long ts, long max_ts, int flags);
 	static native ByteBuffer alloc_context();
 	static native void free_context(ByteBuffer p);
@@ -337,9 +318,6 @@ abstract class AVFormatContextAbstract extends AVObject {
 	public  long getDuration() {
 		return AVFormatContextNativeAbstract.getDuration(n.p);
 	}
-	public  long getFileSize() {
-		return AVFormatContextNativeAbstract.getFileSize(n.p);
-	}
 	public  int getBitRate() {
 		return AVFormatContextNativeAbstract.getBitRate(n.p);
 	}
@@ -350,41 +328,26 @@ abstract class AVFormatContextAbstract extends AVObject {
 		AVFormatContextNativeAbstract.setFlags(n.p, val);
 	}
 	// Public Methods
-	public void closeInputFile() {
-		AVFormatContextNativeAbstract.close_input_file(n.p);
-	}
-	public void closeInputStream() {
-		AVFormatContextNativeAbstract.close_input_stream(n.p);
-	}
 	public int seekFrame(int stream_index, long timestamp, int flags) {
 		return AVFormatContextNativeAbstract.seek_frame(n.p, stream_index, timestamp, flags);
 	}
 	public int readFrame(AVPacket pkt) {
 		return AVFormatContextNativeAbstract.read_frame(n.p, pkt != null ? pkt.n.p : null);
 	}
-	public int findStreamInfo() {
-		return AVFormatContextNativeAbstract.find_stream_info(n.p);
-	}
-	public AVStream newStream(int id) {
-		return AVStream.create(AVFormatContextNativeAbstract.new_stream(n.p, id));
-	}
-	public int setParameters(AVFormatParameters ap) {
-		return AVFormatContextNativeAbstract.set_parameters(n.p, ap != null ? ap.n.p : null);
-	}
-	public int writeHeader() {
-		return AVFormatContextNativeAbstract.write_header(n.p);
-	}
 	public int writeFrame(AVPacket pkt) {
 		return AVFormatContextNativeAbstract.write_frame(n.p, pkt != null ? pkt.n.p : null);
-	}
-	public int interleavedWriteFrame(AVPacket pkt) {
-		return AVFormatContextNativeAbstract.interleaved_write_frame(n.p, pkt != null ? pkt.n.p : null);
 	}
 	public int writeTrailer() {
 		return AVFormatContextNativeAbstract.write_trailer(n.p);
 	}
 	static public void registerAll() {
 		AVFormatContextNativeAbstract.register_all();
+	}
+	public AVStream newStream(AVCodec codec) {
+		return AVStream.create(AVFormatContextNativeAbstract.new_stream(n.p, codec != null ? codec.n.p : null));
+	}
+	public int writeHeader(ObjectHolder options) {
+		return AVFormatContextNativeAbstract.write_header(n.p, options);
 	}
 	public int seekFile(int stream_index, long min_ts, long ts, long max_ts, int flags) {
 		return AVFormatContextNativeAbstract.seek_file(n.p, stream_index, min_ts, ts, max_ts, flags);
@@ -404,7 +367,6 @@ abstract class AVInputFormatNativeAbstract extends AVNative {
 	static native String getName(ByteBuffer p);
 	static native String getLongName(ByteBuffer p);
 	// Native Methods
-	static native ByteBuffer find_input_format(String short_name);
 }
 
 abstract class AVInputFormatAbstract extends AVObject {
@@ -416,9 +378,6 @@ abstract class AVInputFormatAbstract extends AVObject {
 		return AVInputFormatNativeAbstract.getLongName(n.p);
 	}
 	// Public Methods
-	static public AVInputFormat findInputFormat(String short_name) {
-		return AVInputFormat.create(AVInputFormatNativeAbstract.find_input_format(short_name));
-	}
 }
 abstract class AVOutputFormatNativeAbstract extends AVNative {
 	protected AVOutputFormatNativeAbstract(AVObject o, ByteBuffer p) {
@@ -598,21 +557,13 @@ abstract class AVStreamNativeAbstract extends AVNative {
 	}
 	// Fields
 	static native int getIndex(ByteBuffer p);
+	static native int getId(ByteBuffer p);
 	static native ByteBuffer getCodec(ByteBuffer p);
-	static native long getNBFrames(ByteBuffer p);
-	static native float getQuality(ByteBuffer p);
-	static native float setQuality(ByteBuffer p, float val);
-	static native long getStartTime(ByteBuffer p);
-	static native long setStartTime(ByteBuffer p, long val);
-	static native long getDuration(ByteBuffer p);
-	static native long setDuration(ByteBuffer p, long val);
 	static native ByteBuffer getRFrameRate(ByteBuffer p);
 	static native ByteBuffer getTimeBase(ByteBuffer p);
-	static native ByteBuffer getSampleAspectRatio(ByteBuffer p);
-	static native int getSampleAspectRatioNum(ByteBuffer p);
-	static native int setSampleAspectRatioNum(ByteBuffer p, int val);
-	static native int getSampleAspectRatioDen(ByteBuffer p);
-	static native int setSampleAspectRatioDen(ByteBuffer p, int val);
+	static native long getStartTime(ByteBuffer p);
+	static native long getDuration(ByteBuffer p);
+	static native long getNBFrames(ByteBuffer p);
 	// Native Methods
 }
 
@@ -621,29 +572,11 @@ abstract class AVStreamAbstract extends AVObject {
 	public  int getIndex() {
 		return AVStreamNativeAbstract.getIndex(n.p);
 	}
+	public  int getId() {
+		return AVStreamNativeAbstract.getId(n.p);
+	}
 	public  AVCodecContext getCodec() {
 		return AVCodecContext.create(AVStreamNativeAbstract.getCodec(n.p));
-	}
-	public  long getNBFrames() {
-		return AVStreamNativeAbstract.getNBFrames(n.p);
-	}
-	public  float getQuality() {
-		return AVStreamNativeAbstract.getQuality(n.p);
-	}
-	public  void setQuality(float val) {
-		AVStreamNativeAbstract.setQuality(n.p, val);
-	}
-	public  long getStartTime() {
-		return AVStreamNativeAbstract.getStartTime(n.p);
-	}
-	public  void setStartTime(long val) {
-		AVStreamNativeAbstract.setStartTime(n.p, val);
-	}
-	public  long getDuration() {
-		return AVStreamNativeAbstract.getDuration(n.p);
-	}
-	public  void setDuration(long val) {
-		AVStreamNativeAbstract.setDuration(n.p, val);
 	}
 	public  AVRational getRFrameRate() {
 		return AVRational.create(AVStreamNativeAbstract.getRFrameRate(n.p));
@@ -651,20 +584,14 @@ abstract class AVStreamAbstract extends AVObject {
 	public  AVRational getTimeBase() {
 		return AVRational.create(AVStreamNativeAbstract.getTimeBase(n.p));
 	}
-	public  AVRational getSampleAspectRatio() {
-		return AVRational.create(AVStreamNativeAbstract.getSampleAspectRatio(n.p));
+	public  long getStartTime() {
+		return AVStreamNativeAbstract.getStartTime(n.p);
 	}
-	public  int getSampleAspectRatioNum() {
-		return AVStreamNativeAbstract.getSampleAspectRatioNum(n.p);
+	public  long getDuration() {
+		return AVStreamNativeAbstract.getDuration(n.p);
 	}
-	public  void setSampleAspectRatioNum(int val) {
-		AVStreamNativeAbstract.setSampleAspectRatioNum(n.p, val);
-	}
-	public  int getSampleAspectRatioDen() {
-		return AVStreamNativeAbstract.getSampleAspectRatioDen(n.p);
-	}
-	public  void setSampleAspectRatioDen(int val) {
-		AVStreamNativeAbstract.setSampleAspectRatioDen(n.p, val);
+	public  long getNBFrames() {
+		return AVStreamNativeAbstract.getNBFrames(n.p);
 	}
 	// Public Methods
 }
@@ -764,4 +691,16 @@ abstract class ReSampleContextAbstract extends AVObject {
 	public void resampleClose() {
 		ReSampleContextNativeAbstract.resample_close(n.p);
 	}
+}
+abstract class AVDictionaryNativeAbstract extends AVNative {
+	protected AVDictionaryNativeAbstract(AVObject o, ByteBuffer p) {
+		super(o, p);
+	}
+	// Fields
+	// Native Methods
+}
+
+abstract class AVDictionaryAbstract extends AVObject {
+	// Fields
+	// Public Methods
 }

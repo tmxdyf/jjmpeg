@@ -38,12 +38,11 @@ import java.nio.ByteBuffer;
 
 /**
  * High level interface for scanning video frames.
- *
+ * 
  * This will deprecated in the future once JJMediaReader
  * has the seeking stuff in it.
  * @author notzed
  */
-@Deprecated
 public class JJVideoScanner {
 
 	AVFormatContext format;
@@ -73,22 +72,11 @@ public class JJVideoScanner {
 	AVFrame oframe;
 	AVPacket packet;
 
-	/**
-	 * Use JJMediaReader instead.
-	 * @param name
-	 * @throws AVInvalidStreamException
-	 * @throws AVIOException
-	 * @throws AVInvalidCodecException
-	 * @deprecated
-	 */
-	@Deprecated
 	public JJVideoScanner(String name) throws AVInvalidStreamException, AVIOException, AVInvalidCodecException {
 		//AVFormatContext.registerAll();
-		format = AVFormatContext.openInputFile(name);
+		format = AVFormatContext.open(name);
 
-		if (format.findStreamInfo() < 0) {
-			throw new AVInvalidStreamException("No streams found");
-		}
+		format.findStreamInfo();
 
 		// find first video stream
 		AVStream stream = null;
@@ -164,10 +152,10 @@ public class JJVideoScanner {
 
 	/**
 	 * Set output rendered size.
-	 *
+	 * 
 	 * If this is changed, must re-call createImage(), getOutputFrame(), etc.
 	 * @param swidth
-	 * @param sheight
+	 * @param sheight 
 	 */
 	public void setSize(int swidth, int sheight) {
 		oframe.dispose();
@@ -193,7 +181,7 @@ public class JJVideoScanner {
 
 	/**
 	 * Retrieve duration of sequence, in milliseconds.
-	 * @return
+	 * @return 
 	 */
 	public long getDurationMS() {
 		return durationms;
@@ -201,7 +189,7 @@ public class JJVideoScanner {
 
 	/**
 	 * Get duration in timebase units (i.e. frames?)
-	 * @return
+	 * @return 
 	 */
 	public long getDuration() {
 		return duration;
@@ -211,7 +199,7 @@ public class JJVideoScanner {
 	 * Convert the 'pts' provided to milliseconds relative to the start of the
 	 * video stream.
 	 * @param pts
-	 * @return
+	 * @return 
 	 */
 	public long convertPTS(long pts) {
 		return AVRational.starSlash(pts * 1000, tb_Num, tb_Den) - startms;
@@ -219,7 +207,7 @@ public class JJVideoScanner {
 
 	/**
 	 * Allocate an image suitable for readFrame()
-	 * @return
+	 * @return 
 	 */
 	public BufferedImage createImage() {
 		return new BufferedImage(width, height, BufferedImage.TYPE_3BYTE_BGR);
@@ -227,9 +215,9 @@ public class JJVideoScanner {
 
 	/**
 	 * Frame used for scaled/format converted output.
-	 *
+	 * 
 	 * Can be used directly if using readFrame(target)
-	 * @return
+	 * @return 
 	 */
 	public AVFrame getOutputFrame() {
 		return oframe;
@@ -237,7 +225,7 @@ public class JJVideoScanner {
 
 	/**
 	 * Get raw format for images.
-	 * @return
+	 * @return 
 	 */
 	public AVFormatContext getFormat() {
 		return format;
@@ -246,9 +234,9 @@ public class JJVideoScanner {
 
 	/**
 	 * Retrieve (calculated) pts of the last frame decoded.
-	 *
+	 * 
 	 * Well be -1 at EOF
-	 * @return
+	 * @return 
 	 */
 	public long getPTS() {
 		return pts;
@@ -257,7 +245,7 @@ public class JJVideoScanner {
 	/**
 	 * Internal read the next decoded video frame.
 	 * @return
-	 * @throws AVDecodingError
+	 * @throws AVDecodingError 
 	 */
 	AVFrame readAVFrame() throws AVDecodingError {
 		// read packets until a whole frame is decoded
@@ -273,7 +261,7 @@ public class JJVideoScanner {
 					if (frameFinished) {
 						count++;
 						pts = packet.getDTS();
-
+						
 						// If seeking, attempt to get to the exact frame
 						if (seekid != -1
 								&& pts < seekid) {
@@ -293,18 +281,19 @@ public class JJVideoScanner {
 
 	/**
 	 * Read a raw frame into a scaled/format converted target frame.
-	 *
+	 * 
 	 * Target should be this.getFrame() or a copy of it.
 	 * @param target
 	 * @return the internal pts.  Use convertPTS() to convert to
 	 * milliseconds.
-	 * @throws AVDecodingError
+	 * @throws AVDecodingError 
 	 */
 	public long readFrame(AVFrame target) throws AVDecodingError {
 		// read packets until a whole frame is decoded
 		AVFrame frame = readAVFrame();
 
 		if (frame != null) {
+			System.out.printf("scaling height %d\n", height);
 			scale.scale(frame, 0, height, target);
 			return pts;
 		}
@@ -314,12 +303,12 @@ public class JJVideoScanner {
 
 	/**
 	 * Read a frame into the target image.
-	 *
+	 * 
 	 * Image should be allocated using createFrame()
 	 * @param dst
 	 * @return the internal pts.  Use convertPTS() to convert to
 	 * milliseconds.
-	 * @throws AVDecodingError
+	 * @throws AVDecodingError 
 	 */
 	public long readFrame(BufferedImage dst) throws AVDecodingError {
 		long pt = readFrame(oframe);
@@ -336,11 +325,11 @@ public class JJVideoScanner {
 
 	/**
 	 * Read the raw byte-byffer for the frame.
-	 *
+	 * 
 	 * Data will be in the input format.
-	 *
+	 * 
 	 * @return
-	 * @throws AVDecodingError
+	 * @throws AVDecodingError 
 	 */
 	public ByteBuffer readFrame() throws AVDecodingError {
 		AVFrame af = readAVFrame();
@@ -355,12 +344,12 @@ public class JJVideoScanner {
 
 	/**
 	 * Attempt to seek to the nearest millisecond.
-	 *
+	 * 
 	 * The next frame read should match the stamp.
-	 *
+	 * 
 	 * This only seeks to key frames
 	 * @param stamp
-	 * @throws AVIOException
+	 * @throws AVIOException 
 	 */
 	public void seekMS(long stamp) throws AVIOException {
 		int res;
@@ -376,7 +365,7 @@ public class JJVideoScanner {
 	/**
 	 * Seek in stream units
 	 * @param stamp
-	 * @throws AVIOException
+	 * @throws AVIOException 
 	 */
 	public void seek(long stamp) throws AVIOException {
 		int res;

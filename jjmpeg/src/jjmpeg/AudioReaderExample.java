@@ -1,4 +1,4 @@
-package au.notzed.jjmpeg.basic;
+package jjmpeg;
 
 import au.notzed.jjmpeg.AVAudioPacket;
 import au.notzed.jjmpeg.AVCodec;
@@ -15,8 +15,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Reads a supported audio format, and dumps out raw samples to a file.
- *
  * Output can be played with:
  *  mplayer -rawaudio channels=2:rate=44100:samplesize=2 -demuxer rawaudio audio.raw
  * @author notzed
@@ -39,10 +37,8 @@ public class AudioReaderExample {
 	public AudioReaderExample(String file) throws FileNotFoundException, AVIOException {
 		this.file = file;
 
-		format = AVFormatContext.openInputFile(file);
-		if (format.findStreamInfo() < 0) {
-			return;
-		}
+		format = AVFormatContext.open(file);
+		format.findStreamInfo();
 
 		int nstreams = format.getNBStreams();
 		for (int i = 0; i < nstreams; i++) {
@@ -92,7 +88,7 @@ public class AudioReaderExample {
 							total += len / 4;
 
 							System.out.println(" audio samples: " + samples.getBuffer().limit());
-
+							
 							fos.getChannel().write(samples.getBuffer());
 						}
 					}
@@ -112,7 +108,7 @@ public class AudioReaderExample {
 
 		System.out.printf("total decoded samples = %d   seconds = %d?\n", total, total / actx.getSampleRate());
 
-		format.closeInputFile();
+		format.closeInput();
 	}
 
 	public static void main(String[] args) throws FileNotFoundException, AVIOException {

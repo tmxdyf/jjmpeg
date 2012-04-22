@@ -19,7 +19,7 @@
 
 /*
  *
- * Simple example which attemps to tune to a channel and record 20MB of data
+ * Simple example which attemps to tune to a channel and record 2MB of data
  * from all streams.
  *
  * The file 'channels.list' must be set up in the current directory -
@@ -29,8 +29,15 @@
  *
  * Public Domain
  */
-package au.notzed.jjdvb;
+package jjdvb;
 
+import au.notzed.jjdvb.DMX;
+import au.notzed.jjdvb.DMXInput;
+import au.notzed.jjdvb.DMXOutput;
+import au.notzed.jjdvb.FE;
+import au.notzed.jjdvb.DMXPESFilterParams;
+import au.notzed.jjdvb.DMXPESType;
+import au.notzed.jjdvb.FEStatus;
 import au.notzed.jjdvb.util.DVBChannel;
 import au.notzed.jjdvb.util.DVBChannels;
 import java.io.FileInputStream;
@@ -103,7 +110,7 @@ public class DVBTunerExample {
 			int len;
 
 			// read 2mb of stream
-			int count = 1024 * 1024 * 20;
+			int count = 1024 * 1024 * 2;
 			while (count > 0 && (len = fis.read(buffer)) > 0) {
 				fos.write(buffer, 0, len);
 				count -= len;

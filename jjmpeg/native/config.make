@@ -2,7 +2,7 @@
 
 # most of these in the first section are over-ridden in target specific makefiles
 # location of ffmpeg includes headers/library
-FFMPEG_HOME=/usr/include/ffmpeg/include
+FFMPEG_HOME=/usr/local/ffmpeg-0.10/include
 
 jjmpeg_lib = libjjmpeg.so
 jjmpeg_jar = jjmpeg-natives-$(TARGET).jar
