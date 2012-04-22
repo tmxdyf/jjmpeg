@@ -1,0 +1,55 @@
+#!/bin/sh
+
+# Note that you cannot change the license options if you intend to distribute.
+
+. ./config.mk
+
+declare -a TARGETS TARGETS_OPTS TARGETS_CFLAGS
+
+FF=ffmpeg-0.10
+TARGETS=('armeabi' )
+TARGETS_OPTS=( '' )
+TARGETS_CFLAGS=( '' )
+
+this=`pwd`
+i=0
+for TARGET in $TARGETS ; do
+    mkdir -p $this/build/$TARGET
+    mkdir -p $this/$TARGET
+    cd $this/build/$TARGET
+
+    opts=${TARGET_OPTS[$i]}
+    cflags=${TARGET_CFLAGS[$i]}
+
+    $this/$FF/configure \
+	$opts \
+	--prefix=$this/$TARGET \
+	--cross-prefix=$PREBUILT/bin/arm-linux-androideabi- \
+	--enable-cross-compile \
+	--target-os=linux \
+	--extra-cflags="-I$PLATFORM/usr/include" \
+	--extra-ldflags="-L$PLATFORM/usr/lib -nostdlib" \
+	--arch=arm \
+	--disable-shared \
+	--enable-static \
+	--disable-symver \
+	--disable-debug \
+	--enable-gpl --enable-version3 \
+	--disable-doc \
+	--disable-ffmpeg --disable-ffplay --disable-ffprobe --disable-ffprobe \
+	--disable-avdevice --disable-avfilter --disable-postproc
+# need to work out why configure doesn't find this stuff
+    sed -i -e 's/HAVE_LRINT 0/HAVE_LRINT 1/g' \
+	-e 's/HAVE_LRINTF 0/HAVE_LRINTF 1/g' \
+	-e 's/HAVE_ROUND 0/HAVE_ROUND 1/g' \
+	-e 's/HAVE_ROUNDF 0/HAVE_ROUNDF 1/g' \
+	-e 's/HAVE_TRUNC 0/HAVE_TRUNC 1/g' \
+	-e 's/HAVE_TRUNCF 0/HAVE_TRUNCF 1/g' config.h
+
+    i=`expr $i + 1`
+    make V=1 -j8 || exit 1
+    make V=1 install || exit 1
+
+done
+
+
