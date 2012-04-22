@@ -4,22 +4,22 @@
 
 . ./config.mk
 
-declare -a TARGETS TARGETS_OPTS TARGETS_CFLAGS
+declare -a TARGETS_OPTS TARGETS_CFLAGS
 
 FF=ffmpeg-0.10
-TARGETS=('armeabi' )
-TARGETS_OPTS=( '' )
-TARGETS_CFLAGS=( '' )
+
+TARGETS_OPTS=( '' '' )
+TARGETS_CFLAGS=( '' '-mfloat-abi=softfp -mfpu=vfpv3-d16 -marm -march=armv7-a' )
 
 this=`pwd`
 i=0
-for TARGET in $TARGETS ; do
+for TARGET in ${TARGETS[@]} ; do
     mkdir -p $this/build/$TARGET
     mkdir -p $this/$TARGET
     cd $this/build/$TARGET
 
-    opts=${TARGET_OPTS[$i]}
-    cflags=${TARGET_CFLAGS[$i]}
+    opts=${TARGETS_OPTS[$i]}
+    cflags=${TARGETS_CFLAGS[$i]}
 
     $this/$FF/configure \
 	$opts \
@@ -48,8 +48,7 @@ for TARGET in $TARGETS ; do
 
     i=`expr $i + 1`
     make V=1 -j8 || exit 1
-    make V=1 install || exit 1
-
+    make V=1 install || (echo "Error" ; exit 1)
 done
 
 
