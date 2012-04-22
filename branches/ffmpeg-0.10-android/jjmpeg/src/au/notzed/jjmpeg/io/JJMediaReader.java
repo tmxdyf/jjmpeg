@@ -34,8 +34,6 @@ import au.notzed.jjmpeg.exception.AVDecodingError;
 import au.notzed.jjmpeg.exception.AVIOException;
 import au.notzed.jjmpeg.exception.AVInvalidCodecException;
 import au.notzed.jjmpeg.exception.AVInvalidStreamException;
-import java.awt.image.BufferedImage;
-import java.awt.image.DataBufferByte;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -480,9 +478,9 @@ public class JJMediaReader {
 		 * Allocate an image suitable for getOutputFrame()
 		 * @return 
 		 */
-		public BufferedImage createImage() {
-			return new BufferedImage(swidth, sheight, BufferedImage.TYPE_3BYTE_BGR);
-		}
+		//public BufferedImage createImage() {
+		//	return new BufferedImage(swidth, sheight, BufferedImage.TYPE_3BYTE_BGR);
+		//}
 
 		/**
 		 * Retrieve the scaled frame, or just the raw frame if no output format set
@@ -506,19 +504,19 @@ public class JJMediaReader {
 		 * @param dst
 		 * @return dst
 		 */
-		public BufferedImage getOutputFrame(BufferedImage dst) {
-			assert (dst.getType() == BufferedImage.TYPE_3BYTE_BGR);
+		//public BufferedImage getOutputFrame(BufferedImage dst) {
+		//	assert (dst.getType() == BufferedImage.TYPE_3BYTE_BGR);
 
-			if (ofmt == null) {
-				setOutputFormat(PixelFormat.PIX_FMT_BGR24, width, height);
-			}
+		//	if (ofmt == null) {
+		//		setOutputFormat(PixelFormat.PIX_FMT_BGR24, width, height);
+		//	}
 
 			// Scale directly to target image
-			byte[] data = ((DataBufferByte) dst.getRaster().getDataBuffer()).getData();
-			scale.scale(iframe, 0, height, data);
+		//	byte[] data = ((DataBufferByte) dst.getRaster().getDataBuffer()).getData();
+		//	scale.scale(iframe, 0, height, data);
 			
-			return dst;
-		}
+		//	return dst;
+		//}
 
 		/**
 		 * Retrieve the decoded frame.

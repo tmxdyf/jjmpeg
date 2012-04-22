@@ -48,8 +48,6 @@ import au.notzed.jjmpeg.exception.AVIOException;
 import au.notzed.jjmpeg.exception.AVInvalidCodecException;
 import au.notzed.jjmpeg.exception.AVInvalidFormatException;
 import au.notzed.jjmpeg.exception.AVInvalidStreamException;
-import java.awt.image.BufferedImage;
-import java.awt.image.DataBufferByte;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.LinkedList;
@@ -377,35 +375,35 @@ public class JJMediaWriter {
 		 * Convert bufferedimage to matching output format
 		 * @param bi 
 		 */
-		private AVFrame loadImage(BufferedImage bi) {
-			int height = c.getHeight();
+		//private AVFrame loadImage(BufferedImage bi) {
+		//	int height = c.getHeight();
 
-			byte[] data = ((DataBufferByte) bi.getRaster().getDataBuffer()).getData();
+		//	byte[] data = ((DataBufferByte) bi.getRaster().getDataBuffer()).getData();
 			// Convert to YUV
 
 			// TODO: only if output format not bgr24
-			if (rgbPicture == null) {
-				int width = c.getWidth();
+		//	if (rgbPicture == null) {
+		//		int width = c.getWidth();
 
-				rgbPicture = AVFrame.create(PixelFormat.PIX_FMT_BGR24, width, height);
-				rgbSWS = SwsContext.create(width, height, PixelFormat.PIX_FMT_BGR24, width, height, c.getPixFmt(), SwsContext.SWS_X);
-				rgbPlane = rgbPicture.getPlaneAt(0, PixelFormat.PIX_FMT_BGR24, width, height);
-			}
+		//		rgbPicture = AVFrame.create(PixelFormat.PIX_FMT_BGR24, width, height);
+		//		rgbSWS = SwsContext.create(width, height, PixelFormat.PIX_FMT_BGR24, width, height, c.getPixFmt(), SwsContext.SWS_X);
+		//		rgbPlane = rgbPicture.getPlaneAt(0, PixelFormat.PIX_FMT_BGR24, width, height);
+		//	}
 
-			rgbPlane.data.put(data);
-			rgbPlane.data.rewind();
-			rgbSWS.scale(rgbPicture, 0, height, picture);
+		//	rgbPlane.data.put(data);
+		//	rgbPlane.data.rewind();
+		//	rgbSWS.scale(rgbPicture, 0, height, picture);
 
-			return picture;
-		}
+		//	return picture;
+		//}
 
 		/**
 		 * Create an image suitable for writing to this stream.
 		 * i.e. will be TYPE_3BYTE_BGR
 		 */
-		public BufferedImage createImage() {
-			return new BufferedImage(c.getWidth(), c.getHeight(), BufferedImage.TYPE_3BYTE_BGR);
-		}
+		//public BufferedImage createImage() {
+		//	return new BufferedImage(c.getWidth(), c.getHeight(), BufferedImage.TYPE_3BYTE_BGR);
+		//}
 
 		/**
 		 * Write next video frame.
@@ -445,11 +443,11 @@ public class JJMediaWriter {
 		 * @throws AVEncodingError
 		 * @throws AVIOException 
 		 */
-		public void addFrame(BufferedImage bi) throws AVEncodingError, AVIOException {
+		//public void addFrame(BufferedImage bi) throws AVEncodingError, AVIOException {
 			// TODO: check image is the right size and format
 
-			addFrame(loadImage(bi));
-		}
+		//	addFrame(loadImage(bi));
+		//}
 	}
 
 	public class JJWriterAudio extends JJWriterStream {
