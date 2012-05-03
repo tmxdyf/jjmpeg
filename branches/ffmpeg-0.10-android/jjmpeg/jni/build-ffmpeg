@@ -8,6 +8,7 @@ declare -a TARGETS_OPTS TARGETS_CFLAGS
 
 FF=ffmpeg-0.10
 
+TARGETS=('armeabi' 'armeabi-v7a')
 TARGETS_OPTS=( '' '' )
 TARGETS_CFLAGS=( '' '-mfloat-abi=softfp -mfpu=vfpv3-d16 -marm -march=armv7-a' )
 
@@ -27,7 +28,7 @@ for TARGET in ${TARGETS[@]} ; do
 	--cross-prefix=$PREBUILT/bin/arm-linux-androideabi- \
 	--enable-cross-compile \
 	--target-os=linux \
-	--extra-cflags="-I$PLATFORM/usr/include" \
+	--extra-cflags="-I$PLATFORM/usr/include $cflags" \
 	--extra-ldflags="-L$PLATFORM/usr/lib -nostdlib" \
 	--arch=arm \
 	--disable-shared \

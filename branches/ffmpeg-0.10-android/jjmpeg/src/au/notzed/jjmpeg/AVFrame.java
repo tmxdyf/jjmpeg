@@ -26,20 +26,20 @@ import java.nio.ByteBuffer;
  */
 public class AVFrame extends AVFrameAbstract {
 
-	protected AVFrame(ByteBuffer p) {
+	AVFrame(int p) {
 		setNative(new AVFrameNative(this, p));
 	}
 
-	protected AVFrame(ByteBuffer p, boolean allocated) {
+	AVFrame(int p, boolean allocated) {
 		setNative(new AVFrameNative(this, p, allocated));
 	}
 
-	static public AVFrame create(ByteBuffer p) {
-		if (p == null) {
-			return null;
-		}
-		return new AVFrame(p, false);
-	}
+	//static public AVFrame create(ByteBuffer p) {
+	//	if (p == null) {
+	//		return null;
+	//	}
+	//	return new AVFrame(p, false);
+	//}
 
 	static public AVFrame create() {
 		return allocFrame();
@@ -60,7 +60,7 @@ public class AVFrame extends AVFrameAbstract {
 	public AVPlane getPlaneAt(int index, PixelFormat fmt, int width, int height) {
 		int lineSize = getLineSizeAt(index);
 
-		return new AVPlane(AVFrameNative.getPlaneAt(n.p, index, fmt.toC(fmt), width, height), lineSize, width, height);
+		return new AVPlane(n.getPlaneAt(index, fmt.toC(fmt), width, height), lineSize, width, height);
 	}
 
 	public boolean isKeyFrame() {
@@ -69,32 +69,37 @@ public class AVFrame extends AVFrameAbstract {
 }
 
 class AVFrameNative extends AVFrameNativeAbstract {
+	int p;
 
 	// Was it allocated (with allocFrame()), or just referenced
 	boolean allocated = true;
 	// Has it been filled using avpicture_alloc()
 	boolean filled = false;
 
-	AVFrameNative(AVObject o, ByteBuffer p) {
-		super(o, p);
+	AVFrameNative(AVObject o, int p) {
+		super(o);
+
+		this.p = p;
 	}
 
-	AVFrameNative(AVObject o, ByteBuffer p, boolean allocated) {
-		super(o, p);
+	AVFrameNative(AVObject o, int p, boolean allocated) {
+		this(o, p);
 		this.allocated = allocated;
 	}
 
-	static native ByteBuffer getPlaneAt(ByteBuffer p, int index, int pixelFormat, int width, int height);
-	
+	native ByteBuffer getPlaneAt(int index, int pixelFormat, int width, int height);
+	native void freeFrame();
+
 	@Override
 	public void dispose() {
-		if (p != null) {
+		if (p != 0) {
 			if (filled) {
-				free(p);
+				free();
 			}
 			if (allocated) {
-				AVFormatContextNative._free(p);
+				freeFrame();
 			}
+			p = 0;
 		}
 		super.dispose();
 	}

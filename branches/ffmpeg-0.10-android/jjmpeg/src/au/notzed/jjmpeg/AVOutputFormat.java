@@ -48,22 +48,25 @@ public class AVOutputFormat extends AVOutputFormatAbstract {
 	/**< Format does not require any streams */
 	public static final int AVFMT_NOSTREAMS = 0x1000;
 
-	protected AVOutputFormat(ByteBuffer p) {
+	protected AVOutputFormat(int p) {
 		setNative(new AVOutputFormatNative(this, p));
 	}
 
-	static AVOutputFormat create(ByteBuffer p) {
-		if (p == null) {
-			return null;
-		}
+	//static AVOutputFormat create(ByteBuffer p) {
+	//	if (p == null) {
+	//		return null;
+	//	}
 
-		return new AVOutputFormat(p);
-	}
+	//	return new AVOutputFormat(p);
+	//}
 }
 
 class AVOutputFormatNative extends AVOutputFormatNativeAbstract {
+	int p;
 
-	AVOutputFormatNative(AVObject o, ByteBuffer p) {
-		super(o, p);
+	AVOutputFormatNative(AVObject o, int p) {
+		super(o);
+
+		this.p = p;
 	}
 }

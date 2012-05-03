@@ -58,5 +58,3 @@ struct AVDictionary {
 static jfieldID ObjectHolder_value;
 static jfieldID LongHolder_value;
 static jfieldID IntHolder_value;
-
-

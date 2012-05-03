@@ -5,6 +5,9 @@ $conf = $ARGV[0];
 $abstract = $ARGV[1];
 $jni = $ARGV[2];
 
+# size of a pointer
+$size = 32;
+
 print "Building $jni and $abstract from $conf\n";
 
 # suffix of generated native binding
@@ -14,6 +17,15 @@ $jpostfix = "Abstract";
 # suffix of native java implementation
 $jimpl = "Native";
 
+if ($size == 64) {
+    $resolveObject ="\t:class: *cptr = (:class: *)(*env)->GetLongField(env, jo, :class:_p);\n";
+    $createObject = "(*env)->NewObject(env, :class:_class, :class:_init_p, (long):res:)";
+    $jptrsig = "J";
+} else {
+    $resolveObject ="\t:class: *cptr = (:class: *)(*env)->GetIntField(env, jo, :class:_p);\n";
+    $createObject = "(*env)->NewObject(env, :class:_class, :class:_init_p, (int):res:)";
+    $jptrsig = "I";
+}
 
 # read api descriptor
 open IN,"<$conf";
@@ -89,9 +101,9 @@ sub doat($$) {
     my $ind = shift;
     my $what = shift;
     if ($ind ne "") {
-	print "(ByteBuffer p, ".$what.")";
+	print "(".$what.")";
     } else {
-	print "(ByteBuffer p)";
+	print "()";
     }
 }
 
@@ -109,9 +121,9 @@ sub doatcall($$) {
     my $ind = shift;
     my $what = shift;
     if ($ind ne "") {
-	print "(n.p, ".$what.")";
+	print "(".$what.")";
     } else {
-	print "(n.p)";
+	print "()";
     }
 }
 
@@ -166,7 +178,8 @@ while (<IN>) {
 		$scope = "public ";
 	    }
 	    if ($opt =~ m/o/) {
-		$jtype = "ByteBuffer";
+		#$jtype = "ByteBuffer";
+		$jtype = $type;
 		#$prefix = "_";
 		$ntype = "jobject";
 	    } elsif ($opt =~ m/e/) {
@@ -311,6 +324,7 @@ while (<IN>) {
 		    $argdata{name} = $name;
 
 		    if ($type =~ m/(.*) \*(\*?)$/) {
+			$argdata{ctype} = $1;
 			$ntype = $cntype{$type};
 			if ($ntype eq "") {
 			    $ntype = "jobject";
@@ -319,7 +333,8 @@ while (<IN>) {
 			$jtype = $cjtype{$type};
 			if ($jtype eq "") {
 			    $jtype = $1;
-			    $argdata{jntype} = "ByteBuffer";
+			    #$argdata{jntype} = "ByteBuffer";
+			    $argdata{jntype} = $jtype."Native";
 			    $deref = 1;
 			} else {
 			    $argdata{jntype} = $jtype;
@@ -455,6 +470,45 @@ END
     print "}\n";
 }
 
+# generate method tags
+if (1) {
+    foreach $classinfo (@classes) {
+	%ci = %{$classinfo};
+
+	my $class = $ci{name};
+
+	print "static jclass ${class}_class;\n";
+	print "static jclass ${class}_native;\n";
+	print "static jfieldID ${class}_p;\n";
+	print "static jmethodID ${class}_init_p;\n";
+    }
+    print <<END;
+JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_AVNative_initNative
+(JNIEnv *env, jclass jc) {
+\tif (init_local(env) == 0) return 0;
+END
+    print "\tjclass lc;\n";
+    foreach $classinfo (@classes) {
+	%ci = %{$classinfo};
+
+	my $class = $ci{name};
+
+	print "\tlc = (*env)->FindClass(env, \"au/notzed/jjmpeg/$class\");\n";
+	print "\tif (!lc) return 0;\n";
+	print "\t${class}_class = (*env)->NewGlobalRef(env, lc);\n";
+	print "\t(*env)->DeleteLocalRef(env, lc);\n";
+	print "\t${class}_init_p = (*env)->GetMethodID(env, ${class}_class, \"<init>\", \"($jptrsig)V\");\n";
+
+	print "\tlc = (*env)->FindClass(env, \"au/notzed/jjmpeg/${class}Native\");\n";
+	print "\tif (!lc) return 0;\n";
+	print "\t${class}_native = (*env)->NewGlobalRef(env, lc);\n";
+	print "\t(*env)->DeleteLocalRef(env, lc);\n";
+	print "\t${class}_p = (*env)->GetFieldID(env, ${class}_native, \"p\", \"$jptrsig\");\n";
+    }
+    print "\treturn sizeof(void *)*8;\n";
+    print "}\n";
+}
+
 foreach $classinfo (@classes) {
     my %ci = %{$classinfo};
 
@@ -484,13 +538,15 @@ foreach $classinfo (@classes) {
 		$at = "";
 	    }
 	    print "get$fi{jname}$at(";
-	    print "JNIEnv *env, jclass jc, jobject jptr";
+	    print "JNIEnv *env, jobject jo";
 	    if ($ind) {
 		print ", jint index";
 	    }
 	    print ") {\n";
-	    #print "\tjobject jptr = (*env)->GetObjectField(env, jo, field_p);\n";
-	    print "\t$class *cptr = ADDR(jptr);\n";
+	    my $res = $resolveObject;
+	    $res =~ s/:class:/$class/g;
+	    print $res;
+	    #print "\t$class *cptr = ADDR(jptr);\n";
 	    if ($fi{ntype} eq "jobject" or $fi{ntype} eq "jstring") {
 		print "\tvoid *cdata = (void *)";
 		if ($opt =~ m/r/) {
@@ -504,8 +560,13 @@ foreach $classinfo (@classes) {
 		print "\tif (cdata == NULL) return NULL;\n";
 		print "\treturn ";
 		if ($fi{ntype} eq "jobject") {
-		    print "WRAP(";
-		    print "cdata, sizeof($fi{type}));\n";
+		    my $c = $createObject;
+
+		    $c =~ s/:class:/$fi{type}/g;
+		    $c =~ s/:res:/cdata/g;
+		    print "$c;\n";
+		    #print "WRAP(";
+		    #print "cdata, sizeof($fi{type}));\n";
 		} elsif ($fi{ntype} eq "jstring") {
 		    print "WRAPSTR((char *)cdata);\n";
 		}
@@ -531,14 +592,18 @@ foreach $classinfo (@classes) {
 		$at = "";
 	    }
 	    print "set$fi{jname}$at(";
-	    print "JNIEnv *env, jclass jc, jobject jptr";
+	    print "JNIEnv *env, jobject jo";
 	    if ($ind) {
 		print ", jint index";
 	    }
 	    print ", $fi{ntype} val";
 	    print ") {\n";
+	    #print "\t$class *cptr = ($class *)(*env)->GetIntField(env, jo, ${class}_p);\n";
+	    my $res = $resolveObject;
+	    $res =~ s/:class:/$class/g;
+	    print $res;
 	    #print "\tjobject jptr = (*env)->GetObjectField(env, jo, field_p);\n";
-	    print "\t$class *cptr = ADDR(jptr);\n";
+	    #print "\t$class *cptr = ADDR(jptr);\n";
 	    print "\tcptr->$fi{name}";
 	    if ($ind) {
 		print "[index]";
@@ -572,15 +637,18 @@ foreach $classinfo (@classes) {
 	    }
 	    print ") {\n";
 	} else {
-	    print "(JNIEnv *env, jclass jc, jobject jptr";
+	    print "(JNIEnv *env, jobject jo";
 		
 	    foreach $argdata (@arginfo) {
 		%ai = %{$argdata};
 		print ", $ai{ntype} $ai{nname}";
 	    }
 	    print ") {\n";
-	    #print "\tjobject jptr = (*env)->GetObjectField(env, jo, field_p);\n";
-	    print "\t$class *cptr = ADDR(jptr);\n";
+	    my $res = $resolveObject;
+	    $res =~ s/:class:/$class/g;
+	    print $res;
+	    #print "\t$class *cptr = ($class *)(*env)->GetIntField(env, jo, ${class}_p);\n";
+	    #print "\t$class *cptr = ADDR(jptr);\n";
 	}
 	# wrap/converty any jni args to c args
 	foreach $argdata (@arginfo) {
@@ -595,7 +663,11 @@ foreach $classinfo (@classes) {
 		print "\t$ai{type} $ai{name};\n";
 	    } else {
 		if ($ai{ntype} eq "jobject") {
-		    print "\t$ai{type} $ai{name} = ADDR($ai{nname});\n";
+		    if ($ai{jntype} =~ m/Buffer$/) {
+			print "\t$ai{type} $ai{name} = ADDR($ai{nname});\n";
+		    } else {
+			print "\t$ai{type} $ai{name} = PTR($ai{nname}, $ai{ctype});\n";
+		    }
 		}
 		if ($ai{ntype} eq "jstring") {
 		    print "\t$ai{type} $ai{name} = STR($ai{nname});\n";
@@ -605,13 +677,12 @@ foreach $classinfo (@classes) {
 	print "\n";
 	
 	# call function
-	if ($mi{type} ne "void") {
+	if ($mi{ntype} eq "jobject") {
+	    print "\tvoid *cres = ";
+	} elsif ($mi{type} ne "void") {
 	    print "\t$mi{ntype} res = ";
 	} else {
 	    print "\t";
-	}
-	if ($mi{ntype} eq "jobject") {
-	    print "WRAP(";
 	}
 	if ($dodl) {
 	    print "(*${dlsymprefix}";
@@ -638,10 +709,13 @@ foreach $classinfo (@classes) {
 	    $count++;
 	}
 	print ")";
-	if ($mi{ntype} eq "jobject") {
-	    print ", sizeof($mi{ctype}))";
-	}
 	print ";\n";
+	if ($mi{ntype} eq "jobject") {
+	    my $c = $createObject;
+	    $c =~ s/:res:/cres/g;
+	    $c =~ s/:class:/$mi{ctype}/g;
+	    print "\t$mi{ntype} res = cres ? $c : NULL;\n";
+	}
 	print "\n";
 	# post-process arguments
 	foreach $argdata (@arginfo) {
@@ -653,7 +727,12 @@ foreach $classinfo (@classes) {
 		$hs =~ s/:o/$ai{nname}/g;
 
 		if ($ai{ntype} eq "jobject") {
-		    $hs =~ s/:v/WRAP($ai{name}, sizeof(*$ai{name}))/;
+		    my $c = $createObject;
+
+		    $c =~ s/:class:/$ai{ctype}/g;
+		    $c =~ s/:res:/$ai{name}/g;
+		    #$hs =~ s/:v/WRAP($ai{name}, sizeof(*$ai{name}))/;
+		    $hs =~ s/:v/$c/;
 		} else {
 		    $hs =~ s/:v/$ai{name}/g;
 		}
@@ -696,8 +775,8 @@ foreach $classinfo (@classes) {
 
     # First the native wrapper
     print "abstract class ${class}${npostfix} extends AVNative {\n";
-    print "\tprotected ${class}${npostfix}(AVObject o, ByteBuffer p) {\n";
-    print "\t\tsuper(o, p);\n";
+    print "\tprotected ${class}${npostfix}(AVObject o) {\n";
+    print "\t\tsuper(o);\n";
     print "\t}\n";
 
     print "\t// Fields\n";
@@ -711,13 +790,13 @@ foreach $classinfo (@classes) {
 	my $ind = $opt =~ m/i/;
 
 	if ($opt =~ m/g/) {
-	    print "\tstatic native $fi{jtype} $fi{prefix}get$fi{jname}$fi{suffix}";
+	    print "\tnative $fi{jtype} $fi{prefix}get$fi{jname}$fi{suffix}";
 	    doat($ind, "int index");
 	    print ";\n";
 	}
 	if ($opt =~ m/s/) {
-	    print "\tstatic native $fi{jtype} $fi{prefix}set$fi{jname}$fi{suffix}(";
-	    print "ByteBuffer p, ";
+	    print "\tnative $fi{jtype} $fi{prefix}set$fi{jname}$fi{suffix}(";
+	    #print "ByteBuffer p, ";
 	    if ($ind) {
 		print "int index, ";
 	    }
@@ -741,18 +820,18 @@ foreach $classinfo (@classes) {
 	}
 
 	$jtype = $mi{jtype};
-	if ($mi{wraptype}) {
-	    $jtype = "ByteBuffer";
-	}
+	#if ($mi{wraptype}) {
+	#    $jtype = "ByteBuffer";
+	#}
 
-	print "\tstatic native ${jtype} ${name}(";
+	print "\t$scope native ${jtype} ${name}(";
 	my @arginfo = @{$mi{args}};
 	my $count = 0;
 
-	if (!$mi{static}) {
-	    $count = 1;
-	    print "ByteBuffer p";
-	}
+	#if (!$mi{static}) {
+	#    $count = 1;
+	#    print "ByteBuffer p";
+	#}
 
 	foreach $argdata (@arginfo) {
 	    %ai = %{$argdata};
@@ -772,6 +851,12 @@ foreach $classinfo (@classes) {
     #print "\t\tsuper(n);\n";
     #print "\t}\n";
 
+    print "\t$class$jimpl n;\n";
+
+    print "\tfinal protected void setNative($class$jimpl n) {\n";
+    print "\t\tthis.n = n;\n";
+    print "\t}\n";
+
     $aclass = "$class$npostfix.";
 
     print "\t// Fields\n";
@@ -788,16 +873,17 @@ foreach $classinfo (@classes) {
 	    if ($opt =~ m/o/) {
 		print "\t$fi{scope} $fi{type} get$fi{jname}$fi{suffix}";
 		doatjava($ind, "int index");
-		print " {\n\t\treturn $fi{type}.create(${aclass}get$fi{jname}$fi{suffix}";
+		#print " {\n\t\treturn $fi{type}.create(${aclass}get$fi{jname}$fi{suffix}";
+		print " {\n\t\treturn n.get$fi{jname}$fi{suffix}";
 		doatcall($ind, "index");
-		print ");\n\t}\n";
+		print ";\n\t}\n";
 	    } elsif ($opt =~ m/e/) {
 		print "\t${scope} $fi{type} get$fi{jname}() {\n";
-		print "\t\treturn $fi{type}.values()[${aclass}get$fi{jname}(n.p)+$fi{offset}];\n\t}\n";
+		print "\t\treturn $fi{type}.values()[n.get$fi{jname}()+$fi{offset}];\n\t}\n";
 	    } else {
 		print "\t$fi{scope} $fi{jtype} get$fi{jname}$fi{suffix}";
 		doatjava($ind, "int index");
-		print " {\n\t\treturn ${aclass}get$fi{jname}$fi{suffix}";
+		print " {\n\t\treturn n.get$fi{jname}$fi{suffix}";
 		doatcall($ind, "index");
 		print ";\n\t}\n";
 	    }
@@ -805,13 +891,13 @@ foreach $classinfo (@classes) {
 	if ($opt =~ m/s/) {
 	    if ($opt =~ m/o/) {
 		print "\t${scope} void set$fi{jname}($fi{type} val) {\n";
-		print "\t\t${aclass}set$fi{jname}(n.p, val != null ? val.n.p : null);\n\t}\n";
+		print "\t\tn.set$fi{jname}(val);\n\t}\n";
 	    } elsif ($opt =~ m/e/) {
 		print "\t${scope} void set$fi{jname}($fi{type} val) {\n";
-		print "\t\t${aclass}set$fi{jname}(n.p, val.toC());\n\t}\n";
+		print "\t\tn.set$fi{jname}(val.toC());\n\t}\n";
 	    } else {
 		print "\t${scope} void set$fi{jname}($fi{jtype} val) {\n";
-		print "\t\t${aclass}set$fi{jname}(n.p, val);\n\t}\n";
+		print "\t\tn.set$fi{jname}(val);\n\t}\n";
 	    }
 	}
     }
@@ -856,15 +942,20 @@ foreach $classinfo (@classes) {
 	    if ($mi{jtype} ne "void") {
 		print "return ";
 	    }
-	    if ($mi{wraptype}) {
-		print "$mi{jtype}.create(";
+	#    if ($mi{wraptype}) {
+	#	print "$mi{jtype}.create(";
+	#    }
+	    if ($mi{static}) {
+		print "${aclass}";
+	    } else {
+		print "n.";
 	    }
-	    print "${aclass}$mi{pname}(";
+	    print "$mi{pname}(";
 	    $count = 0;
-	    if (!$mi{static}) {
-		$count = 1;
-		print "n.p";
-	    }
+	#    if (!$mi{static}) {
+	#	$count = 1;
+	#	print "n.p";
+	#    }
 	    foreach $argdata (@arginfo) {
 		%ai = %{$argdata};
 		print ", " if $count > 0;
@@ -876,14 +967,14 @@ foreach $classinfo (@classes) {
 		    print ".toC()";
 		}
 		if ($ai{deref}) {
-		    print ".n.p : null";
+		    print ".n : null";
 		}
 		$count += 1;
 	    }
 	    print ")";
-	    if ($mi{wraptype}) {
-		print ")";
-	    }
+	#    if ($mi{wraptype}) {
+	#	print ")";
+	#    }
 	    print ";\n\t}\n";	    
 	} else {
 	    print ";\n";

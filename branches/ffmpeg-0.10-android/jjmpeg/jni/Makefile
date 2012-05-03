@@ -8,7 +8,7 @@ include ./config.mk
 all: ffmpeg.built jjmpeg.built
 	$(NDK)/ndk-build V=1
 
-ffmpeg.built:
+ffmpeg.built: build-ffmpeg
 	./build-ffmpeg
 	touch ffmpeg.built
 

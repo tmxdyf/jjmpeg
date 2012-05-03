@@ -21,6 +21,12 @@
  * Contains hand-rolled interfaces
  */
 
+// 32-bit versions
+#define PTR(jo, type) (jo ? (void *)(*env)->GetIntField(env, jo, type ## _p) : NULL)
+#define SET_PTR(jo, type, co) do { if (jo) (*env)->SetIntField(env, jo, type ## _p, (int)(co)); } while (0);
+
+#define NEWOBJ(cp, type) (cp ? (*env)->NewObject(env, type ## _class, type ## _init_p, (int)cp) : NULL)
+
 #include "jjmpeg-jni.c"
 
 //#define d(x) x; fflush(stdout)
@@ -113,10 +119,11 @@ JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_AVNative_getVersions
 /* ********************************************************************** */
 
 JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_AVFormatContextNative_findStreamInfo
-(JNIEnv *env, jclass jc, jobject jptr, jobjectArray joptions) {
-	AVFormatContext *ptr = ADDR(jptr);
+(JNIEnv *env, jobject jptr, jobjectArray joptions) {
+	AVFormatContext *ptr = PTR(jptr, AVFormatContext);
 	int len = 0;
 	AVDictionary **options = NULL;
+	jobject *array;
 	int res;
 	int i;
 
@@ -130,8 +137,12 @@ JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_AVFormatContextNative_findStreamInf
 		}
 
 		options = alloca(sizeof(*options) * len);
+		array = alloca(sizeof(*array) * len);
 		for (i=0;i<len;i++) {
-			options[i] = ADDR((*env)->GetObjectArrayElement(env, joptions, i));
+			jobject e = (*env)->GetObjectArrayElement(env, joptions, i);
+
+			array[i] = e;
+			options[i] = PTR(e, AVDictionary);
 		}
 	}
 	
@@ -139,11 +150,47 @@ JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_AVFormatContextNative_findStreamInf
 
 	if (joptions != NULL) {
 		for (i=0;i<len;i++) {
-			jobject e = WRAP(options[i], sizeof(*options[i]));
-
-			(*env)->SetObjectArrayElement(env, joptions, i, e);
+			SET_PTR(array[i], AVDictionary, options[i]);
 		}
 	}
+
+	return res;
+}
+
+JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_AVFormatContextNative_open_1input
+(JNIEnv *env, jclass jc, jobject jps, jstring jfilename, jobject jfmt, jobject joptions) {
+	AVFormatContext * ps = PTR(jps, AVFormatContext);
+	const char * filename = STR(jfilename);
+	AVInputFormat * fmt = PTR(jfmt, AVInputFormat);
+	AVDictionary * options = PTR(joptions, AVDictionary);
+
+	jint res = avformat_open_input(&ps, filename, fmt, &options);
+
+	SET_PTR(jps, AVFormatContext, ps);
+	RSTR(jfilename, filename);
+	SET_PTR(joptions, AVDictionary, options);
+
+	return res;
+}
+
+JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_AVFormatContextNative_close_1input
+(JNIEnv *env, jclass jc, jobject js) {
+	AVFormatContext * s = PTR(js, AVFormatContext);
+
+	if (s)
+		avformat_close_input(&s);
+	// else throw nullpointerexception
+	SET_PTR(js, AVFormatContext, s);
+}
+
+JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_AVFormatContextNative_write_1header
+(JNIEnv *env, jobject jo, jobject joptions) {
+	AVFormatContext *cptr = PTR(jo, AVFormatContext);
+	AVDictionary * options = PTR(joptions, AVDictionary);
+
+	jint res = avformat_write_header(cptr, &options);
+
+	SET_PTR(joptions, AVDictionary, options);
 
 	return res;
 }
@@ -151,11 +198,9 @@ JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_AVFormatContextNative_findStreamInf
 
 /* ********************************************************************** */
 
-/* ********************************************************************** */
-
 JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVFrameNative_getPlaneAt
-(JNIEnv *env, jclass jc, jobject jptr, jint index, jint fmt, jint width, jint height) {
-	AVFrame *cptr = ADDR(jptr);
+(JNIEnv *env, jobject jptr, jint index, jint fmt, jint width, jint height) {
+	AVFrame *cptr = PTR(jptr, AVFrame);
 
 	// FIXME: this depends on pixel format
 	// TODO: keep this in java?
@@ -165,6 +210,15 @@ JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVFrameNative_getPlaneAt
 	int size = cptr->linesize[index] * height;
 
 	return WRAP(cptr->data[index], size);
+}
+
+JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_AVFrameNative_freeFrame
+(JNIEnv *env, jobject jptr) {
+	AVFrame *cptr = PTR(jptr, AVFrame);
+
+	if (cptr)
+		av_free(cptr);
+	// else throw nullpointer exception
 }
 
 /* ********************************************************************** */
@@ -181,19 +235,19 @@ JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVPacketNative_allocatePacket
 
 	d(printf("alloc packet = %p, data=%p size=%d\n", packet, packet->data, packet->size));
 
-	return WRAP(packet, sizeof(AVPacket));
+	return NEWOBJ(packet, AVPacket);
 }
 
 JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_AVPacketNative_freePacket
-(JNIEnv *env, jclass jc, jobject jpacket) {
-	AVPacket *packet = ADDR(jpacket);
+(JNIEnv *env, jobject jpacket) {
+	AVPacket *packet = PTR(jpacket, AVPacket);
 
 	free(packet);
 }
 
 JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_AVPacketNative_consume
-(JNIEnv *env, jclass jc, jobject jptr, jint len) {
-	AVPacket *packet = ADDR(jptr);
+(JNIEnv *env, jobject jptr, jint len) {
+	AVPacket *packet = PTR(jptr, AVPacket);
 
 	//printf("consume, packet = %p  data = %p, size = %d\n", packet, packet->data, packet->size); fflush(stdout);
 
@@ -206,8 +260,8 @@ JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_AVPacketNative_consume
 }
 
 JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_AVPacketNative_setData
-(JNIEnv *env, jclass jc, jobject jptr, jobject jp, jint size) {
-	AVPacket *packet = ADDR(jptr);
+(JNIEnv *env, jobject jptr, jobject jp, jint size) {
+	AVPacket *packet = PTR(jptr, AVPacket);
 	uint8_t *p = ADDR(jp);
 
 	packet->data = p;
@@ -217,10 +271,10 @@ JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_AVPacketNative_setData
 /* ********************************************************************** */
 
 JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_SwsContextNative_scale
-(JNIEnv *env, jclass jc, jobject jptr, jobject jsrc, jint srcSliceY, jint srcSliceH, jobject jdst) {
-	struct SwsContext *sws = ADDR(jptr);
-	struct AVFrame *src = ADDR(jsrc);
-	struct AVFrame *dst = ADDR(jdst);
+(JNIEnv *env, jobject jptr, jobject jsrc, jint srcSliceY, jint srcSliceH, jobject jdst) {
+	struct SwsContext *sws = PTR(jptr, SwsContext);
+	struct AVFrame *src = PTR(jsrc, AVFrame);
+	struct AVFrame *dst = PTR(jdst, AVFrame);
 	jint res;
 
 	res = CALLDL(sws_scale)(sws, (const uint8_t * const *)src->data, src->linesize,
@@ -260,34 +314,17 @@ static int scaleArray(JNIEnv *env, SwsContext *sws, AVFrame *src, jint srcSliceY
 
 
 JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_SwsContextNative_scaleIntArray
-(JNIEnv *env, jclass jc, jobject jptr, jobject jsrc, jint srcSliceY, jint srcSliceH, jintArray jdst, jint fmt, jint width, jint height) {
-	struct SwsContext *sws = ADDR(jptr);
-	struct AVFrame *src = ADDR(jsrc);
+(JNIEnv *env, jobject jptr, jobject jsrc, jint srcSliceY, jint srcSliceH, jintArray jdst, jint fmt, jint width, jint height) {
+	struct SwsContext *sws = PTR(jptr, SwsContext);
+	struct AVFrame *src = PTR(jsrc, AVFrame);
 
 	return scaleArray(env, sws, src, srcSliceY, srcSliceH, jdst, 4, fmt, width, height);
-	/*
-	cdst = (*env)->GetPrimitiveArrayCritical(env, jdst, NULL);
-
-	if (!cdst)
-		// FIXME: exception
-		return res;
-
-	CALLDL(avpicture_fill)(&dst, cdst, fmt, width, height);
-
-	res = CALLDL(sws_scale)(sws, (const uint8_t * const *)src->data, src->linesize,
-				srcSliceY, srcSliceH,
-				dst.data, dst.linesize);
-
-	(*env)->ReleasePrimitiveArrayCritical(env, jdst, cdst, 0);
-
-	return res;
-	*/
 }
 
 JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_SwsContextNative_scaleByteArray
-(JNIEnv *env, jclass jc, jobject jptr, jobject jsrc, jint srcSliceY, jint srcSliceH, jintArray jdst, jint fmt, jint width, jint height) {
-	struct SwsContext *sws = ADDR(jptr);
-	struct AVFrame *src = ADDR(jsrc);
+(JNIEnv *env, jobject jptr, jobject jsrc, jint srcSliceY, jint srcSliceH, jintArray jdst, jint fmt, jint width, jint height) {
+	struct SwsContext *sws = PTR(jptr, SwsContext);
+	struct AVFrame *src = PTR(jsrc, AVFrame);
 
 	return scaleArray(env, sws, src, srcSliceY, srcSliceH, jdst, 1, fmt, width, height);
 }
@@ -297,8 +334,8 @@ JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_SwsContextNative_scaleByteArray
 // this rescale_q takes pointer arguments
 JNIEXPORT jlong JNICALL Java_au_notzed_jjmpeg_AVRationalNative_jjRescaleQ
 (JNIEnv *env, jclass jc, jlong ja, jobject jbq, jobject jcq) {
-	AVRational *bqp = ADDR(jbq);
-	AVRational *cqp = ADDR(jcq);
+	AVRational *bqp = PTR(jbq, AVRational);
+	AVRational *cqp = PTR(jcq, AVRational);
 	jlong res;
 
 	res = CALLDL(av_rescale_q)(ja, *bqp, *cqp);
@@ -307,6 +344,14 @@ JNIEXPORT jlong JNICALL Java_au_notzed_jjmpeg_AVRationalNative_jjRescaleQ
 }
 
 /* ********************************************************************** */
+
+
+/*
+
+  FIXME: this stuff is all broken for android
+
+
+ */
 
 //JavaVM *vm = NULL;
 
@@ -401,9 +446,8 @@ JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVIOContextNative_allocContext
 
 JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVIOContextNative_probeInput
 (JNIEnv *env, jclass jc, jobject jpb, jstring jname, jint offset, jint max_probe_size) {
-	AVIOContext *pb = ADDR(jpb);
+	AVIOContext *pb = PTR(jpb, AVIOContext);
 	const char *name = STR(jname);
-	//int *resp = ADDR(jerror_buf);
 	AVInputFormat *fmt = NULL;
 	jobject res = NULL;
 
@@ -412,7 +456,7 @@ JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVIOContextNative_probeInput
 	d(printf("probe input buffer = %d\n", ret));
 
 	if (ret == 0) {
-		res = WRAP(fmt, sizeof(*fmt));
+		res = NEWOBJ(fmt, AVInputFormat);
 	}
 
 	RSTR(jname, name);
@@ -422,7 +466,7 @@ JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVIOContextNative_probeInput
 
 JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_AVIOContextNative_bind
 (JNIEnv *env, jclass jc, jobject jo, jobject jptr) {
-	AVIOContext *cptr = ADDR(jptr);
+	AVIOContext *cptr = PTR(jptr, AVIOContext);
 	struct avio_data *bd;
 
 	d(printf("iocontext.bind()\n"));
@@ -440,7 +484,7 @@ JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_AVIOContextNative_bind
 
 JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_AVIOContextNative_unbind
 (JNIEnv *env, jclass jc, jobject jo, jobject jptr) {
-	AVIOContext *cptr = ADDR(jptr);
+	AVIOContext *cptr = PTR(jptr, AVIOContext);
 	struct avio_data *bd = cptr->opaque;
 
 	d(printf("iocontext.unbind()\n"));
@@ -462,7 +506,7 @@ JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVIOContextNative_open
 	resp[0] = CALLDL(avio_open)(&context, url, flags);
 
 	if (resp[0] == 0) {
-		res = WRAP(context, sizeof(*context));
+		res = NEWOBJ(context, AVIOContext);
 	}
 
 	RSTR(jurl, url);

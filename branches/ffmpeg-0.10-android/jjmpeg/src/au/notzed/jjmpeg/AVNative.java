@@ -32,17 +32,12 @@ import java.util.logging.Logger;
  */
 abstract public class AVNative extends WeakReference<AVObject> {
 
-	ByteBuffer p;
 	static private ReferenceQueue<AVObject> refqueue = new ReferenceQueue<AVObject>();
 	static private LinkedList<AVNative> reflist = new LinkedList<AVNative>();
 
-	protected AVNative(AVObject jobject, ByteBuffer p) {
+	protected AVNative(AVObject jobject) {
 		super(jobject, refqueue);
 		reflist.add(this);
-
-		this.p = p;
-		p.order(ByteOrder.nativeOrder());
-
 		gc(2);
 	}
 	static final boolean is64;
@@ -80,10 +75,18 @@ abstract public class AVNative extends WeakReference<AVObject> {
 	static native ByteBuffer _malloc(int size);
 
 	static native void _free(ByteBuffer mem);
+	/**
+	 * Free a 64-bit pointer.
+	 */
+	protected static native void free64(long mem);
+	/**
+	 * Free a 32-bit pointer.
+	 */
+	protected static native void free32(int mem);
 
 	/**
 	 * Retrieve run-time library version info.
-	 * 
+	 *
 	 * use LIB*_VERSION indices to get actual versions.
 	 */
 	static public int[] getVersions() {
@@ -106,17 +109,15 @@ abstract public class AVNative extends WeakReference<AVObject> {
 			count += 1;
 		}
 	}
-	
+
 	/**
-	 * Dispose of this resource.  It must be safe to call this multiple times.
-	 * 
-	 * The default dispose sets this.p = null;
+	 * Dispose of this resource. It must be safe to call this multiple times.
+	 *
+	 * The default dispose removes it from the weak reference list, so
+	 * must be called.
 	 */
 	public void dispose() {
-		if (p != null) {
-			reflist.remove(this);
-			p = null;
-			Logger.getLogger(AVNative.class.getName()).log(Level.FINEST, "Disposing: " + getClass().getName());
-		}
+		reflist.remove(this);
+		Logger.getLogger(AVNative.class.getName()).log(Level.FINEST, "Disposing: " + getClass().getName());
 	}
 }

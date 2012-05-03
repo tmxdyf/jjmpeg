@@ -25,19 +25,21 @@ import java.nio.ByteBuffer;
  *
  * This allocates its own AVPacket structure but copies the data from
  * the source packet.
- * 
+ *
  * @author notzed
  */
 public class AVAudioPacket extends AVPacket {
 
+	// FIXME: all broken.
 	AVPacket src;
 
-	AVAudioPacket(ByteBuffer p) {
+	AVAudioPacket(int p) {
 		super(p);
 	}
 
 	public static AVAudioPacket create() {
-		return new AVAudioPacket(AVPacketNative.allocatePacket());
+		//return new AVAudioPacket(AVPacketNative.allocatePacket());
+		return null;
 	}
 
 	/**
@@ -46,15 +48,16 @@ public class AVAudioPacket extends AVPacket {
 	 * @return
 	 */
 	public static AVAudioPacket create(AVPacket src) {
-		AVAudioPacket packet = new AVAudioPacket(AVPacketNative.allocatePacket());
+	//	AVAudioPacket packet = new AVAudioPacket(AVPacketNative.allocatePacket());
 
 		// *this = *src;
-		packet.n.p.put(src.n.p);
-		src.n.p.rewind();
+	//	packet.n.p.put(src.n.p);
+	//	src.n.p.rewind();
 		// so it doesn't go away without us knowing
-		packet.src = src;
+	//	packet.src = src;
 
-		return packet;
+	//	return packet;
+		return null;
 	}
 
 	/**
@@ -65,8 +68,8 @@ public class AVAudioPacket extends AVPacket {
 	 * @param src
 	 */
 	public void setSrc(AVPacket src) {
-		n.p.put(src.n.p).rewind();
-		src.n.p.rewind();
-		this.src = src;
+	//	n.p.put(src.n.p).rewind();
+	//	src.n.p.rewind();
+	//	this.src = src;
 	}
 }

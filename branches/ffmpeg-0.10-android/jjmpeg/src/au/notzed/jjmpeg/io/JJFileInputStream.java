@@ -32,14 +32,16 @@ public class JJFileInputStream extends AVIOContext {
 
 	FileInputStream fis;
 
+	// FIXME: this is broken
 	protected JJFileInputStream(FileInputStream is) {
-		super(4096, 0);
+		super(0);
+		//super(4096, 0);
 		this.fis = is;
 	}
 
 	public static JJFileInputStream create(FileInputStream is) {
 		JJFileInputStream jjfis = new JJFileInputStream(is);
-		
+
 		return jjfis;
 	}
 
@@ -47,9 +49,9 @@ public class JJFileInputStream extends AVIOContext {
 		//System.out.println("jjfilestream readpacket");
 		try {
 			int ret = fis.getChannel().read(dst);
-			
+
 			//System.out.println("jjfilestream.readpacket read " + ret);
-			
+
 			return ret;
 		} catch (IOException ex) {
 			//System.out.println("jjfilestream readpacket ioexception");
@@ -70,7 +72,7 @@ public class JJFileInputStream extends AVIOContext {
 		long res = -1;
 
 		//System.out.println("jjfilestream seek " + offset + ", " + whence);
-		
+
 		try {
 			switch (whence) {
 				case AVSEEK_SIZE:

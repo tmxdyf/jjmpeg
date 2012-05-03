@@ -18,32 +18,45 @@
  */
 package au.notzed.jjmpeg;
 
-import java.nio.ByteBuffer;
-
 /**
  *
  * @author notzed
  */
 public class AVCodec extends AVCodecAbstract {
 
-	AVCodec(ByteBuffer p) {
+	//AVCodec(long p) {
+	//	setNative(new AVCodecNative(this, p));
+	//}
+
+	AVCodec(int p) {
 		setNative(new AVCodecNative(this, p));
 	}
 
-	static public AVCodec create(ByteBuffer p) {
-		if (p == null)
-			return null;
-		return new AVCodec(p);
-	}
-
+	//static public AVCodec create(ByteBuffer p) {
+	//	if (p == null)
+	//		return null;
+	//	return new AVCodec(p);
+	//}
 	static public AVCodec findEncoder(int id) {
-		return AVCodec.create(AVCodecNative.find_encoder(id));
+		return AVCodecNativeAbstract.find_encoder(id);
 	}
 }
 
 class AVCodecNative extends AVCodecNativeAbstract {
 
-	AVCodecNative(AVObject o, ByteBuffer p) {
-		super(o, p);
+	int p;
+
+	AVCodecNative(AVObject o, int p) {
+		super(o);
+
+		this.p = p;
+	}
+
+	@Override
+	public void dispose() {
+		if (p != 0) {
+			super.dispose();
+			p = 0;
+		}
 	}
 }
