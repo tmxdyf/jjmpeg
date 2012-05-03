@@ -19,21 +19,20 @@
  */
 package au.notzed.jjmpeg;
 
-import java.nio.ByteBuffer;
-
 /**
  * Used to convert between formats and optionally scale at the same time.
+ *
  * @author notzed
  */
 public class ReSampleContext extends ReSampleContextAbstract {
 
-	protected ReSampleContext(ByteBuffer p) {
+	protected ReSampleContext(int p) {
 		setNative(new ReSampleContextNative(this, p));
 	}
 
-	static ReSampleContext create(ByteBuffer p) {
-		return new ReSampleContext(p);
-	}
+	//static ReSampleContext create(ByteBuffer p) {
+	//	return new ReSampleContext(p);
+	//}
 
 	static public ReSampleContext create(int output_channels, int input_channels, int output_rate, int input_rate, SampleFormat sample_fmt_out, SampleFormat sample_fmt_in, int filter_length, int log2_phase_count, int linear, double cutoff) {
 		return ReSampleContext.resampleInit(output_channels, input_channels, output_rate, input_rate, sample_fmt_out, sample_fmt_in, filter_length, log2_phase_count, linear, cutoff);
@@ -46,15 +45,20 @@ public class ReSampleContext extends ReSampleContextAbstract {
 
 class ReSampleContextNative extends ReSampleContextNativeAbstract {
 
-	ReSampleContextNative(AVObject o, ByteBuffer p) {
-		super(o, p);
+	int p;
+
+	ReSampleContextNative(AVObject o, int p) {
+		super(o);
+
+		this.p = p;
 	}
 
 	@Override
 	public void dispose() {
-		if (p != null) {
-			resample_close(p);
+		if (p != 0) {
+			resample_close();
 			super.dispose();
+			p = 0;
 		}
 	}
 }

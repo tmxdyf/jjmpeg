@@ -37,5 +37,8 @@ LOCAL_MODULE := jjmpeg
 LOCAL_SRC_FILES := jjmpeg/jjmpeg.c
 LOCAL_STATIC_LIBRARIES := avformat avcodec swscale avutil
 LOCAL_CFLAGS := -I$(FF) -Ijjmpeg
-LOCAL_LDLIBS := -lz
+LOCAL_LDLIBS := -lz -llog
+
+jjmpeg: $(FF)/jjmpeg-jni.c
+
 include $(BUILD_SHARED_LIBRARY)

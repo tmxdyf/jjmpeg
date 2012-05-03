@@ -18,26 +18,26 @@
  */
 package au.notzed.jjmpeg;
 
-import java.nio.ByteBuffer;
-
 /**
  * Dummy object for binding.
  * @author notzed
  */
 public class SwsFilter extends SwsFilterAbstract {
 
-	protected SwsFilter(ByteBuffer p) {
+	protected SwsFilter(int p) {
 		setNative(new SwsFilterNative(this, p));
 	}
 
-	static SwsFilter create(ByteBuffer p) {
-		return new SwsFilter(p);
-	}
+	//static SwsFilter create(ByteBuffer p) {
+	//	return new SwsFilter(p);
+	//}
 }
 
 class SwsFilterNative extends SwsFilterNativeAbstract {
+	int p;
 
-	SwsFilterNative(AVObject o, ByteBuffer p) {
-		super(o, p);
+	SwsFilterNative(AVObject o, int p) {
+		super(o);
+		this.p = p;
 	}
 }

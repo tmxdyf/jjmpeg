@@ -27,19 +27,19 @@ import java.nio.ByteBuffer;
 public class AVPacket extends AVPacketAbstract {
 
 	public static final int AV_PKT_FLAG_KEY = 1;
-	
-	AVPacket(ByteBuffer p) {
+
+	AVPacket(int p) {
 		setNative(new AVPacketNative(this, p));
 	}
 
 	public static AVPacket create() {
-		return new AVPacket(AVPacketNative.allocatePacket());
+		return AVPacketNative.allocatePacket();
 	}
 
 	public void setData(ByteBuffer data, int size) {
-		AVPacketNative.setData(n.p, data, size);
+		n.setData(data, size);
 	}
-	
+
 	/**
 	 * Consumes 'len' bytes by incrementing the data pointer and decrementing the
 	 * length of the packet.
@@ -47,29 +47,32 @@ public class AVPacket extends AVPacketAbstract {
 	 * @return
 	 */
 	public int consume(int len) {
-		return AVPacketNative.consume(n.p, len);
+		return n.consume(len);
 	}
 }
 
 class AVPacketNative extends AVPacketNativeAbstract {
+	int p;
 
-	AVPacketNative(AVObject o, ByteBuffer p) {
-		super(o, p);
+	AVPacketNative(AVObject o, int p) {
+		super(o);
+
+		this.p = p;
 	}
 
 	@Override
 	public void dispose() {
-		if (p != null) {
-			freePacket(p);
+		if (p != 0) {
+			freePacket();
 		}
 		super.dispose();
 	}
 
-	static native int consume(ByteBuffer p, int len);
+	native int consume(int len);
 
-	static native ByteBuffer allocatePacket();
+	static native AVPacket allocatePacket();
 
-	static native void freePacket(ByteBuffer p);
-	
-	public static native void setData(ByteBuffer p, ByteBuffer b, int size);
+	native void freePacket();
+
+	public native void setData(ByteBuffer b, int size);
 }

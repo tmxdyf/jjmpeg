@@ -20,7 +20,6 @@ package au.notzed.jjmpeg;
 
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.nio.LongBuffer;
 
 /**
@@ -29,19 +28,23 @@ import java.nio.LongBuffer;
  */
 public class AVRational extends AVRationalAbstract {
 
-	protected AVRational(ByteBuffer p) {
+	protected AVRational(int p) {
 		setNative(new AVRationalNative(this, p));
 	}
 
-	static AVRational create(ByteBuffer p) {
-		return new AVRational(p);
-	}
+	//static AVRational create(ByteBuffer p) {
+	//	return new AVRational(p);
+	//}
 
 	static AVRational create(int num, int den) {
+		// FIXME!
+
 		// since it's so simple we can create this ourselves
-		ByteBuffer b = ByteBuffer.allocateDirect(8).order(ByteOrder.nativeOrder());
-		b.asIntBuffer().put(num).put(den).rewind();
-		return create(b);
+		//ByteBuffer b = ByteBuffer.allocateDirect(8).order(ByteOrder.nativeOrder());
+		//b.asIntBuffer().put(num).put(den).rewind();
+		//return create(b);
+
+		return null;
 	}
 	public static final AVRational AV_TIME_BASE_Q = create(1, 1000000);
 
@@ -50,7 +53,7 @@ public class AVRational extends AVRationalAbstract {
 	}
 
 	static public long rescaleQ(long a, AVRational bq, AVRational cq) {
-		return AVRationalNative.jjRescaleQ(a, bq.n.p, cq.n.p);
+		return AVRationalNative.jjRescaleQ(a, bq.n, cq.n);
 	}
 
 	/**
@@ -92,13 +95,16 @@ public class AVRational extends AVRationalAbstract {
 }
 
 class AVRationalNative extends AVRationalNativeAbstract {
+	int p;
 
-	AVRationalNative(AVObject o, ByteBuffer p) {
-		super(o, p);
+	AVRationalNative(AVObject o, int p) {
+		super(o);
+
+		this.p = p;
 	}
-	
+
 	// perhapd implement this locally instead?
-	static native long jjRescaleQ(long a, ByteBuffer bq, ByteBuffer cq);
+	static native long jjRescaleQ(long a, AVRationalNative bq, AVRationalNative cq);
 	//	/usr/include/ffmpeg/libavutil/mathematics.h:int64_t av_rescale_q(int64_t a, AVRational bq, AVRational cq) av_const;
 
 }

@@ -42,7 +42,7 @@ public class AVCodecContext extends AVCodecContextAbstract {
 	//
 	public static final int FF_MB_DECISION_SIMPLE = 0;        ///< uses mb_cmp
 	public static final int FF_MB_DECISION_BITS = 1;       ///< chooses the one which needs the fewest bits
-	public static final int FF_MB_DECISION_RD = 2;        ///< rate distortion	public static final int 
+	public static final int FF_MB_DECISION_RD = 2;        ///< rate distortion	public static final int
 	//
 	///< Use fixed qscale.
 	public static final int CODEC_FLAG_QSCALE = 0x0002;
@@ -157,13 +157,13 @@ public class AVCodecContext extends AVCodecContextAbstract {
 	//
 	private IntBuffer fin = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder()).asIntBuffer();
 
-	protected AVCodecContext(ByteBuffer p) {
+	protected AVCodecContext(int p) {
 		setNative(new AVCodecContextNative(this, p));
 	}
 
-	static AVCodecContext create(ByteBuffer p) {
-		return new AVCodecContext(p);
-	}
+	//static AVCodecContext create(ByteBuffer p) {
+	//	return new AVCodecContext(p);
+	//}
 
 	public static AVCodecContext create() {
 		AVCodecContext cc = allocContext();
@@ -176,7 +176,7 @@ public class AVCodecContext extends AVCodecContextAbstract {
 	}
 
 	public void open(AVCodec codec) throws AVIOException {
-		int res = AVCodecContextNative.open(n.p, codec.n.p);
+		int res = n.open(codec.n);
 
 		if (res < 0) {
 			throw new AVIOException(res);
@@ -236,7 +236,7 @@ public class AVCodecContext extends AVCodecContextAbstract {
 		ByteBuffer buf = samples.getBuffer();
 
 		buf.limit(buf.capacity());
-		
+
 		ShortBuffer s = (ShortBuffer) samples.getSamples();
 
 		while (data == 0 && packet.getSize() > 0) {
@@ -258,13 +258,13 @@ public class AVCodecContext extends AVCodecContextAbstract {
 
 		return data;
 	}
-	
+
 	public int encodeAudio(ByteBuffer buf, AVSamples samples) throws AVEncodingError {
 		int buf_size = buf.capacity();
 		int len = encodeAudio(buf, buf_size, (ShortBuffer)samples.getSamples());
 
 		assert (len < buf_size);
-		
+
 		if (len >= 0) {
 			buf.limit(len);
 			buf.position(0);
@@ -276,19 +276,23 @@ public class AVCodecContext extends AVCodecContextAbstract {
 }
 
 class AVCodecContextNative extends AVCodecContextNativeAbstract {
+	int p;
 
 	boolean allocated = false;
 
-	AVCodecContextNative(AVObject o, ByteBuffer p) {
-		super(o, p);
+	AVCodecContextNative(AVObject o, int p) {
+		super(o);
+
+		this.p = p;
 	}
 
 	@Override
 	public void dispose() {
-		if (p != null) {
+		if (p != 0) {
 			// close?
 			if (allocated) {
-				_free(p);
+				//_free(p);
+				free64(p);
 			}
 		}
 		super.dispose();

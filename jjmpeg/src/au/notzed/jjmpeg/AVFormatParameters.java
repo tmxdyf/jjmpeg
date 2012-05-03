@@ -27,20 +27,23 @@ import java.nio.ByteBuffer;
  */
 public class AVFormatParameters extends AVFormatParametersAbstract {
 
-	protected AVFormatParameters(ByteBuffer p) {
+	protected AVFormatParameters(int p) {
 		setNative(new AVFormatParametersNative(this, p));
 	}
 
-	static AVFormatParameters create(ByteBuffer p) {
-		if (p == null) {
-			return null;
-		}
-		return new AVFormatParameters(p);
-	}
+	//static AVFormatParameters create(long p) {
+	//	if (p == 0) {
+	//		return null;
+	//	}
+	//	return new AVFormatParameters(p);
+	//}
 }
 class AVFormatParametersNative extends AVFormatParametersNativeAbstract {
+	int p;
 
-	AVFormatParametersNative(AVObject o, ByteBuffer p) {
-		super(o, p);
+	AVFormatParametersNative(AVObject o, int p) {
+		super(o);
+
+		this.p = p;
 	}
 }
