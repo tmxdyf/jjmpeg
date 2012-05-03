@@ -6,101 +6,202 @@ import android.graphics.Bitmap.Config;
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.ImageView;
+import au.notzed.jjmpeg.exception.AVException;
 import au.notzed.jjmpeg.exception.AVIOException;
-import au.notzed.jjmpeg.exception.AVInvalidCodecException;
-import au.notzed.jjmpeg.exception.AVInvalidStreamException;
 import au.notzed.jjmpeg.io.JJMediaReader;
 import au.notzed.jjmpeg.io.JJMediaReader.JJReaderVideo;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Totally dunk demo that just opens a file, reads some frames
- * and displays the bitmap.
+ * Really slow video player just to see if
+ * the api is binding properly.
+ *
  * @author notzed
  */
 public class JJPlayer extends Activity {
+
 	ImageView iview;
+	Throttle throttle;
+	Decoder decoder;
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.main);
 
-		try {
-			AVFormatContext.registerAll();
-			try {
-				AVFormatContext fmt = AVFormatContext.open("/sdcard/trailer.mp4");
+		iview = (ImageView) findViewById(R.id.image);
 
-				fmt.closeInput();
-			} catch (AVIOException ex) {
-				Logger.getLogger(JJPlayer.class.getName()).log(Level.SEVERE, null, ex);
-			}
-		} catch (Throwable t) {
-			Logger.getLogger(JJPlayer.class.getName()).log(Level.SEVERE, null, t);
+		throttle = new Throttle();
+		decoder = new Decoder();
+	}
+
+	@Override
+	protected void onStart() {
+		super.onStart();
+
+		if (!throttle.isAlive()) {
+			throttle.start();
+			decoder.start();
+		}
+	}
+
+	@Override
+	protected void onDestroy() {
+		super.onDestroy();
+
+		frames.clear();
+		recycle.clear();
+		frames.offer(new FrameData(0, null));
+		recycle.offer(new FrameData(0, null));
+		try {
+			throttle.join();
+			decoder.join();
+		} catch (InterruptedException ex) {
+			Logger.getLogger(JJPlayer.class.getName()).log(Level.SEVERE, null, ex);
 		}
 
+	}
+
+	class FrameData implements Runnable {
+
+		long pts;
+		Bitmap bm;
+
+		public FrameData(long pts, Bitmap bm) {
+			this.pts = pts;
+			this.bm = bm;
+		}
+
+		public void run() {
+			iview.setImageBitmap(bm);
+			recycle.offer(this);
+		}
+	}
+	long startms;
+	LinkedBlockingQueue<FrameData> frames = new LinkedBlockingQueue<FrameData>();
+	LinkedBlockingQueue<FrameData> recycle = new LinkedBlockingQueue<FrameData>();
+
+	/**
+	 * Displays frames at some rate
+	 */
+	class Throttle extends Thread {
+
+		@Override
+		public void run() {
+			long startpts = -1;
+			startms = System.currentTimeMillis();
+
+			try {
+				while (true) {
+					try {
+						FrameData fd = frames.take();
+
+						if (fd.bm == null)
+							break;
+
+						// fix streams that don't start at 0
+						if (startpts == -1)
+							startpts = fd.pts;
+
+						long pts = fd.pts - startpts;
+						long targetms = pts + startms;
+						long now = System.currentTimeMillis();
+
+						long delay;
+
+						if (startms == -1) {
+							startms = now - pts;
+							//startms = now - seekoffset;
+							delay = 0;
+						} else {
+							delay = targetms - now;
+						}
+
+						if (delay >= 0) {
+							Thread.sleep(delay);
+							iview.post(fd);
+						} else {
+							//Log.i("jjmpeg", "frame dropped, lag: " + delay);
+							//recycle.offer(fd);
+							iview.post(fd);
+						}
+					} catch (InterruptedException ex) {
+						Logger.getLogger(JJPlayer.class.getName()).log(Level.SEVERE, null, ex);
+					}
+				}
+			} finally {
+				recycle.offer(new FrameData(0, null));
+				Log.i("jjmpeg", "Test throttle thread stopped");
+			}
+		}
+	}
+
+	class Decoder extends Thread {
+
 		JJMediaReader mr = null;
-		try {
+		JJReaderVideo vs;
+		int w;
+		int h;
+		PixelFormat fmt = PixelFormat.PIX_FMT_RGBA;
+		// how many frames to 'buffer' ahead of time (assiv we'd ever get that far ahead)
+		static final int NFRAMES = 10;
+
+		void open() throws AVIOException, AVException {
 			//mr = new JJMediaReader("/sdcard/bbb.mov");
 			mr = new JJMediaReader("/sdcard/trailer.mp4");
-			JJReaderVideo vs = mr.openFirstVideoStream();
+			vs = mr.openFirstVideoStream();
 
 			Log.i("jjplayer", String.format("Opened Video: %dx%d fmt %s", vs.getWidth(), vs.getHeight(), vs.getPixelFormat()));
 
-			int w = vs.getWidth();
-			int h = vs.getHeight();
+			w = vs.getWidth();
+			h = vs.getHeight();
 
-			Bitmap bm = Bitmap.createBitmap(w, h, Config.ARGB_8888);
-
-			PixelFormat fmt = PixelFormat.PIX_FMT_RGBA;
-			vs.setOutputFormat(fmt, w, h);
-
-			int fc = 0;
-			int n = 10*25;
-			long now = System.currentTimeMillis();
-			// jump a few frames in to get past titles
-			for (int i=0;i<n;i++) {
-				mr.readFrame();
-				fc++;
+			for (int i = 0; i < NFRAMES; i++) {
+				Bitmap bm = Bitmap.createBitmap(w, h, Config.ARGB_8888);
+				recycle.add(new FrameData(0, bm));
 			}
-			now = System.currentTimeMillis() - now;
-			Log.i("jjplayer", String.format("Decoding %d frames took %d.%03ds", fc, now/1000, now%1000));
 
-			// extract frame
-			AVPlane plane = vs.getOutputFrame().getPlaneAt(0, fmt, w, h);
-			bm.copyPixelsFromBuffer(plane.data);
-
-
-			iview = (ImageView) findViewById(R.id.image);
-			iview.setImageBitmap(bm);
-
-			mr.dispose();
-			mr = null;
-		} catch (AVInvalidStreamException ex) {
-			Logger.getLogger(JJPlayer.class.getName()).log(Level.SEVERE, null, ex);
-		} catch (AVIOException ex) {
-			Logger.getLogger(JJPlayer.class.getName()).log(Level.SEVERE, null, ex);
-		} catch (AVInvalidCodecException ex) {
-			Logger.getLogger(JJPlayer.class.getName()).log(Level.SEVERE, null, ex);
-		} finally {
-			if (mr != null)
-				mr.dispose();
+			vs.setOutputFormat(fmt, w, h);
 		}
 
-		File f = new File("/sdcard/trailer.mp4");
-		try {
-			FileInputStream fis = new FileInputStream(f);
+		@Override
+		public void run() {
+			try {
+				open();
 
-			Log.i("jjplayer", "Opened file ok size=" + fis.getChannel().size());
+				while (true) {
+					try {
+						FrameData fd = recycle.take();
 
-			fis.close();
-		} catch (IOException ex) {
-			Log.e("jjplayer", "Opened file failed " + ex);
-			Logger.getLogger(JJPlayer.class.getName()).log(Level.SEVERE, null, ex);
+						if (fd.bm == null)
+							break;
+
+						if (mr.readFrame() == null)
+							break;
+
+						AVFrame frame = vs.getOutputFrame();
+						AVPlane plane = frame.getPlaneAt(0, fmt, w, h);
+
+						fd.bm.copyPixelsFromBuffer(plane.data);
+						fd.pts = vs.convertPTS(mr.getPTS());
+
+						frames.offer(fd);
+					} catch (InterruptedException ex) {
+						Logger.getLogger(JJPlayer.class.getName()).log(Level.SEVERE, null, ex);
+					}
+				}
+			} catch (AVIOException ex) {
+				Logger.getLogger(JJPlayer.class.getName()).log(Level.SEVERE, null, ex);
+			} catch (AVException ex) {
+				Logger.getLogger(JJPlayer.class.getName()).log(Level.SEVERE, null, ex);
+			} finally {
+				if (mr != null)
+					mr.dispose();
+				frames.offer(new FrameData(0, null));
+				Log.i("jjmpeg", "Test decoder thread stopped");
+			}
 		}
 	}
 }
