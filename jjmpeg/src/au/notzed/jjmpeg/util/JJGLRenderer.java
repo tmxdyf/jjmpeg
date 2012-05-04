@@ -108,17 +108,26 @@ public class JJGLRenderer implements GLSurfaceView.Renderer {
 			// Need to recreate texture, e.g. video size changed
 			if (bindTexture) {
 				bindTexture = false;
-				GLES20.glBindTexture(GL_TEXTURE_2D, textureID);
-				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, twidth, theight, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, null);
+				GLES20.glBindTexture(GL_TEXTURE_2D, textureYID);
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, twidth, theight, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, null);
+				GLES20.glBindTexture(GL_TEXTURE_2D, textureUID);
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, twidth / 2, theight / 2, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, null);
+				GLES20.glBindTexture(GL_TEXTURE_2D, textureVID);
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, twidth / 2, theight / 2, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, null);
 				checkGlError("glTexImage2D");
 				System.out.println("texture size changed, " + twidth + "x" + theight);
 
 				Matrix.setIdentityM(stMatrix, 0);
-				Matrix.scaleM(stMatrix, 0, (float)vwidth/twidth, (float)vheight/theight, 1);
+				Matrix.scaleM(stMatrix, 0, (float) vwidth / twidth, (float) vheight / theight, 1);
 			}
 			if (pixelData != null) {
 				//System.out.println(" update texture: " + pixelData);
-				glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, vwidth, vheight, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, pixelData.getBuffer());
+				GLES20.glBindTexture(GL_TEXTURE_2D, textureYID);
+				glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, pixelData.getLineSize(0), vheight, GL_LUMINANCE, GL_UNSIGNED_BYTE, pixelData.getBuffer(0));
+				GLES20.glBindTexture(GL_TEXTURE_2D, textureUID);
+				glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, pixelData.getLineSize(1), vheight / 2, GL_LUMINANCE, GL_UNSIGNED_BYTE, pixelData.getBuffer(1));
+				GLES20.glBindTexture(GL_TEXTURE_2D, textureVID);
+				glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, pixelData.getLineSize(2), vheight / 2, GL_LUMINANCE, GL_UNSIGNED_BYTE, pixelData.getBuffer(2));
 				checkGlError("textsubimage2d");
 				pixelData.recycle();
 				pixelData = null;
@@ -127,35 +136,34 @@ public class JJGLRenderer implements GLSurfaceView.Renderer {
 
 		// Ignore the passed-in GL10 interface, and use the GLES20
 		// class's static methods instead.
-		GLES20.glClear(GLES20.GL_DEPTH_BUFFER_BIT | GLES20.GL_COLOR_BUFFER_BIT);
-		GLES20.glUseProgram(paintTexture);
+		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+		glUseProgram(paintTexture);
 		checkGlError("glUseProgram");
 
-		GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
-		GLES20.glBindTexture(GL_TEXTURE_2D, textureID);
+		glActiveTexture(GLES20.GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, textureYID);
+		glActiveTexture(GLES20.GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, textureUID);
+		glActiveTexture(GLES20.GL_TEXTURE2);
+		glBindTexture(GL_TEXTURE_2D, textureVID);
+
+		glUniform1i(texY, 0);
+		glUniform1i(texU, 1);
+		glUniform1i(texV, 2);
 
 		triangleVertices.position(TRIANGLE_VERTICES_DATA_POS_OFFSET);
-		GLES20.glVertexAttribPointer(positionHandle, 3, GLES20.GL_FLOAT, false,
-				TRIANGLE_VERTICES_DATA_STRIDE_BYTES, triangleVertices);
+		glVertexAttribPointer(positionHandle, 3, GLES20.GL_FLOAT, false, TRIANGLE_VERTICES_DATA_STRIDE_BYTES, triangleVertices);
 		checkGlError("glVertexAttribPointer maPosition");
-		GLES20.glEnableVertexAttribArray(positionHandle);
+		glEnableVertexAttribArray(positionHandle);
 		checkGlError("glEnableVertexAttribArray maPositionHandle");
 
 		triangleVertices.position(TRIANGLE_VERTICES_DATA_UV_OFFSET);
-		GLES20.glVertexAttribPointer(textureHandle, 3, GLES20.GL_FLOAT, false,
-				TRIANGLE_VERTICES_DATA_STRIDE_BYTES, triangleVertices);
+		glVertexAttribPointer(textureHandle, 3, GL_FLOAT, false, TRIANGLE_VERTICES_DATA_STRIDE_BYTES, triangleVertices);
 		checkGlError("glVertexAttribPointer maTextureHandle");
-		GLES20.glEnableVertexAttribArray(textureHandle);
+		glEnableVertexAttribArray(textureHandle);
 		checkGlError("glEnableVertexAttribArray maTextureHandle");
 
-		long time = SystemClock.uptimeMillis() % 4000L;
-		float angle = 0.090f * ((int) time);
-
-		angle = 0;
-		//Matrix.setRotateM(matrix, 0, angle, 0, 0, 1.0f);
 		Matrix.setIdentityM(matrix, 0);
-		//Matrix.scaleM(matrix, 0, 2, 2, 2);
-
 		Matrix.multiplyMM(vpMatrix, 0, vMatrix, 0, matrix, 0);
 		Matrix.multiplyMM(vpMatrix, 0, projMatrix, 0, vpMatrix, 0);
 
@@ -203,39 +211,43 @@ public class JJGLRenderer implements GLSurfaceView.Renderer {
 			throw new RuntimeException("Could not get attrib location for aTextureCoord");
 		}
 
-		vpMatrixHandle = GLES20.glGetUniformLocation(paintTexture, "uMVPMatrix");
-		checkGlError("glGetUniformLocation uMVPMatrix");
-		if (vpMatrixHandle == -1) {
-			throw new RuntimeException("Could not get attrib location for uMVPMatrix");
+		vpMatrixHandle = getUniform(paintTexture, "uMVPMatrix");
+		stMatrixHandle = getUniform(paintTexture, "uSTMatrix");
+
+		texY = getUniform(paintTexture, "yTexture");
+		texU = getUniform(paintTexture, "uTexture");
+		texV = getUniform(paintTexture, "vTexture");
+
+		// Create textures for YUV input
+		int[] textures = new int[3];
+		GLES20.glGenTextures(3, textures, 0);
+
+		textureYID = textures[0];
+		textureUID = textures[1];
+		textureVID = textures[2];
+		for (int i = 0; i < 3; i++) {
+			GLES20.glBindTexture(GL_TEXTURE_2D, textures[i]);
+			checkGlError("glBindTexture mTextureID");
+
+			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		}
-
-		stMatrixHandle = GLES20.glGetUniformLocation(paintTexture, "uSTMatrix");
-		checkGlError("glGetUniformLocation uSTMatrix");
-		if (vpMatrixHandle == -1) {
-			throw new RuntimeException("Could not get attrib location for uSTMatrix");
-		}
-
-		/*
-		 * Create our texture. This has to be done each time the
-		 * surface is created.
-		 */
-
-		int[] textures = new int[1];
-		GLES20.glGenTextures(1, textures, 0);
-
-		textureID = textures[0];
-		GLES20.glBindTexture(GL_TEXTURE_2D, textureID);
-		checkGlError("glBindTexture mTextureID");
-
-		GLES20.glTexParameterf(GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_NEAREST);
-		GLES20.glTexParameterf(GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
-		GLES20.glTexParameteri(GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE);
-		GLES20.glTexParameteri(GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
 
 		checkGlError("glTexParameteri mTextureID");
 
 		//Matrix.setLookAtM(mVMatrix, 0, 0, 0, 5f, 0f, 0f, 0f, 0f, 1.0f, 0.0f);
 		Matrix.setLookAtM(vMatrix, 0, 0, 0, -5, 0f, 0f, 0f, 0f, 1.0f, 0.0f);
+	}
+
+	private int getUniform(int prog, String name) {
+		int res = glGetUniformLocation(prog, name);
+		checkGlError("glGetUniformLocation " + name);
+		if (res == -1) {
+			//throw new RuntimeException("Could not get location for " + name);
+		}
+		return res;
 	}
 
 	private int loadShader(int shaderType, String source) {
@@ -319,9 +331,22 @@ public class JJGLRenderer implements GLSurfaceView.Renderer {
 			"precision mediump float;\n"
 			+ "varying vec2 vTextureCoord;\n"
 			+ "varying vec2 vTextureNormCoord;\n"
-			+ "uniform sampler2D sTexture;\n"
+			+ "uniform sampler2D yTexture;\n"
+			+ "uniform sampler2D uTexture;\n"
+			+ "uniform sampler2D vTexture;\n"
+			+ "const mat3 yuv2rgb = mat3(\n"
+			+ "1, 0, 1.2802,\n"
+			+ " 1, -0.214821, -0.380589,\n"
+			+ " 1, 2.127982, 0\n"
+			+ " );\n"
 			+ "void main() {\n"
-			+ "  gl_FragColor = texture2D(sTexture, vTextureCoord);\n"
+			+ "	vec3 yuv = vec3(1.1643 * ("
+			+ "		texture2D(yTexture, vTextureCoord).r - 0.0625),\n"
+			+ "		texture2D(uTexture, vTextureCoord).r - 0.5,\n"
+			+ "		texture2D(vTexture, vTextureCoord).r - 0.5\n"
+			+ "	);\n"
+			+ "	vec3 rgb = yuv * yuv2rgb;\n"
+			+ "	gl_FragColor = vec4(rgb, 1.0);\n"
 			+ "}\n";
 	private float[] vpMatrix = new float[16];
 	private float[] projMatrix = new float[16];
@@ -329,7 +354,10 @@ public class JJGLRenderer implements GLSurfaceView.Renderer {
 	private float[] vMatrix = new float[16];
 	private float[] stMatrix = new float[16];
 	private int paintTexture;
-	private int textureID;
+	private int textureYID;
+	private int textureUID;
+	private int textureVID;
+	private int texY, texU, texV;
 	private int vpMatrixHandle;
 	private int stMatrixHandle;
 	private int positionHandle;
