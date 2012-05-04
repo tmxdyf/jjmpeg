@@ -22,7 +22,7 @@ import java.util.logging.Logger;
  *
  * But it adds a separate CPU thread for the colour conversion,
  * which allows it to run a bit faster.
- * 
+ *
  * @author notzed
  */
 public class JJGLPlayer extends Activity {
@@ -179,7 +179,7 @@ public class JJGLPlayer extends Activity {
 	JJReaderVideo vs;
 	int w;
 	int h;
-	PixelFormat fmt = PixelFormat.PIX_FMT_RGBA;
+	PixelFormat fmt = PixelFormat.PIX_FMT_RGB565LE;
 
 	// CPU thread for conversion
 	class Converter extends Thread {
@@ -223,9 +223,9 @@ public class JJGLPlayer extends Activity {
 	class Decoder extends Thread {
 
 		// how many decoded frames to 'buffer' ahead of time (assiv we'd ever get that far ahead)
-		static final int NFRAMES = 10;
+		static final int NFRAMES = 5;
 		// how many decoder buffers to use, only needs to be 2
-		static final int NDECODED = 2;
+		static final int NDECODED = 3;
 
 		void open() throws AVIOException, AVException {
 			//mr = new JJMediaReader("/sdcard/bbb.mov");
@@ -240,7 +240,10 @@ public class JJGLPlayer extends Activity {
 			}
 
 			if (vs == null)
-				throw new AVInvalidStreamException("No streams");
+				throw new AVInvalidStreamException("No video streams");
+
+			Log.i("jjplayer", "Thread count was " + vs.getContext().getThreadCount());
+			vs.getContext().setThreadCount(4);
 
 			vs.setFrameCount(NDECODED);
 			vs.open();

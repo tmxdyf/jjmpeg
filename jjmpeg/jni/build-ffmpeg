@@ -10,7 +10,10 @@ FF=ffmpeg-0.10
 
 TARGETS=('armeabi' 'armeabi-v7a')
 TARGETS_OPTS=( '' '' )
-TARGETS_CFLAGS=( '' '-mfloat-abi=softfp -mfpu=vfpv3-d16 -marm -march=armv7-a' )
+TARGETS_CFLAGS=( '' '-mfloat-abi=softfp -mfpu=neon -marm -march=armv7-a' )
+#TARGETS_CFLAGS=( '' '-mfloat-abi=softfp -mfpu=vfpv3-d16 -marm -march=armv7-a -mfpu=neon' )
+
+export SYSROOT=$PLATFORM
 
 this=`pwd`
 i=0
@@ -28,24 +31,19 @@ for TARGET in ${TARGETS[@]} ; do
 	--cross-prefix=$PREBUILT/bin/arm-linux-androideabi- \
 	--enable-cross-compile \
 	--target-os=linux \
-	--extra-cflags="-I$PLATFORM/usr/include $cflags" \
-	--extra-ldflags="-L$PLATFORM/usr/lib -nostdlib" \
+	--extra-cflags="-I$PLATFORM/usr/include $cflags --sysroot=$SYSROOT" \
+	--extra-ldflags="-L$PLATFORM/usr/lib --sysroot=$SYSROOT" \
 	--arch=arm \
 	--disable-shared \
 	--enable-static \
+	--enable-pthreads \
 	--disable-symver \
 	--disable-debug \
+	--enable-pthreads \
 	--enable-gpl --enable-version3 \
 	--disable-doc \
 	--disable-ffmpeg --disable-ffplay --disable-ffprobe --disable-ffprobe \
-	--disable-avdevice --disable-avfilter --disable-postproc
-# need to work out why configure doesn't find this stuff
-    sed -i -e 's/HAVE_LRINT 0/HAVE_LRINT 1/g' \
-	-e 's/HAVE_LRINTF 0/HAVE_LRINTF 1/g' \
-	-e 's/HAVE_ROUND 0/HAVE_ROUND 1/g' \
-	-e 's/HAVE_ROUNDF 0/HAVE_ROUNDF 1/g' \
-	-e 's/HAVE_TRUNC 0/HAVE_TRUNC 1/g' \
-	-e 's/HAVE_TRUNCF 0/HAVE_TRUNCF 1/g' config.h
+	--disable-avdevice --disable-avfilter --disable-postproc || exit 1
 
     i=`expr $i + 1`
     make V=1 -j8 || exit 1

@@ -54,6 +54,16 @@ abstract class AVCodecContextNativeAbstract extends AVNative {
 	native int setErrorConcealment(int val);
 	native int getMbDecision();
 	native int setMbDecision(int val);
+	native int getThreadCount();
+	native int setThreadCount(int val);
+	native int getSkipFrame();
+	native int setSkipFrame(int val);
+	native int getLowres();
+	native int setLowres(int val);
+	native int getCodedWidth();
+	native int setCodedWidth(int val);
+	native int getCodedHeight();
+	native int setCodedHeight(int val);
 	native AVFrame getCodedFrame();
 	// Native Methods
 	 native int open(AVCodecNative codec);
@@ -198,6 +208,36 @@ abstract class AVCodecContextAbstract extends AVObject {
 	}
 	public  void setMbDecision(int val) {
 		n.setMbDecision(val);
+	}
+	public  int getThreadCount() {
+		return n.getThreadCount();
+	}
+	public  void setThreadCount(int val) {
+		n.setThreadCount(val);
+	}
+	public  int getSkipFrame() {
+		return n.getSkipFrame();
+	}
+	public  void setSkipFrame(int val) {
+		n.setSkipFrame(val);
+	}
+	public  int getLowres() {
+		return n.getLowres();
+	}
+	public  void setLowres(int val) {
+		n.setLowres(val);
+	}
+	public  int getCodedWidth() {
+		return n.getCodedWidth();
+	}
+	public  void setCodedWidth(int val) {
+		n.setCodedWidth(val);
+	}
+	public  int getCodedHeight() {
+		return n.getCodedHeight();
+	}
+	public  void setCodedHeight(int val) {
+		n.setCodedHeight(val);
 	}
 	public  AVFrame getCodedFrame() {
 		return n.getCodedFrame();
