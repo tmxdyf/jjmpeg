@@ -28,15 +28,12 @@ import java.util.logging.Logger;
 public class JJGLPlayer extends Activity {
 
 	JJGLSurfaceView view;
-	Decoder decoder;
-	Converter converter;
+	Thread decoder;
 	Throttle throttle;
 	//
 	long startms;
 	// frames ready for being used
 	LinkedBlockingQueue<FrameData> recycle = new LinkedBlockingQueue<FrameData>();
-	// source frames to be converted.
-	LinkedBlockingQueue<FrameData> convert = new LinkedBlockingQueue<FrameData>();
 	LinkedBlockingQueue<FrameData> frames = new LinkedBlockingQueue<FrameData>();
 
 	@Override
@@ -48,8 +45,7 @@ public class JJGLPlayer extends Activity {
 		setContentView(view);
 
 		throttle = new Throttle();
-		decoder = new Decoder();
-		converter = new Converter();
+		decoder = new DecoderGL();
 	}
 
 	@Override
@@ -58,7 +54,6 @@ public class JJGLPlayer extends Activity {
 
 		if (!throttle.isAlive()) {
 			throttle.start();
-			converter.start();
 			decoder.start();
 		}
 	}
@@ -69,10 +64,8 @@ public class JJGLPlayer extends Activity {
 
 		frames.clear();
 		recycle.clear();
-		convert.clear();
 		frames.offer(new FrameData(0, null, null));
 		recycle.offer(new FrameData(0, null, null));
-		convert.offer(new FrameData(0, null, null));
 		try {
 			throttle.join();
 			decoder.join();
@@ -86,11 +79,11 @@ public class JJGLPlayer extends Activity {
 
 		long pts;
 		AVFrame frame;
-		AVPlane plane;
+		AVPlane[] plane;
 		// incoming frame before conversion
 		AVFrame iframe;
 
-		public FrameData(long pts, AVFrame frame, AVPlane plane) {
+		public FrameData(long pts, AVFrame frame, AVPlane[] plane) {
 			this.pts = pts;
 			this.frame = frame;
 			this.plane = plane;
@@ -101,16 +94,16 @@ public class JJGLPlayer extends Activity {
 			view.renderer.setFrame(this);
 		}
 
-		public void convert() {
-			scale.scale(iframe, 0, plane.height, frame);
-		}
-
 		public void recycle() {
-			recycle.offer(this);
+			vs.recycleFrame(frame);
 		}
 
-		public ByteBuffer getBuffer() {
-			return plane.data;
+		public ByteBuffer getBuffer(int index) {
+			return plane[index].data;
+		}
+
+		public int getLineSize(int index) {
+			return plane[index].lineSize;
 		}
 	}
 
@@ -152,7 +145,6 @@ public class JJGLPlayer extends Activity {
 							delay = targetms - now;
 						}
 
-
 						//delay = 0;
 
 						if (delay >= 0) {
@@ -174,58 +166,17 @@ public class JJGLPlayer extends Activity {
 			}
 		}
 	}
-	SwsContext scale;
 	JJMediaReader mr = null;
 	JJReaderVideo vs;
 	int w;
 	int h;
 	PixelFormat fmt = PixelFormat.PIX_FMT_RGB565LE;
 
-	// CPU thread for conversion
-	class Converter extends Thread {
+	// CPU thread for demux + decode, uses GL for colour conversion
+	class DecoderGL extends Thread {
 
-		@Override
-		public void run() {
-			long btime = 0;
-
-			try {
-				while (true) {
-					try {
-						FrameData fd = convert.take();
-
-						if (fd.frame == null)
-							break;
-
-						long now = System.currentTimeMillis();
-
-						fd.convert();
-
-						btime += System.currentTimeMillis() - now;
-
-						vs.recycleFrame(fd.iframe);
-						fd.iframe = null;
-
-						frames.offer(fd);
-						//fd.recycle();
-					} catch (InterruptedException ex) {
-						Logger.getLogger(JJGLPlayer.class.getName()).log(Level.SEVERE, null, ex);
-					}
-				}
-			} finally {
-				frames.offer(new FrameData(0, null, null));
-
-				Log.i("jjmpeg", String.format("Converter thread stopped: busy = %d.%03ds", btime / 1000, btime % 1000));
-			}
-		}
-	}
-
-	// CPU thread for demux + decode.
-	class Decoder extends Thread {
-
-		// how many decoded frames to 'buffer' ahead of time (assiv we'd ever get that far ahead)
-		static final int NFRAMES = 5;
-		// how many decoder buffers to use, only needs to be 2
-		static final int NDECODED = 3;
+		// how many decoder buffers to use, this is the only buffering now
+		static final int NDECODED = 5;
 
 		void open() throws AVIOException, AVException {
 			//mr = new JJMediaReader("/sdcard/bbb.mov");
@@ -243,6 +194,8 @@ public class JJGLPlayer extends Activity {
 				throw new AVInvalidStreamException("No video streams");
 
 			Log.i("jjplayer", "Thread count was " + vs.getContext().getThreadCount());
+			// skip b frames
+			//vs.getContext().setSkipFrame(16);
 			vs.getContext().setThreadCount(4);
 
 			vs.setFrameCount(NDECODED);
@@ -252,18 +205,6 @@ public class JJGLPlayer extends Activity {
 
 			w = vs.getWidth();
 			h = vs.getHeight();
-
-			scale = SwsContext.create(w, h, vs.getPixelFormat(), w, h, fmt, SwsContext.SWS_BILINEAR);
-
-			for (int i = 0; i < NFRAMES; i++) {
-				AVFrame frame;
-
-				frame = AVFrame.create(fmt, w, h);
-
-				recycle.add(new FrameData(0, frame, frame.getPlaneAt(0, fmt, w, h)));
-			}
-
-			vs.setOutputFormat(fmt, w, h);
 		}
 
 		@Override
@@ -276,26 +217,26 @@ public class JJGLPlayer extends Activity {
 				view.renderer.setVideoSize(w, h);
 
 				while (true) {
-					try {
-						FrameData fd = recycle.take();
+					long now = System.currentTimeMillis();
 
-						if (fd.frame == null)
-							break;
+					if (mr.readFrame() == null)
+						break;
 
-						long now = System.currentTimeMillis();
+					AVFrame iframe = vs.getFrame();
+					AVPlane[] planes = {
+						iframe.getPlaneAt(0, vs.getPixelFormat(), w, h),
+						iframe.getPlaneAt(1, vs.getPixelFormat(), w, h),
+						iframe.getPlaneAt(2, vs.getPixelFormat(), w, h)
+					};
 
-						if (mr.readFrame() == null)
-							break;
+					FrameData fd = new FrameData(vs.convertPTS(mr.getPTS()), iframe, planes);
 
-						busy += System.currentTimeMillis() - now;
+					busy += System.currentTimeMillis() - now;
 
-						fd.pts = vs.convertPTS(mr.getPTS());
-						fd.iframe = vs.getFrame();
+					fd.pts = vs.convertPTS(mr.getPTS());
+					fd.iframe = vs.getFrame();
 
-						convert.offer(fd);
-					} catch (InterruptedException ex) {
-						Logger.getLogger(JJGLPlayer.class.getName()).log(Level.SEVERE, null, ex);
-					}
+					frames.offer(fd);
 				}
 			} catch (AVIOException ex) {
 				Logger.getLogger(JJGLPlayer.class.getName()).log(Level.SEVERE, null, ex);
@@ -304,7 +245,7 @@ public class JJGLPlayer extends Activity {
 			} finally {
 				if (mr != null)
 					mr.dispose();
-				convert.offer(new FrameData(0, null, null));
+				frames.offer(new FrameData(0, null, null));
 
 				start = System.currentTimeMillis() - start;
 				Log.i("jjmpeg", String.format("Demux/decoder thread busy=%d.%03ds total: %d.%03ds", busy / 1000, busy % 1000, start / 1000, start % 1000));
