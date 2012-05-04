@@ -1,4 +1,4 @@
-package au.notzed.jjmpeg;
+package au.notzed.jjmpeg.util;
 
 import android.app.Activity;
 import android.graphics.Bitmap;
@@ -6,6 +6,10 @@ import android.graphics.Bitmap.Config;
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.ImageView;
+import au.notzed.jjmpeg.AVFrame;
+import au.notzed.jjmpeg.AVPlane;
+import au.notzed.jjmpeg.PixelFormat;
+import au.notzed.jjmpeg.R;
 import au.notzed.jjmpeg.exception.AVException;
 import au.notzed.jjmpeg.exception.AVIOException;
 import au.notzed.jjmpeg.io.JJMediaReader;
@@ -150,7 +154,7 @@ public class JJPlayer extends Activity {
 
 		void open() throws AVIOException, AVException {
 			//mr = new JJMediaReader("/sdcard/bbb.mov");
-			mr = new JJMediaReader("/sdcard/trailer.mp4");
+			mr = new JJMediaReader("/sdcard/yard.mp4");
 			vs = mr.openFirstVideoStream();
 
 			Log.i("jjplayer", String.format("Opened Video: %dx%d fmt %s", vs.getWidth(), vs.getHeight(), vs.getPixelFormat()));
@@ -168,6 +172,8 @@ public class JJPlayer extends Activity {
 
 		@Override
 		public void run() {
+			long busy = 0;
+			long start = System.currentTimeMillis();
 			try {
 				open();
 
@@ -178,16 +184,24 @@ public class JJPlayer extends Activity {
 						if (fd.bm == null)
 							break;
 
+						long now = System.currentTimeMillis();
+
 						if (mr.readFrame() == null)
 							break;
 
-						AVFrame frame = vs.getOutputFrame();
-						AVPlane plane = frame.getPlaneAt(0, fmt, w, h);
+						if (false) {
+							AVFrame frame = vs.getOutputFrame();
+							AVPlane plane = frame.getPlaneAt(0, fmt, w, h);
 
-						fd.bm.copyPixelsFromBuffer(plane.data);
-						fd.pts = vs.convertPTS(mr.getPTS());
+							fd.bm.copyPixelsFromBuffer(plane.data);
+							fd.pts = vs.convertPTS(mr.getPTS());
+							busy += System.currentTimeMillis() - now;
 
-						frames.offer(fd);
+							frames.offer(fd);
+						} else {
+							busy += System.currentTimeMillis() - now;
+							recycle.offer(fd);
+						}
 					} catch (InterruptedException ex) {
 						Logger.getLogger(JJPlayer.class.getName()).log(Level.SEVERE, null, ex);
 					}
@@ -200,7 +214,8 @@ public class JJPlayer extends Activity {
 				if (mr != null)
 					mr.dispose();
 				frames.offer(new FrameData(0, null));
-				Log.i("jjmpeg", "Test decoder thread stopped");
+				start = System.currentTimeMillis() - start;
+				Log.i("jjmpeg", String.format("Demux/decoder thread busy=%d.%03ds total: %d.%03ds", busy / 1000, busy % 1000, start / 1000, start % 1000));
 			}
 		}
 	}
