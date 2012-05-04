@@ -25,6 +25,7 @@ import au.notzed.jjmpeg.exception.AVInvalidCodecException;
 import au.notzed.jjmpeg.exception.AVInvalidStreamException;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
+import java.awt.image.DataBufferInt;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -383,6 +384,9 @@ public class JJMediaReader {
 		}
 
 		public void dispose() {
+			// (I cant remember why i removed this.  I think it gets closed anyway and was causing a crash)
+			//if (opened)
+			//	c.close();
 			if (codec != null) {
 				codec.dispose();
 			}
@@ -565,6 +569,10 @@ public class JJMediaReader {
 				System.out.println(" pixel format: " + c.getPixFmt());
 			}
 
+			if (c.getPixFmt() == PixelFormat.PIX_FMT_NONE) {
+				throw new AVInvalidCodecException("No decodable video present");
+			}
+
 			// find decoder for the video stream
 			codec = AVCodec.findDecoder(c.getCodecID());
 
@@ -683,6 +691,7 @@ public class JJMediaReader {
 
 		/**
 		 * Retrieve the index of the next frame which will be decoded into.
+		 *
 		 * @return
 		 */
 		public int getNextOutputFrameIndex() {
@@ -709,12 +718,32 @@ public class JJMediaReader {
 		}
 
 		/**
+		 * Set the output pixel format, the size will be the native source size.
+		 *
+		 * @param ofmt
+		 */
+		public void setOutputFormat(PixelFormat ofmt) {
+			setOutputFormat(ofmt, width, height);
+		}
+
+		/**
 		 * Set the output format for use with getOutputFrame()
 		 *
-		 * If using the BufferedImage version of getOutputFrame, currently ofmt must be PIX_FMT_BGR24 or PIX_FMT_GRAY8 although if one is using the raw version
-		 * of getOutputFrame() it may be any format.
+		 * If using the BufferedImage version of getOutputFrame, currently ofmt
+		 * must be PIX_FMT_BGR24, PIX_FMT_RGBA, or PIX_FMT_GRAY8 although if one
+		 * is using the raw version of getOutputFrame() it may be any format.
 		 *
-		 * Invoking this will invalidate any images previously made from createImage() (insofar as it pertains to using them with getOutputFrame(image).)
+		 * These 3 formats are mapped directly to the closest corresponding Java2D
+		 * image types in createImage().
+		 *
+		 * On little-endian architectures, these are:
+		 *
+		 * PixelFormat.PIX_FMT_BGR24 === BufferedImage.TYPE_3BYTE_BGR
+		 * PixelFormat.PIX_FMT_GRAY8 === BufferedImage.TYPE_BYTE_GRAY
+		 * PixelFormat.PIX_FMT_RGBA  === BufferedImage.TYPE_INT_BGR
+		 *
+		 * Invoking this will invalidate any images previously made from createImage()
+		 * (insofar as it pertains to using them with getOutputFrame(image).)
 		 *
 		 * @param ofmt
 		 * @param owidth
@@ -774,6 +803,8 @@ public class JJMediaReader {
 					return BufferedImage.TYPE_3BYTE_BGR;
 				case PIX_FMT_GRAY8:
 					return BufferedImage.TYPE_BYTE_GRAY;
+				case PIX_FMT_RGBA:
+					return BufferedImage.TYPE_INT_BGR;
 			}
 			throw new RuntimeException("Unsupported Java image conversion format");
 		}
@@ -790,18 +821,22 @@ public class JJMediaReader {
 					return PixelFormat.PIX_FMT_BGR24;
 				case BufferedImage.TYPE_BYTE_GRAY:
 					return PixelFormat.PIX_FMT_GRAY8;
+				case BufferedImage.TYPE_INT_BGR:
+					return PixelFormat.PIX_FMT_RGBA;
 			}
 			throw new RuntimeException("Unsupported Java image conversion format");
 		}
 
 		protected boolean canConvert(PixelFormat fmt) {
 			return fmt == PixelFormat.PIX_FMT_BGR24
-					| fmt == PixelFormat.PIX_FMT_GRAY8;
+					| fmt == PixelFormat.PIX_FMT_GRAY8
+					| fmt == PixelFormat.PIX_FMT_RGBA;
 		}
 
 		protected boolean canConvert(int type) {
 			return type == BufferedImage.TYPE_3BYTE_BGR
-					| type == BufferedImage.TYPE_BYTE_GRAY;
+					| type == BufferedImage.TYPE_BYTE_GRAY
+					| type == BufferedImage.TYPE_INT_BGR;
 		}
 
 		/**
@@ -851,19 +886,30 @@ public class JJMediaReader {
 				setOutputFormat(typeToFormat(dst.getType()), width, height);
 			}
 
-			// TODO: for 0.10 version, this isn't required. but for 0.7 it will add palette info
-			if (ofmt == PixelFormat.PIX_FMT_GRAY8) {
-				// Scale to oframe, then copy across
-				AVFrame frame = getOutputFrame();
-				AVPlane splane = frame.getPlaneAt(0, ofmt, owidth, oheight);
-				byte[] data = ((DataBufferByte) dst.getRaster().getDataBuffer()).getData();
+			switch (ofmt) {
+				case PIX_FMT_GRAY8: {
+					// TODO: for 0.10 version, this isn't required. but for 0.7 it will add palette info
+					// Scale to oframe, then copy across
+					AVFrame frame = getOutputFrame();
+					AVPlane splane = frame.getPlaneAt(0, ofmt, owidth, oheight);
+					byte[] data = ((DataBufferByte) dst.getRaster().getDataBuffer()).getData();
 
-				splane.data.get(data, 0, Math.min(data.length, splane.data.capacity()));
-				splane.data.rewind();
-			} else {
-				// Scale directly to target image
-				byte[] data = ((DataBufferByte) dst.getRaster().getDataBuffer()).getData();
-				oscale.scale(iframe, 0, height, data);
+					splane.data.get(data, 0, Math.min(data.length, splane.data.capacity()));
+					splane.data.rewind();
+					break;
+				}
+				case PIX_FMT_BGR24: {
+					// Scale directly to target image
+					byte[] data = ((DataBufferByte) dst.getRaster().getDataBuffer()).getData();
+					oscale.scale(iframe, 0, height, data);
+					break;
+				}
+				case PIX_FMT_RGBA: {
+					// Scale directly to target (integer) image
+					int[] data = ((DataBufferInt) dst.getRaster().getDataBuffer()).getData();
+					oscale.scale(iframe, 0, height, data);
+					break;
+				}
 			}
 
 			return dst;

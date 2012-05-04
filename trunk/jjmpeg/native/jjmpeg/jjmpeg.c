@@ -63,11 +63,73 @@ static void * (*dav_malloc)(int size);
 static void (*dav_free)(void *mem);
 static void (*dav_init_packet)(AVPacket *);
 
+static int (*dav_lockmgr_register)(int (*cb)(void **mutex, enum AVLockOp op));
+
 static jmethodID byteio_readPacket;
 static jmethodID byteio_writePacket;
 static jmethodID byteio_seek;
 
+/*
+** The CodecContext open/close stuff isn't thread safe.  It isn't enough to just
+** serialise calls to both of them, as they are also invoked internally; the
+** locking callback must be setup.
+**
+** (why is this not automatic at build time of FFmpeg?)
+*/
+
+#if defined(WIN64) || defined(WIN32)
+static int lock_cb(void **mutexp, enum AVLockOp op) {
+	HANDLE *mutex = (HANDLE *)mutexp;
+
+	switch (op) {
+	case AV_LOCK_CREATE:  ///< Create a mutex
+		*mutex = CreateMutex(NULL, FALSE, NULL);
+		if (*mutex) {
+			return 0;
+		}
+		break;
+	case AV_LOCK_OBTAIN:  ///< Lock the mutex
+		if (WaitForSingleObject(*mutex, INFINITE) == 0)
+			return 0;
+		break;
+	case AV_LOCK_RELEASE: ///< Unlock the mutex
+		if (ReleaseMutex(*mutex))
+			return 0;
+		break;
+	case AV_LOCK_DESTROY: ///< Free mutex resources
+		if (CloseHandle(*mutex))
+			return 0;
+		break;
+	}
+	return -1;
+}
+#else
+#include <pthread.h>
+
 /* ********************************************************************** */
+static int lock_cb(void **mutexp, enum AVLockOp op) {
+	pthread_mutex_t **mutex = (pthread_mutex_t **)mutexp;
+
+	switch (op) {
+	case AV_LOCK_CREATE:  ///< Create a mutex
+		*mutex = malloc(sizeof(pthread_mutex_t));
+		if (*mutex) {
+		pthread_mutex_init(*mutex, NULL);
+		return 0;
+		}
+		break;
+	case AV_LOCK_OBTAIN:  ///< Lock the mutex
+		return pthread_mutex_lock(*mutex);
+	case AV_LOCK_RELEASE: ///< Unlock the mutex
+		return pthread_mutex_unlock(*mutex);
+	case AV_LOCK_DESTROY: ///< Free mutex resources
+		pthread_mutex_destroy(*mutex);
+		free(*mutex);
+		return 0;
+	}
+	return -1;
+}
+#endif
 
 static int init_local(JNIEnv *env) {
 
@@ -90,12 +152,16 @@ static int init_local(JNIEnv *env) {
 	MAPDL(av_malloc, avutil_lib);
 	MAPDL(av_free, avutil_lib);
 
+	MAPDL(av_lockmgr_register, avcodec_lib);
+
 	jclass byteioclass = (*env)->FindClass(env, "au/notzed/jjmpeg/AVIOContext");
 	if (byteioclass == NULL)
 		;
 	byteio_readPacket = (*env)->GetMethodID(env, byteioclass, "readPacket", "(Ljava/nio/ByteBuffer;)I");
 	byteio_writePacket = (*env)->GetMethodID(env, byteioclass, "writePacket", "(Ljava/nio/ByteBuffer;)I");
 	byteio_seek = (*env)->GetMethodID(env, byteioclass, "seek", "(JI)J");
+
+	(*dav_lockmgr_register)(lock_cb);
 
 	return 1;
 }
