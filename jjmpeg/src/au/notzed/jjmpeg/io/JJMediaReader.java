@@ -37,11 +37,16 @@ import au.notzed.jjmpeg.exception.AVInvalidStreamException;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * High level interface for scanning audio and video frames.
- * 
+ *
  * TODO: handle all frames.
+ *
  * @author notzed
  */
 public class JJMediaReader {
@@ -92,7 +97,7 @@ public class JJMediaReader {
 
 	/**
 	 * Opens the first video and audio stream found
-	 * 
+	 *
 	 * TODO: could open the first one we know how to decode
 	 */
 	public void openDefaultStreams() throws AVInvalidCodecException, AVIOException {
@@ -147,26 +152,28 @@ public class JJMediaReader {
 
 	/**
 	 * Set output rendered size.
-	 * 
+	 *
 	 * If this is changed, must re-call createImage(), getOutputFrame(), etc.
+	 *
 	 * @param swidth
-	 * @param sheight 
+	 * @param sheight
 	 */
 	/*
-	public void setSize(int swidth, int sheight) {
-	oframe.dispose();
-	scale.dispose();
-	this.swidth = swidth;
-	this.sheight = sheight;
-	
-	oframe = AVFrame.create(PixelFormat.PIX_FMT_BGR24, swidth, sheight);
-	scale = SwsContext.create(width, height, fmt, swidth, sheight, PixelFormat.PIX_FMT_BGR24, SwsContext.SWS_BILINEAR);
-	}
-	 * 
+	 * public void setSize(int swidth, int sheight) {
+	 * oframe.dispose();
+	 * scale.dispose();
+	 * this.swidth = swidth;
+	 * this.sheight = sheight;
+	 *
+	 * oframe = AVFrame.create(PixelFormat.PIX_FMT_BGR24, swidth, sheight);
+	 * scale = SwsContext.create(width, height, fmt, swidth, sheight, PixelFormat.PIX_FMT_BGR24, SwsContext.SWS_BILINEAR);
+	 * }
+	 *
 	 */
 	/**
 	 * Get raw format for images.
-	 * @return 
+	 *
+	 * @return
 	 */
 	public AVFormatContext getFormat() {
 		return format;
@@ -175,9 +182,10 @@ public class JJMediaReader {
 
 	/**
 	 * Retrieve (calculated) pts of the last frame decoded.
-	 * 
+	 *
 	 * Well be -1 at EOF
-	 * @return 
+	 *
+	 * @return
 	 */
 	public long getPTS() {
 		return pts;
@@ -186,7 +194,8 @@ public class JJMediaReader {
 	/**
 	 * Reads and decodes packets until data is ready in one
 	 * of the opened streams.
-	 * @return 
+	 *
+	 * @return
 	 */
 	public JJReaderStream readFrame() {
 
@@ -228,14 +237,15 @@ public class JJMediaReader {
 
 	/**
 	 * Attempt to seek to the nearest millisecond.
-	 * 
+	 *
 	 * The next frame read should match the stamp.
-	 * 
+	 *
 	 * This only seeks to key frames
-	 * 
+	 *
 	 * TODO: unimplemented
+	 *
 	 * @param stamp
-	 * @throws AVIOException 
+	 * @throws AVIOException
 	 */
 	public void seekMS(long stamp) throws AVIOException {
 		int res;
@@ -250,10 +260,11 @@ public class JJMediaReader {
 
 	/**
 	 * Seek in stream units
-	 * 
+	 *
 	 * UNIMPLEMENTED
+	 *
 	 * @param stamp
-	 * @throws AVIOException 
+	 * @throws AVIOException
 	 */
 	public void seek(long stamp) throws AVIOException {
 		int res;
@@ -319,7 +330,8 @@ public class JJMediaReader {
 
 		/**
 		 * Retrieve duration of sequence, in milliseconds.
-		 * @return 
+		 *
+		 * @return
 		 */
 		public long getDurationMS() {
 			return durationms;
@@ -327,7 +339,8 @@ public class JJMediaReader {
 
 		/**
 		 * Get duration in timebase units (i.e. frames?)
-		 * @return 
+		 *
+		 * @return
 		 */
 		public long getDuration() {
 			return duration;
@@ -336,25 +349,28 @@ public class JJMediaReader {
 		/**
 		 * Convert the 'pts' provided to milliseconds relative to the start of the
 		 * stream.
+		 *
 		 * @param pts
-		 * @return 
+		 * @return
 		 */
 		public long convertPTS(long pts) {
 			return AVRational.starSlash(pts * 1000, tb_Num, tb_Den) - startms;
 		}
 
 		/**
-		 * Decode a packet.  Returns true if data is now ready.
-		 * 
+		 * Decode a packet. Returns true if data is now ready.
+		 *
 		 * It is ok to call this on an unopened stream: return false.
+		 *
 		 * @param packet
-		 * @return 
+		 * @return
 		 */
 		abstract public boolean decode(AVPacket packet) throws AVDecodingError;
 
 		/**
 		 * Retreive the AVMEDIA_TYPE_* for this stream.
-		 * @return 
+		 *
+		 * @return
 		 */
 		abstract public int getType();
 	}
@@ -368,6 +384,10 @@ public class JJMediaReader {
 		int width;
 		PixelFormat fmt;
 		AVFrame iframe;
+		int iframeCount = 1;
+		// For cyclic re-use of frames.
+		LinkedBlockingQueue<AVFrame> ready;
+		LinkedList<AVFrame> allocated;
 		//
 		PixelFormat ofmt;
 		AVFrame oframe;
@@ -398,10 +418,22 @@ public class JJMediaReader {
 				throw new AVInvalidCodecException("Unable to decode video stream");
 			}
 
+			allocated = new LinkedList<AVFrame>();
+			ready = new LinkedBlockingQueue<AVFrame>();
+			for (int i = 0; i < iframeCount; i++) {
+				AVFrame frame = AVFrame.create();
+
+				if (frame == null) {
+					throw new OutOfMemoryError("Unable to allocate frame");
+				}
+
+				allocated.add(frame);
+				ready.add(frame);
+			}
+
 			c.open(codec);
 
-
-			iframe = AVFrame.create();
+			iframe = ready.remove();
 
 			height = c.getHeight();
 			width = c.getWidth();
@@ -415,23 +447,49 @@ public class JJMediaReader {
 		public void dispose() {
 			super.dispose();
 
-			iframe.dispose();
+			if (allocated != null) {
+				for (AVFrame frame : allocated) {
+					frame.dispose();
+				}
+			}
 
 			if (scale != null) {
 				scale.dispose();
 				oframe.dispose();
 			}
+
+			System.out.printf("Close Video Stream: Waiting for input frames: %d.%03ds\n", waiting / 1000, waiting % 1000);
+		}
+		long waiting = 0;
+
+		protected synchronized AVFrame getDecodingFrame() {
+			return iframe;
 		}
 
 		@Override
 		public boolean decode(AVPacket packet) throws AVDecodingError {
-			if (iframe == null) {
+			if (allocated == null) {
 				return false;
 			}
 
+			AVFrame dframe = getDecodingFrame();
+
+			// wait for a decoding frame if we have to
+			long now = System.currentTimeMillis();
+			while (dframe == null) {
+				// FIXME: when to exit this
+				try {
+					dframe = ready.take();
+				} catch (InterruptedException ex) {
+					Logger.getLogger(JJMediaReader.class.getName()).log(Level.SEVERE, null, ex);
+				}
+			}
+			waiting += System.currentTimeMillis() - now;
+			iframe = dframe;
+
 			stale = true;
 
-			boolean frameFinished = c.decodeVideo(iframe, packet);
+			boolean frameFinished = c.decodeVideo(dframe, packet);
 
 			return frameFinished;
 		}
@@ -455,12 +513,13 @@ public class JJMediaReader {
 
 		/**
 		 * Set the output format for use with getOutputFrame()
-		 * 
+		 *
 		 * If using the BufferedImage version of getOutputFrame, currently ofmt
 		 * must be PIX_FMT_BGR24.
+		 *
 		 * @param ofmt
 		 * @param swidth
-		 * @param sheight 
+		 * @param sheight
 		 */
 		public void setOutputFormat(PixelFormat ofmt, int swidth, int sheight) {
 			if (scale != null) {
@@ -476,15 +535,16 @@ public class JJMediaReader {
 
 		/**
 		 * Allocate an image suitable for getOutputFrame()
-		 * @return 
+		 *
+		 * @return
 		 */
 		//public BufferedImage createImage() {
 		//	return new BufferedImage(swidth, sheight, BufferedImage.TYPE_3BYTE_BGR);
 		//}
-
 		/**
 		 * Retrieve the scaled frame, or just the raw frame if no output format set
-		 * @return 
+		 *
+		 * @return
 		 */
 		public AVFrame getOutputFrame() {
 			if (oframe != null) {
@@ -501,29 +561,64 @@ public class JJMediaReader {
 		/**
 		 * Get the output frame into a buffered image.
 		 * TODO: only works with FIX_FMT_BGR24!
+		 *
 		 * @param dst
 		 * @return dst
 		 */
 		//public BufferedImage getOutputFrame(BufferedImage dst) {
 		//	assert (dst.getType() == BufferedImage.TYPE_3BYTE_BGR);
-
 		//	if (ofmt == null) {
 		//		setOutputFormat(PixelFormat.PIX_FMT_BGR24, width, height);
 		//	}
-
-			// Scale directly to target image
+		// Scale directly to target image
 		//	byte[] data = ((DataBufferByte) dst.getRaster().getDataBuffer()).getData();
 		//	scale.scale(iframe, 0, height, data);
-			
 		//	return dst;
 		//}
-
 		/**
 		 * Retrieve the decoded frame.
-		 * @return 
+		 *
+		 * In multi-frame mode, once you're finished with this, call recycleFrame()
+		 *
+		 * @return
 		 */
-		public AVFrame getFrame() {
-			return iframe;
+		synchronized public AVFrame getFrame() {
+			AVFrame af = iframe;
+
+			if (iframeCount > 1)
+				iframe = null;
+
+			return af;
+		}
+
+		/**
+		 * Extended multi-thread api.
+		 *
+		 * Once this is called, the decoding mode changes, and now frames are decoded
+		 * using a cyclic buffer. This allows frames to be converted using another
+		 * thread, or passed to other processing.
+		 *
+		 * In this mode frames retrieved using getFrame() MUST be returned using
+		 * recycleFrame() eventually.
+		 *
+		 * This function may only be called before open() is.
+		 *
+		 * @param count must be >= 1
+		 */
+		public void setFrameCount(int count) {
+			iframeCount = Math.max(1, count);
+		}
+
+		/**
+		 * Allow a frame to re re-used for decoding.
+		 *
+		 * Only call once setFrameCount() has been invoked.
+		 *
+		 * May be called on any thread.
+		 */
+		public void recycleFrame(AVFrame r) {
+			if (iframeCount > 1)
+				ready.offer(r);
 		}
 	}
 
