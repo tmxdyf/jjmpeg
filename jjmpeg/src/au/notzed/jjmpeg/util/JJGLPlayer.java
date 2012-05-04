@@ -3,6 +3,8 @@ package au.notzed.jjmpeg.util;
 import android.app.Activity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.Window;
+import android.view.WindowManager;
 import au.notzed.jjmpeg.*;
 import au.notzed.jjmpeg.exception.AVException;
 import au.notzed.jjmpeg.exception.AVIOException;
@@ -39,6 +41,9 @@ public class JJGLPlayer extends Activity {
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+
+		this.requestWindowFeature(Window.FEATURE_NO_TITLE);
+		getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
 
 		view = new JJGLSurfaceView(this);
 
@@ -176,7 +181,7 @@ public class JJGLPlayer extends Activity {
 	class DecoderGL extends Thread {
 
 		// how many decoder buffers to use, this is the only buffering now
-		static final int NDECODED = 5;
+		static final int NDECODED = 3;
 
 		void open() throws AVIOException, AVException {
 			//mr = new JJMediaReader("/sdcard/bbb.mov");
