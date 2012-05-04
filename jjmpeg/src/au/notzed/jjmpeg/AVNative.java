@@ -83,7 +83,7 @@ abstract public class AVNative extends WeakReference<AVObject> {
 
 	/**
 	 * Retrieve run-time library version info.
-	 * 
+	 *
 	 * use LIB*_VERSION indices to get actual versions.
 	 */
 	static public int[] getVersions() {
@@ -108,8 +108,8 @@ abstract public class AVNative extends WeakReference<AVObject> {
 	}
 
 	/**
-	 * Dispose of this resource.  It must be safe to call this multiple times.
-	 * 
+	 * Dispose of this resource. It must be safe to call this multiple times.
+	 *
 	 * The default dispose sets this.p = null;
 	 */
 	public void dispose() {
