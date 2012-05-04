@@ -57,6 +57,7 @@ public class JJGLRenderer implements GLSurfaceView.Renderer {
 	boolean dataChanged = false;
 	int vwidth, vheight;
 	int twidth, theight;
+	int pwidth, pheight;
 	JJFrame pixelData;
 
 	public JJGLRenderer(Context context, JJGLSurfaceView view) {
@@ -107,12 +108,18 @@ public class JJGLRenderer implements GLSurfaceView.Renderer {
 			// Need to recreate texture, e.g. video size changed
 			if (bindTexture) {
 				bindTexture = false;
-				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, twidth, theight, 0, GL_RGBA, GL_UNSIGNED_BYTE, null);
+				GLES20.glBindTexture(GL_TEXTURE_2D, textureID);
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, twidth, theight, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, null);
+				checkGlError("glTexImage2D");
 				System.out.println("texture size changed, " + twidth + "x" + theight);
+
+				Matrix.setIdentityM(stMatrix, 0);
+				Matrix.scaleM(stMatrix, 0, (float)vwidth/twidth, (float)vheight/theight, 1);
 			}
 			if (pixelData != null) {
 				//System.out.println(" update texture: " + pixelData);
-				glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, vwidth, vheight, GL_RGBA, GL_UNSIGNED_BYTE, pixelData.getBuffer());
+				glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, vwidth, vheight, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, pixelData.getBuffer());
+				checkGlError("textsubimage2d");
 				pixelData.recycle();
 				pixelData = null;
 			}
@@ -145,8 +152,9 @@ public class JJGLRenderer implements GLSurfaceView.Renderer {
 		float angle = 0.090f * ((int) time);
 
 		angle = 0;
-		Matrix.setRotateM(matrix, 0, angle, 0, 0, 1.0f);
-		Matrix.scaleM(matrix, 0, 2, 2, 2);
+		//Matrix.setRotateM(matrix, 0, angle, 0, 0, 1.0f);
+		Matrix.setIdentityM(matrix, 0);
+		//Matrix.scaleM(matrix, 0, 2, 2, 2);
 
 		Matrix.multiplyMM(vpMatrix, 0, vMatrix, 0, matrix, 0);
 		Matrix.multiplyMM(vpMatrix, 0, projMatrix, 0, vpMatrix, 0);
@@ -163,8 +171,11 @@ public class JJGLRenderer implements GLSurfaceView.Renderer {
 		// class's static methods instead.
 		GLES20.glViewport(0, 0, width, height);
 		float ratio = (float) width / height;
-		Matrix.frustumM(projMatrix, 0, -ratio, ratio, -1, 1, 3, 7);
-		//Matrix.frustumM(mProjMatrix, 0, -0.5f, 0.5f, -0.5f, 0.5f, 3, 7);
+
+		pwidth = width;
+		pheight = height;
+
+		Matrix.orthoM(projMatrix, 0, 1, -1, 1, -1, 3, 7);
 	}
 
 	public void onSurfaceCreated(GL10 glUnused, EGLConfig config) {
