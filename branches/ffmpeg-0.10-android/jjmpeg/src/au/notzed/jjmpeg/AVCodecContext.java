@@ -231,7 +231,7 @@ public class AVCodecContext extends AVCodecContextAbstract {
 	 * @return number of bytes written to samples
 	 * @throws AVDecodingError
 	 */
-	public int decodeAudio(AVSamples samples, AVAudioPacket packet) throws AVDecodingError {
+	public int decodeAudio(AVSamples samples, AVPacket packet) throws AVDecodingError {
 		int data = 0;
 		ByteBuffer buf = samples.getBuffer();
 

@@ -259,6 +259,10 @@ JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_AVPacketNative_consume
 	return packet->size;
 }
 
+#include <android/log.h>
+#define  LOG_TAG    "jjmpegjni"
+#define  LOGI(...)  __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
+
 JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_AVPacketNative_setData
 (JNIEnv *env, jobject jptr, jobject jp, jint size) {
 	AVPacket *packet = PTR(jptr, AVPacket);
@@ -266,6 +270,14 @@ JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_AVPacketNative_setData
 
 	packet->data = p;
 	packet->size = size;
+}
+
+JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_AVPacketNative_copyPacket
+(JNIEnv *env, jobject jptr, jobject jsrc) {
+	AVPacket *packet = PTR(jptr, AVPacket);
+	AVPacket *src = PTR(jsrc, AVPacket);
+
+	memcpy(packet, src, sizeof(AVPacket));
 }
 
 /* ********************************************************************** */
