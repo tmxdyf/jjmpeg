@@ -729,11 +729,12 @@ public class JJMediaReader {
 		/**
 		 * Set the output format for use with getOutputFrame()
 		 *
-		 * If using the BufferedImage version of getOutputFrame, currently ofmt
-		 * must be PIX_FMT_BGR24, PIX_FMT_RGBA, or PIX_FMT_GRAY8 although if one
-		 * is using the raw version of getOutputFrame() it may be any format.
+		 * If using the BufferedImage version of getOutputFrame, ofmt
+		 * must be one of the types listed below, but if one
+		 * is using the raw version of getOutputFrame() it may be any format
+		 * supported by libswscale.
 		 *
-		 * These 3 formats are mapped directly to the closest corresponding Java2D
+		 * The supported formats are mapped directly to the closest corresponding Java2D
 		 * image types in createImage().
 		 *
 		 * On little-endian architectures, these are:
@@ -741,6 +742,7 @@ public class JJMediaReader {
 		 * PixelFormat.PIX_FMT_BGR24 === BufferedImage.TYPE_3BYTE_BGR
 		 * PixelFormat.PIX_FMT_GRAY8 === BufferedImage.TYPE_BYTE_GRAY
 		 * PixelFormat.PIX_FMT_RGBA  === BufferedImage.TYPE_INT_BGR
+		 * PixelFormat.PIX_FMT_BGRA  === BufferedImage.TYPE_INT_ARGB
 		 *
 		 * Invoking this will invalidate any images previously made from createImage()
 		 * (insofar as it pertains to using them with getOutputFrame(image).)
@@ -805,6 +807,8 @@ public class JJMediaReader {
 					return BufferedImage.TYPE_BYTE_GRAY;
 				case PIX_FMT_RGBA:
 					return BufferedImage.TYPE_INT_BGR;
+				case PIX_FMT_BGRA:
+					return BufferedImage.TYPE_INT_ARGB;
 			}
 			throw new RuntimeException("Unsupported Java image conversion format");
 		}
@@ -823,6 +827,8 @@ public class JJMediaReader {
 					return PixelFormat.PIX_FMT_GRAY8;
 				case BufferedImage.TYPE_INT_BGR:
 					return PixelFormat.PIX_FMT_RGBA;
+				case BufferedImage.TYPE_INT_ARGB:
+					return PixelFormat.PIX_FMT_BGRA;
 			}
 			throw new RuntimeException("Unsupported Java image conversion format");
 		}
@@ -830,13 +836,15 @@ public class JJMediaReader {
 		protected boolean canConvert(PixelFormat fmt) {
 			return fmt == PixelFormat.PIX_FMT_BGR24
 					| fmt == PixelFormat.PIX_FMT_GRAY8
-					| fmt == PixelFormat.PIX_FMT_RGBA;
+					| fmt == PixelFormat.PIX_FMT_RGBA
+					| fmt == PixelFormat.PIX_FMT_BGRA;
 		}
 
 		protected boolean canConvert(int type) {
 			return type == BufferedImage.TYPE_3BYTE_BGR
 					| type == BufferedImage.TYPE_BYTE_GRAY
-					| type == BufferedImage.TYPE_INT_BGR;
+					| type == BufferedImage.TYPE_INT_BGR
+					| type == BufferedImage.TYPE_INT_ARGB;
 		}
 
 		/**
@@ -904,6 +912,7 @@ public class JJMediaReader {
 					oscale.scale(iframe, 0, height, data);
 					break;
 				}
+				case PIX_FMT_BGRA:
 				case PIX_FMT_RGBA: {
 					// Scale directly to target (integer) image
 					int[] data = ((DataBufferInt) dst.getRaster().getDataBuffer()).getData();
