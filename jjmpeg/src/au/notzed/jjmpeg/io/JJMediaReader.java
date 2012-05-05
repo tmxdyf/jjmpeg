@@ -18,7 +18,6 @@
  */
 package au.notzed.jjmpeg.io;
 
-import au.notzed.jjmpeg.AVAudioPacket;
 import au.notzed.jjmpeg.AVCodec;
 import au.notzed.jjmpeg.AVCodecContext;
 import au.notzed.jjmpeg.AVFormatContext;
@@ -37,7 +36,6 @@ import au.notzed.jjmpeg.exception.AVInvalidStreamException;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -624,7 +622,7 @@ public class JJMediaReader {
 
 	public class JJReaderAudio extends JJReaderStream {
 
-		AVAudioPacket apacket;
+		AVPacket apacket;
 		AVSamples samples;
 
 		public JJReaderAudio(AVStream stream) throws AVInvalidCodecException, AVIOException {
@@ -649,7 +647,7 @@ public class JJMediaReader {
 			System.out.println(" sampleformat : " + c.getSampleFmt());
 			System.out.println(" samplerate : " + c.getSampleRate());
 
-			apacket = AVAudioPacket.create();
+			apacket = AVPacket.create();
 			samples = new AVSamples(c.getSampleFmt());
 		}
 

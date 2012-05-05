@@ -34,7 +34,7 @@ public class AVSamples {
 	Buffer samples;
 
 	public AVSamples(SampleFormat format) {
-		buffer = ByteBuffer.allocateDirect(AVCodecContext.AVCODEC_MAX_AUDIO_FRAME_SIZE * 2);
+		buffer = ByteBuffer.allocateDirect(AVCodecContext.AVCODEC_MAX_AUDIO_FRAME_SIZE * 2).order(ByteOrder.nativeOrder());
 		this.format = format;
 		samples = format.getBuffer(buffer);
 	}

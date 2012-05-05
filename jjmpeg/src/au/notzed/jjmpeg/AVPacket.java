@@ -39,19 +39,38 @@ public class AVPacket extends AVPacketAbstract {
 	public void setData(ByteBuffer data, int size) {
 		n.setData(data, size);
 	}
+	AVPacket src;
+
+	/**
+	 * Create a shallow copy of 'src' into 'this'.
+	 * Used for audio packet re-use, where the packet is consumed incrementally.
+	 *
+	 * @param src
+	 */
+	public void setSrc(AVPacket src) {
+		n.copyPacket(src.n);
+		this.src = src;
+	}
 
 	/**
 	 * Consumes 'len' bytes by incrementing the data pointer and decrementing the
 	 * length of the packet.
+	 *
 	 * @param len
 	 * @return
 	 */
 	public int consume(int len) {
 		return n.consume(len);
 	}
+
+	@Override
+	public String toString() {
+		return String.format("[AVPacket@%08x len %d]", n.p, getSize());
+	}
 }
 
 class AVPacketNative extends AVPacketNativeAbstract {
+
 	int p;
 
 	AVPacketNative(AVObject o, int p) {
@@ -75,4 +94,12 @@ class AVPacketNative extends AVPacketNativeAbstract {
 	native void freePacket();
 
 	public native void setData(ByteBuffer b, int size);
+
+	/**
+	 * Shallow copy the content of the packet struct from src
+	 * (i.e. in c *this = *src)
+	 *
+	 * @param src
+	 */
+	public native void copyPacket(AVPacketNative src);
 }
