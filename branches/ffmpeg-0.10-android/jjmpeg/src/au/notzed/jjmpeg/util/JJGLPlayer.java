@@ -40,7 +40,7 @@ import java.util.logging.Logger;
 public class JJGLPlayer extends Activity {
 
 	JJGLSurfaceView view;
-	Thread decoder;
+	DecoderGL decoder;
 	Throttle throttle;
 	//
 	Audio audio;
@@ -122,8 +122,6 @@ public class JJGLPlayer extends Activity {
 	protected void onStart() {
 		super.onStart();
 
-
-
 		if (!throttle.isAlive()) {
 			throttle.start();
 			decoder.start();
@@ -159,11 +157,13 @@ public class JJGLPlayer extends Activity {
 		ad.size = -1;
 		audioframes.offer(ad);
 
+		decoder.cancelled = true;
 		frames.clear();
 		recycle.clear();
 		frames.offer(new FrameData(0, null, null));
 		recycle.offer(new FrameData(0, null, null));
 		try {
+			decoder.interrupt();
 			throttle.join();
 			decoder.join();
 			audio.join();
@@ -325,6 +325,7 @@ public class JJGLPlayer extends Activity {
 
 	// CPU thread for demux + decode, uses GL for colour conversion
 	class DecoderGL extends Thread {
+		boolean cancelled;
 
 		// how many decoder buffers to use, this is the only buffering now
 		static final int NDECODED = 3;
@@ -388,7 +389,7 @@ public class JJGLPlayer extends Activity {
 
 				view.renderer.setVideoSize(w, h);
 
-				while (true) {
+				while (!cancelled) {
 					long now = System.currentTimeMillis();
 					JJReaderStream rs;
 
