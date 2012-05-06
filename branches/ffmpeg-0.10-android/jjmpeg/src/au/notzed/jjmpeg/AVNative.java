@@ -23,8 +23,6 @@ import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.LinkedList;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  *
@@ -95,6 +93,7 @@ abstract public class AVNative extends WeakReference<AVObject> {
 
 		while (count < limit
 				&& ((an = (AVNative) refqueue.poll()) != null)) {
+			System.err.println("auto-disposing " + an);
 			an.dispose();
 			count += 1;
 		}
@@ -108,6 +107,5 @@ abstract public class AVNative extends WeakReference<AVObject> {
 	 */
 	public void dispose() {
 		reflist.remove(this);
-		Logger.getLogger(AVNative.class.getName()).log(Level.FINEST, "Disposing: " + getClass().getName());
 	}
 }

@@ -64,6 +64,24 @@ public class AVFrame extends AVFrameAbstract {
 		return new AVPlane(n.getPlaneAt(index, fmt.toC(fmt), width, height), lineSize, width, height);
 	}
 
+	/**
+	 * Load the texture using glTexSubImage2D into the given textures.
+	 * (up to).
+	 *
+	 * Only need to provide texture channels for each plane of the given format.
+	 *
+	 * This allows textures to be loaded without createing temporary AVPlane objects.
+	 * 
+	 * @param fmt must match format for picture.  Only YUV420P is supported.
+	 * @param create call glTexImage2D if true, else call glTexSubImage2D
+	 * @param tex0 texture channel 0 (e.g. Y)
+	 * @param tex1 texture channel 1
+	 * @param tex2 texture channel 2
+	 */
+	public void loadTexture2D(PixelFormat fmt, boolean create, int tex0, int tex1, int tex2) {
+		n.loadTexture2D(fmt.toC(), create, tex0, tex1, tex2);
+	}
+
 	public boolean isKeyFrame() {
 		return getKeyFrame() != 0;
 	}
@@ -81,6 +99,8 @@ class AVFrameNative extends AVFrameNativeAbstract {
 	}
 
 	native ByteBuffer getPlaneAt(int index, int pixelFormat, int width, int height);
+
+	native void loadTexture2D(int pixelFormat, boolean create, int tex0, int tex1, int tex2);
 
 	native void freeFrame();
 }

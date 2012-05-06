@@ -1,14 +1,17 @@
 package au.notzed.jjmpeg.util;
 
-import java.nio.ByteBuffer;
+import au.notzed.jjmpeg.AVFrame;
+import au.notzed.jjmpeg.PixelFormat;
 
 /**
  *
  * @author notzed
  */
 public interface JJFrame {
-	public ByteBuffer getBuffer(int plane);
-	public int getLineSize(int plane);
+
 	public void recycle();
 
+	public AVFrame getFrame();
+
+	public PixelFormat getFormat();
 }

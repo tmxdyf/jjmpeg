@@ -223,6 +223,47 @@ JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_AVFrameNative_freeFrame
 	// else throw nullpointer exception
 }
 
+#include <GLES2/gl2.h>
+
+static int texture_size(int v) {
+	int n = 1 << (31 - __builtin_clz(v));
+
+	if (v != n)
+		return n<<1;
+	else
+		return n;
+}
+
+JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_AVFrameNative_loadTexture2D
+(JNIEnv *env, jobject jptr, int fmt, jboolean create, int t0, int t1, int t2) {
+	AVFrame *cptr = PTR(jptr, AVFrame);
+	int height = cptr->height;
+	int width = cptr->width;
+
+	// FIXME: handle different formats
+
+	int twidth = texture_size(width);
+	int theight = texture_size(height);
+
+	if (create) {
+		glBindTexture(GL_TEXTURE_2D, t0);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, twidth, theight, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, NULL);
+
+		glBindTexture(GL_TEXTURE_2D, t1);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, twidth/2, theight/2, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, NULL);
+
+		glBindTexture(GL_TEXTURE_2D, t2);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, twidth/2, theight/2, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, NULL);
+	}
+
+	glBindTexture(GL_TEXTURE_2D, t0);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, cptr->linesize[0], height, GL_LUMINANCE, GL_UNSIGNED_BYTE, cptr->data[0]);
+	glBindTexture(GL_TEXTURE_2D, t1);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, cptr->linesize[1], height/2, GL_LUMINANCE, GL_UNSIGNED_BYTE, cptr->data[1]);
+	glBindTexture(GL_TEXTURE_2D, t2);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, cptr->linesize[2], height/2, GL_LUMINANCE, GL_UNSIGNED_BYTE, cptr->data[2]);
+}
+
 /* ********************************************************************** */
 
 JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVPacketNative_allocatePacket

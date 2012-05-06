@@ -38,7 +38,6 @@ import android.opengl.GLES20;
 import static android.opengl.GLES20.*;
 import android.opengl.GLSurfaceView;
 import android.opengl.Matrix;
-import android.os.SystemClock;
 import android.util.Log;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -105,32 +104,18 @@ public class JJGLRenderer implements GLSurfaceView.Renderer {
 
 	public void onDrawFrame(GL10 glUnused) {
 		synchronized (this) {
-			// Need to recreate texture, e.g. video size changed
-			if (bindTexture) {
-				bindTexture = false;
-				GLES20.glBindTexture(GL_TEXTURE_2D, textureYID);
-				glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, twidth, theight, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, null);
-				GLES20.glBindTexture(GL_TEXTURE_2D, textureUID);
-				glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, twidth / 2, theight / 2, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, null);
-				GLES20.glBindTexture(GL_TEXTURE_2D, textureVID);
-				glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, twidth / 2, theight / 2, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, null);
-				checkGlError("glTexImage2D");
-				System.out.println("texture size changed, " + twidth + "x" + theight);
-
-				Matrix.setIdentityM(stMatrix, 0);
-				Matrix.scaleM(stMatrix, 0, (float) vwidth / twidth, (float) vheight / theight, 1);
-			}
+			// Load texture if changed.  Create texture if necessary.
 			if (pixelData != null) {
-				//System.out.println(" update texture: " + pixelData);
-				GLES20.glBindTexture(GL_TEXTURE_2D, textureYID);
-				glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, pixelData.getLineSize(0), vheight, GL_LUMINANCE, GL_UNSIGNED_BYTE, pixelData.getBuffer(0));
-				GLES20.glBindTexture(GL_TEXTURE_2D, textureUID);
-				glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, pixelData.getLineSize(1), vheight / 2, GL_LUMINANCE, GL_UNSIGNED_BYTE, pixelData.getBuffer(1));
-				GLES20.glBindTexture(GL_TEXTURE_2D, textureVID);
-				glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, pixelData.getLineSize(2), vheight / 2, GL_LUMINANCE, GL_UNSIGNED_BYTE, pixelData.getBuffer(2));
-				checkGlError("textsubimage2d");
+				pixelData.getFrame().loadTexture2D(pixelData.getFormat(), bindTexture, textureYID, textureUID, textureVID);
+
+				if (bindTexture) {
+					Matrix.setIdentityM(stMatrix, 0);
+					Matrix.scaleM(stMatrix, 0, (float) vwidth / twidth, (float) vheight / theight, 1);
+				}
+				bindTexture = false;
 				pixelData.recycle();
 				pixelData = null;
+				checkGlError("textsubimage2d");
 			}
 		}
 
