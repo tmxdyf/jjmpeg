@@ -10,8 +10,11 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.util.Log;
+import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
+import android.widget.*;
+import android.widget.AdapterView.OnItemSelectedListener;
 import au.notzed.jjmpeg.*;
 import au.notzed.jjmpeg.exception.AVDecodingError;
 import au.notzed.jjmpeg.exception.AVException;
@@ -20,7 +23,6 @@ import au.notzed.jjmpeg.io.JJMediaReader;
 import au.notzed.jjmpeg.io.JJMediaReader.JJReaderAudio;
 import au.notzed.jjmpeg.io.JJMediaReader.JJReaderStream;
 import au.notzed.jjmpeg.io.JJMediaReader.JJReaderVideo;
-import java.nio.ByteBuffer;
 import java.nio.ShortBuffer;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Level;
@@ -84,6 +86,10 @@ public class JJGLPlayer extends Activity {
 
 		return res;
 	}
+	//
+	final static String[] skip = {"Skip None", "Skip Noref", "Skip Bidir", "Skip Nokey"};
+	final static int[] skip_val = {-16, 8, 16, 32};
+	final static String[] threads = {"1 thread", "2 threads", "3 threads", "4 threads"};
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -106,9 +112,49 @@ public class JJGLPlayer extends Activity {
 			filename = "/sdcard/trailer.mp4";
 		}
 
-		view = new JJGLSurfaceView(this);
+		FrameLayout frame = new FrameLayout(this);
 
-		setContentView(view);
+		view = new JJGLSurfaceView(this);
+		frame.addView(view);
+
+		LinearLayout ll = new LinearLayout(this);
+		frame.addView(ll);
+
+		Spinner sp = new Spinner(this);
+
+		sp.setAdapter(new ArrayAdapter(this, android.R.layout.simple_spinner_item, skip));
+		sp.setOnItemSelectedListener(new OnItemSelectedListener() {
+
+			public void onItemSelected(AdapterView<?> parent, View iview, int position, long id) {
+				int skip = skip_val[position];
+
+				if (vs != null) {
+					vs.getContext().setSkipFrame(skip);
+				}
+			}
+
+			public void onNothingSelected(AdapterView<?> parent) {
+			}
+		});
+		ll.addView(sp);
+
+		sp = new Spinner(this);
+		sp.setAdapter(new ArrayAdapter(this, android.R.layout.simple_spinner_item, threads));
+		sp.setSelection(3);
+		sp.setOnItemSelectedListener(new OnItemSelectedListener() {
+
+			public void onItemSelected(AdapterView<?> parent, View iview, int position, long id) {
+				if (vs != null) {
+					vs.getContext().setThreadCount(position + 1);
+				}
+			}
+
+			public void onNothingSelected(AdapterView<?> parent) {
+			}
+		});
+		ll.addView(sp);
+
+		setContentView(frame);
 
 		throttle = new Throttle();
 		decoder = new DecoderGL();
@@ -157,8 +203,8 @@ public class JJGLPlayer extends Activity {
 		decoder.cancelled = true;
 		frames.clear();
 		recycle.clear();
-		frames.offer(new FrameData(0, null, null));
-		recycle.offer(new FrameData(0, null, null));
+		frames.offer(new FrameData(0, null));
+		recycle.offer(new FrameData(0, null));
 		try {
 			decoder.interrupt();
 			throttle.join();
@@ -174,14 +220,10 @@ public class JJGLPlayer extends Activity {
 
 		long pts;
 		AVFrame frame;
-		AVPlane[] plane;
-		// incoming frame before conversion
-		AVFrame iframe;
 
-		public FrameData(long pts, AVFrame frame, AVPlane[] plane) {
+		public FrameData(long pts, AVFrame frame) {
 			this.pts = pts;
 			this.frame = frame;
-			this.plane = plane;
 		}
 
 		public void run() {
@@ -191,14 +233,16 @@ public class JJGLPlayer extends Activity {
 
 		public void recycle() {
 			vs.recycleFrame(frame);
+			this.frame = null;
+			recycle.offer(this);
 		}
 
-		public ByteBuffer getBuffer(int index) {
-			return plane[index].data;
+		public AVFrame getFrame() {
+			return frame;
 		}
 
-		public int getLineSize(int index) {
-			return plane[index].lineSize;
+		public PixelFormat getFormat() {
+			return fmt;
 		}
 	}
 
@@ -292,14 +336,14 @@ public class JJGLPlayer extends Activity {
 							delay = targetms - now;
 						}
 
-						//delay = 0;
+						//delay = -1;
 
 						if (delay >= 0) {
 							sleep += delay;
 							Thread.sleep(delay);
 							//view.post(fd);
 						} else {
-							//	Log.i("jjmpeg", "frame dropped, lag: " + delay);
+							Log.i("jjmpeg", "frame lag: " + delay);
 							//recycle.offer(fd);
 							//view.post(fd);
 						}
@@ -396,19 +440,17 @@ public class JJGLPlayer extends Activity {
 
 					if (rs.equals(vs)) {
 						AVFrame iframe = vs.getFrame();
-						AVPlane[] planes = {
-							iframe.getPlaneAt(0, vs.getPixelFormat(), w, h),
-							iframe.getPlaneAt(1, vs.getPixelFormat(), w, h),
-							iframe.getPlaneAt(2, vs.getPixelFormat(), w, h)
-						};
-
-						FrameData fd = new FrameData(vs.convertPTS(mr.getPTS()), iframe, planes);
+						FrameData fd = recycle.poll();
+						if (fd == null) {
+							fd = new FrameData(vs.convertPTS(mr.getPTS()), iframe);
+						} else {
+							fd.pts = vs.convertPTS(mr.getPTS());
+							fd.frame = iframe;
+						}
 
 						busy += System.currentTimeMillis() - now;
 
 						fd.pts = vs.convertPTS(mr.getPTS());
-						fd.iframe = vs.getFrame();
-
 						frames.offer(fd);
 					} else if (rs.equals(as)) {
 						AVSamples samples;
@@ -435,7 +477,7 @@ public class JJGLPlayer extends Activity {
 			} finally {
 				if (mr != null)
 					mr.dispose();
-				frames.offer(new FrameData(0, null, null));
+				frames.offer(new FrameData(0, null));
 
 				start = System.currentTimeMillis() - start;
 				Log.i("jjmpeg", String.format("Demux/decoder thread busy=%d.%03ds total: %d.%03ds", busy / 1000, busy % 1000, start / 1000, start % 1000));
