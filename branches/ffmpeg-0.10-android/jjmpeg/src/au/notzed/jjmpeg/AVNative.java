@@ -51,6 +51,8 @@ abstract public class AVNative extends WeakReference<AVObject> {
 	static {
 		int bits;
 
+		System.err.println("load jjmpeg");
+
 		System.loadLibrary("jjmpeg");
 		bits = initNative();
 
@@ -60,8 +62,8 @@ abstract public class AVNative extends WeakReference<AVObject> {
 		is64 = bits == 64;
 
 		// may as well do these here i guess?
-		AVCodecContext.init();
 		AVFormatContext.registerAll();
+		AVFormatContext.networkInit();
 	}
 
 	static native ByteBuffer getPointer(ByteBuffer base, int offset, int size);
@@ -71,18 +73,6 @@ abstract public class AVNative extends WeakReference<AVObject> {
 	static native int initNative();
 
 	static native void getVersions(ByteBuffer b);
-
-	static native ByteBuffer _malloc(int size);
-
-	static native void _free(ByteBuffer mem);
-	/**
-	 * Free a 64-bit pointer.
-	 */
-	protected static native void free64(long mem);
-	/**
-	 * Free a 32-bit pointer.
-	 */
-	protected static native void free32(int mem);
 
 	/**
 	 * Retrieve run-time library version info.

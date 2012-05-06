@@ -27,18 +27,36 @@ import java.nio.ByteBuffer;
 public class AVInputFormat extends AVInputFormatAbstract {
 
 	protected AVInputFormat(int p) {
-		setNative(new AVInputFormatNative(this, p));
+		setNative(new AVInputFormatNative32(this, p));
 	}
 
-	//static AVInputFormat create(ByteBuffer p) {
-	//	 return new AVInputFormat(p);
-	//}
+	protected AVInputFormat(long p) {
+		setNative(new AVInputFormatNative64(this, p));
+	}
 }
 
 class AVInputFormatNative extends AVInputFormatNativeAbstract {
+
+	public AVInputFormatNative(AVObject o) {
+		super(o);
+	}
+}
+
+class AVInputFormatNative32 extends AVInputFormatNative {
+
 	int p;
 
-	AVInputFormatNative(AVObject o, int p) {
+	AVInputFormatNative32(AVObject o, int p) {
+		super(o);
+		this.p = p;
+	}
+}
+
+class AVInputFormatNative64 extends AVInputFormatNative {
+
+	long p;
+
+	AVInputFormatNative64(AVObject o, long p) {
 		super(o);
 		this.p = p;
 	}

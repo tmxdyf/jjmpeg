@@ -29,7 +29,11 @@ public class AVPacket extends AVPacketAbstract {
 	public static final int AV_PKT_FLAG_KEY = 1;
 
 	AVPacket(int p) {
-		setNative(new AVPacketNative(this, p));
+		setNative(new AVPacketNative32(this, p));
+	}
+
+	AVPacket(long p) {
+		setNative(new AVPacketNative64(this, p));
 	}
 
 	public static AVPacket create() {
@@ -62,29 +66,12 @@ public class AVPacket extends AVPacketAbstract {
 	public int consume(int len) {
 		return n.consume(len);
 	}
-
-	@Override
-	public String toString() {
-		return String.format("[AVPacket@%08x len %d]", n.p, getSize());
-	}
 }
 
 class AVPacketNative extends AVPacketNativeAbstract {
 
-	int p;
-
-	AVPacketNative(AVObject o, int p) {
+	public AVPacketNative(AVObject o) {
 		super(o);
-
-		this.p = p;
-	}
-
-	@Override
-	public void dispose() {
-		if (p != 0) {
-			freePacket();
-		}
-		super.dispose();
 	}
 
 	native int consume(int len);
@@ -102,4 +89,40 @@ class AVPacketNative extends AVPacketNativeAbstract {
 	 * @param src
 	 */
 	public native void copyPacket(AVPacketNative src);
+}
+
+class AVPacketNative32 extends AVPacketNative {
+
+	int p;
+
+	AVPacketNative32(AVObject o, int p) {
+		super(o);
+		this.p = p;
+	}
+
+	@Override
+	public void dispose() {
+		if (p != 0) {
+			freePacket();
+		}
+		super.dispose();
+	}
+}
+
+class AVPacketNative64 extends AVPacketNative {
+
+	long p;
+
+	AVPacketNative64(AVObject o, long p) {
+		super(o);
+		this.p = p;
+	}
+
+	@Override
+	public void dispose() {
+		if (p != 0) {
+			freePacket();
+		}
+		super.dispose();
+	}
 }

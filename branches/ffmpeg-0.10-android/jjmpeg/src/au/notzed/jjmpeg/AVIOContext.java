@@ -61,30 +61,30 @@ public abstract class AVIOContext extends AVIOContextAbstract {
 	}
 
 	protected AVIOContext(int p) {
-		setNative(new AVIOContextNative(this, p, 0));
+		setNative(new AVIOContextNative32(this, p, 0));
+	}
+
+	protected AVIOContext(long p) {
+		setNative(new AVIOContextNative64(this, p, 0));
 	}
 
 	//static AVIOContext create(ByteBuffer p) {
-		// These could call back to the C versions
+	// These could call back to the C versions
 	//	return new AVIOContext(p) {
-
 	//		@Override
 	//		public int readPacket(ByteBuffer dst) {
 	//			throw new UnsupportedOperationException("Not supported yet.");
 	//		}
-
 	//		@Override
 	//		public int writePacket(ByteBuffer src) {
 	//			throw new UnsupportedOperationException("Not supported yet.");
 	//		}
-
 	//		@Override
 	//		public long seek(long offset, int whence) {
 	//			throw new UnsupportedOperationException("Not supported yet.");
 	//		}
 	//	};
 	//}
-
 	public static AVIOContext open(String url, int flags) throws AVIOException {
 		return AVIOContextNative.open(url, flags);
 	}
@@ -129,24 +129,12 @@ public abstract class AVIOContext extends AVIOContextAbstract {
 
 class AVIOContextNative extends AVIOContextNativeAbstract {
 
-	int p;
-	private final int type;
+	final int type;
 
-	AVIOContextNative(AVObject o, int p, int type) {
+	AVIOContextNative(AVObject o, int type) {
 		super(o);
 
-		this.p = p;
 		this.type = type;
-	}
-
-	@Override
-	public void dispose() {
-		if (p != 0) {
-			if (type == 1) {
-				AVIOContextNative.unbind((AVIOContext) this.get(), this);
-			}
-			super.dispose();
-		}
 	}
 
 	static native AVIOContext allocContext(int size, int flags);
@@ -164,4 +152,44 @@ class AVIOContextNative extends AVIOContextNativeAbstract {
 	 * Unbind AVIOContext from java instance, and free memory too.
 	 */
 	static native void unbind(AVIOContext self, AVIOContextNative p);
+}
+
+class AVIOContextNative32 extends AVIOContextNative {
+
+	int p;
+
+	AVIOContextNative32(AVObject o, int p, int type) {
+		super(o, type);
+		this.p = p;
+	}
+
+	@Override
+	public void dispose() {
+		if (p != 0) {
+			if (type == 1) {
+				AVIOContextNative.unbind((AVIOContext) this.get(), this);
+			}
+			super.dispose();
+		}
+	}
+}
+
+class AVIOContextNative64 extends AVIOContextNative {
+
+	long p;
+
+	AVIOContextNative64(AVObject o, long p, int type) {
+		super(o, type);
+		this.p = p;
+	}
+
+	@Override
+	public void dispose() {
+		if (p != 0) {
+			if (type == 1) {
+				AVIOContextNative.unbind((AVIOContext) this.get(), this);
+			}
+			super.dispose();
+		}
+	}
 }
