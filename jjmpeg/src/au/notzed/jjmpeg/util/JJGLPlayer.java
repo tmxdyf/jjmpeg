@@ -13,6 +13,7 @@ import android.util.Log;
 import android.view.Window;
 import android.view.WindowManager;
 import au.notzed.jjmpeg.*;
+import au.notzed.jjmpeg.exception.AVDecodingError;
 import au.notzed.jjmpeg.exception.AVException;
 import au.notzed.jjmpeg.exception.AVIOException;
 import au.notzed.jjmpeg.io.JJMediaReader;
@@ -104,10 +105,6 @@ public class JJGLPlayer extends Activity {
 		} else {
 			filename = "/sdcard/trailer.mp4";
 		}
-
-		//I/System.out( 3117): intent action = android.intent.action.VIEW
-		//I/System.out( 3117): intent datas = content://media/external/video/media/2611
-		//I/System.out( 3117): intent data  = content://media/external/video/media/2611
 
 		view = new JJGLSurfaceView(this);
 
@@ -302,7 +299,7 @@ public class JJGLPlayer extends Activity {
 							Thread.sleep(delay);
 							//view.post(fd);
 						} else {
-						//	Log.i("jjmpeg", "frame dropped, lag: " + delay);
+							//	Log.i("jjmpeg", "frame dropped, lag: " + delay);
 							//recycle.offer(fd);
 							//view.post(fd);
 						}
@@ -325,8 +322,8 @@ public class JJGLPlayer extends Activity {
 
 	// CPU thread for demux + decode, uses GL for colour conversion
 	class DecoderGL extends Thread {
-		boolean cancelled;
 
+		boolean cancelled;
 		// how many decoder buffers to use, this is the only buffering now
 		static final int NDECODED = 3;
 		// audioframes frames to buffer ahead.  Must be at least enough to fit betwen video frames
@@ -415,12 +412,17 @@ public class JJGLPlayer extends Activity {
 						frames.offer(fd);
 					} else if (rs.equals(as)) {
 						AVSamples samples;
-						while ((samples = as.getSamples()) != null) {
-							AudioData ad = audiorecycle.take();
+						try {
+							while ((samples = as.getSamples()) != null) {
+								AudioData ad = audiorecycle.take();
 
-							ad.setData((ShortBuffer) samples.getSamples(), as.getContext().getChannels());
+								ad.setData((ShortBuffer) samples.getSamples(), as.getContext().getChannels());
 
-							audioframes.offer(ad);
+								audioframes.offer(ad);
+							}
+						} catch (AVDecodingError ex) {
+							// ignore audio decoding errors
+							Log.i("jjmpeg", String.format("Audio decode error ignored: " + ex.getLocalizedMessage()));
 						}
 					}
 				}
