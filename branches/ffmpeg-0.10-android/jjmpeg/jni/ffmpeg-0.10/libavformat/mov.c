@@ -25,12 +25,14 @@
 //#define DEBUG
 //#define MOV_EXPORT_ALL_METADATA
 
+#include "libavutil/audioconvert.h"
 #include "libavutil/intreadwrite.h"
 #include "libavutil/intfloat.h"
 #include "libavutil/mathematics.h"
 #include "libavutil/avstring.h"
 #include "libavutil/dict.h"
 #include "libavutil/opt.h"
+#include "libavcodec/ac3tab.h"
 #include "avformat.h"
 #include "internal.h"
 #include "avio_internal.h"
@@ -158,7 +160,7 @@ static int mov_read_mac_string(MOVContext *c, AVIOContext *pb, int len,
         uint8_t t, c = avio_r8(pb);
         if (c < 0x80 && p < end)
             *p++ = c;
-        else
+        else if (p < end)
             PUT_UTF8(mac_to_unicode[c-0x80], t, if (p < end) *p++ = t;);
     }
     *p = 0;
@@ -566,6 +568,9 @@ static int mov_read_dac3(MOVContext *c, AVIOContext *pb, MOVAtom atom)
     acmod = (ac3info >> 11) & 0x7;
     lfeon = (ac3info >> 10) & 0x1;
     st->codec->channels = ((int[]){2,1,2,3,3,4,4,5})[acmod] + lfeon;
+    st->codec->channel_layout = avpriv_ac3_channel_layout_tab[acmod];
+    if (lfeon)
+        st->codec->channel_layout |= AV_CH_LOW_FREQUENCY;
     st->codec->audio_service_type = bsmod;
     if (st->codec->channels > 1 && bsmod == 0x7)
         st->codec->audio_service_type = AV_AUDIO_SERVICE_TYPE_KARAOKE;
@@ -1566,6 +1571,8 @@ static int mov_read_stss(MOVContext *c, AVIOContext *pb, MOVAtom atom)
 
     av_dlog(c->fc, "keyframe_count = %d\n", entries);
 
+    if (!entries)
+        return 0;
     if (entries >= UINT_MAX / sizeof(int))
         return AVERROR_INVALIDDATA;
     sc->keyframes = av_malloc(entries * sizeof(int));
@@ -1760,6 +1767,7 @@ static void mov_build_index(MOVContext *mov, AVStream *st)
     unsigned int stps_index = 0;
     unsigned int i, j;
     uint64_t stream_size = 0;
+    AVIndexEntry *mem;
 
     /* adjust first dts according to edit list */
     if ((sc->empty_duration || sc->start_time) && mov->time_scale > 0) {
@@ -1789,12 +1797,13 @@ static void mov_build_index(MOVContext *mov, AVStream *st)
 
         if (!sc->sample_count)
             return;
-        if (sc->sample_count >= UINT_MAX / sizeof(*st->index_entries))
+        if (sc->sample_count >= UINT_MAX / sizeof(*st->index_entries) - st->nb_index_entries)
             return;
-        st->index_entries = av_malloc(sc->sample_count*sizeof(*st->index_entries));
-        if (!st->index_entries)
+        mem = av_realloc(st->index_entries, (st->nb_index_entries + sc->sample_count) * sizeof(*st->index_entries));
+        if (!mem)
             return;
-        st->index_entries_allocated_size = sc->sample_count*sizeof(*st->index_entries);
+        st->index_entries = mem;
+        st->index_entries_allocated_size = (st->nb_index_entries + sc->sample_count) * sizeof(*st->index_entries);
 
         for (i = 0; i < sc->chunk_count; i++) {
             current_offset = sc->chunk_offsets[i];
@@ -1878,12 +1887,13 @@ static void mov_build_index(MOVContext *mov, AVStream *st)
         }
 
         av_dlog(mov->fc, "chunk count %d\n", total);
-        if (total >= UINT_MAX / sizeof(*st->index_entries))
+        if (total >= UINT_MAX / sizeof(*st->index_entries) - st->nb_index_entries)
             return;
-        st->index_entries = av_malloc(total*sizeof(*st->index_entries));
-        if (!st->index_entries)
+        mem = av_realloc(st->index_entries, (st->nb_index_entries + total) * sizeof(*st->index_entries));
+        if (!mem)
             return;
-        st->index_entries_allocated_size = total*sizeof(*st->index_entries);
+        st->index_entries = mem;
+        st->index_entries_allocated_size = (st->nb_index_entries + total) * sizeof(*st->index_entries);
 
         // populate index
         for (i = 0; i < sc->chunk_count; i++) {
@@ -2824,7 +2834,7 @@ static int mov_read_packet(AVFormatContext *s, AVPacket *pkt)
 
     pkt->stream_index = sc->ffindex;
     pkt->dts = sample->timestamp;
-    if (sc->ctts_data) {
+    if (sc->ctts_data && sc->ctts_index < sc->ctts_count) {
         pkt->pts = pkt->dts + sc->dts_shift + sc->ctts_data[sc->ctts_index].duration;
         /* update ctts context */
         sc->ctts_sample++;

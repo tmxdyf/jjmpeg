@@ -422,12 +422,12 @@ static int init_duplicate_context(MpegEncContext *s, MpegEncContext *base)
     // edge emu needs blocksize + filter length - 1
     // (= 17x17 for  halfpel / 21x21 for  h264)
     FF_ALLOCZ_OR_GOTO(s->avctx, s->edge_emu_buffer,
-                      (s->width + 64) * 2 * 21 * 2, fail);    // (width + edge + align)*interlaced*MBsize*tolerance
+                      (s->width + 95) * 2 * 21 * 4, fail);    // (width + edge + align)*interlaced*MBsize*tolerance
 
     // FIXME should be linesize instead of s->width * 2
     // but that is not known before get_buffer()
     FF_ALLOCZ_OR_GOTO(s->avctx, s->me.scratchpad,
-                      (s->width + 64) * 4 * 16 * 2 * sizeof(uint8_t), fail)
+                      (s->width + 95) * 4 * 16 * 2 * sizeof(uint8_t), fail)
     s->me.temp         = s->me.scratchpad;
     s->rd_scratchpad   = s->me.scratchpad;
     s->b_scratchpad    = s->me.scratchpad;
@@ -1394,8 +1394,7 @@ void MPV_frame_end(MpegEncContext *s)
     s->avctx->coded_frame = (AVFrame *) s->current_picture_ptr;
 
     if (s->codec_id != CODEC_ID_H264 && s->current_picture.f.reference) {
-        ff_thread_report_progress((AVFrame *) s->current_picture_ptr,
-                                  s->mb_height - 1, 0);
+        ff_thread_report_progress((AVFrame *) s->current_picture_ptr, INT_MAX, 0);
     }
 }
 

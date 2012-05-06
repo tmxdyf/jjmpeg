@@ -372,7 +372,8 @@ static int decode_band_hdr(IVI4DecContext *ctx, IVIBandDesc *band,
 
         if (!get_bits1(&ctx->gb) || ctx->frame_type == FRAMETYPE_INTRA) {
             transform_id = get_bits(&ctx->gb, 5);
-            if (!transforms[transform_id].inv_trans) {
+            if (transform_id >= FF_ARRAY_ELEMS(transforms) ||
+                !transforms[transform_id].inv_trans) {
                 av_log_ask_for_sample(avctx, "Unimplemented transform: %d!\n", transform_id);
                 return AVERROR_PATCHWELCOME;
             }
@@ -475,6 +476,11 @@ static int decode_mb_info(IVI4DecContext *ctx, IVIBandDesc *band,
     /* scale factor for motion vectors */
     mv_scale = (ctx->planes[0].bands[0].mb_size >> 3) - (band->mb_size >> 3);
     mv_x = mv_y = 0;
+
+    if (((tile->width + band->mb_size-1)/band->mb_size) * ((tile->height + band->mb_size-1)/band->mb_size) != tile->num_MBs) {
+        av_log(avctx, AV_LOG_ERROR, "num_MBs mismatch %d %d %d %d\n", tile->width, tile->height, band->mb_size, tile->num_MBs);
+        return -1;
+    }
 
     for (y = tile->ypos; y < tile->ypos + tile->height; y += band->mb_size) {
         mb_offset = offs;
