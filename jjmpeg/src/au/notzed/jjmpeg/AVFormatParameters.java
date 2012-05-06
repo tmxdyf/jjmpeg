@@ -20,7 +20,6 @@ package au.notzed.jjmpeg;
 
 import java.nio.ByteBuffer;
 
-
 /**
  *
  * @author notzed
@@ -28,22 +27,37 @@ import java.nio.ByteBuffer;
 public class AVFormatParameters extends AVFormatParametersAbstract {
 
 	protected AVFormatParameters(int p) {
-		setNative(new AVFormatParametersNative(this, p));
+		setNative(new AVFormatParametersNative32(this, p));
 	}
 
-	//static AVFormatParameters create(long p) {
-	//	if (p == 0) {
-	//		return null;
-	//	}
-	//	return new AVFormatParameters(p);
-	//}
+	protected AVFormatParameters(long p) {
+		setNative(new AVFormatParametersNative64(this, p));
+	}
 }
+
 class AVFormatParametersNative extends AVFormatParametersNativeAbstract {
+
+	public AVFormatParametersNative(AVObject o) {
+		super(o);
+	}
+}
+
+class AVFormatParametersNative32 extends AVFormatParametersNative {
+
 	int p;
 
-	AVFormatParametersNative(AVObject o, int p) {
+	AVFormatParametersNative32(AVObject o, int p) {
 		super(o);
+		this.p = p;
+	}
+}
 
+class AVFormatParametersNative64 extends AVFormatParametersNative {
+
+	long p;
+
+	AVFormatParametersNative64(AVObject o, long p) {
+		super(o);
 		this.p = p;
 	}
 }

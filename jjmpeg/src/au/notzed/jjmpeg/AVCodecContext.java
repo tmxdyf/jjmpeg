@@ -70,8 +70,8 @@ public class AVCodecContext extends AVCodecContextAbstract {
 	///< error[?] variables will be set during encoding.
 	public static final int CODEC_FLAG_PSNR = 0x8000;
 	/** Input bitstream might be truncated at a random
-	public static final int CODEC_FLAG_TRUNCATED       = 0x00010000;
-	location instead of only at frame boundaries. */
+	 * public static final int CODEC_FLAG_TRUNCATED = 0x00010000;
+	 * location instead of only at frame boundaries. */
 	///< Normalize adaptive quantization.
 	public static final int CODEC_FLAG_NORMALIZE_AQP = 0x00020000;
 	///< Use interlaced DCT.
@@ -158,12 +158,8 @@ public class AVCodecContext extends AVCodecContextAbstract {
 	private IntBuffer fin = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder()).asIntBuffer();
 
 	protected AVCodecContext(int p) {
-		setNative(new AVCodecContextNative(this, p));
+		setNative(new AVCodecContextNative32(this, p));
 	}
-
-	//static AVCodecContext create(ByteBuffer p) {
-	//	return new AVCodecContext(p);
-	//}
 
 	public static AVCodecContext create() {
 		AVCodecContext cc = allocContext();
@@ -185,6 +181,7 @@ public class AVCodecContext extends AVCodecContextAbstract {
 
 	/**
 	 * Returns true if decoding frame complete.
+	 *
 	 * @param frame
 	 * @param packet
 	 * @return
@@ -205,9 +202,10 @@ public class AVCodecContext extends AVCodecContextAbstract {
 	 * Encode video, writing result to buf.
 	 *
 	 * Note that it always writes to the start of the buffer, ignoring the position and limit.
+	 *
 	 * @param buf
 	 * @param pict Picture to encode, use null to flush encoded frames.
-	 * @return number of bytes written.  When 0 with a null picture, encoding is complete.
+	 * @return number of bytes written. When 0 with a null picture, encoding is complete.
 	 * @throws au.notzed.jjmpeg.exception.AVEncodingError
 	 */
 	public int encodeVideo(ByteBuffer buf, AVFrame pict) throws AVEncodingError {
@@ -261,7 +259,7 @@ public class AVCodecContext extends AVCodecContextAbstract {
 
 	public int encodeAudio(ByteBuffer buf, AVSamples samples) throws AVEncodingError {
 		int buf_size = buf.capacity();
-		int len = encodeAudio(buf, buf_size, (ShortBuffer)samples.getSamples());
+		int len = encodeAudio(buf, buf_size, (ShortBuffer) samples.getSamples());
 
 		assert (len < buf_size);
 
@@ -276,25 +274,40 @@ public class AVCodecContext extends AVCodecContextAbstract {
 }
 
 class AVCodecContextNative extends AVCodecContextNativeAbstract {
-	int p;
 
 	boolean allocated = false;
 
-	AVCodecContextNative(AVObject o, int p) {
+	AVCodecContextNative(AVObject o) {
 		super(o);
-
-		this.p = p;
 	}
+
+	native void free();
 
 	@Override
 	public void dispose() {
-		if (p != 0) {
-			// close?
-			if (allocated) {
-				//_free(p);
-				free64(p);
-			}
+		if (allocated) {
+			free();
 		}
 		super.dispose();
+	}
+}
+
+class AVCodecContextNative32 extends AVCodecContextNative {
+
+	int p;
+
+	AVCodecContextNative32(AVObject o, int p) {
+		super(o);
+		this.p = p;
+	}
+}
+
+class AVCodecContextNative64 extends AVCodecContextNative {
+
+	long p;
+
+	AVCodecContextNative64(AVObject o, long p) {
+		super(o);
+		this.p = p;
 	}
 }

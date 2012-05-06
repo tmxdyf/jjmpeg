@@ -21,13 +21,14 @@ package au.notzed.jjmpeg;
 
 /**
  * Used to convert between formats and optionally scale at the same time.
+ *
  * @author notzed
  */
 public class SwsContext extends SwsContextAbstract {
 
-	final int dstW;
-	final int dstH;
-	final PixelFormat dstFormat;
+	int dstW;
+	int dstH;
+	PixelFormat dstFormat = PixelFormat.PIX_FMT_NONE;
 	public static final int SWS_FAST_BILINEAR = 1;
 	public static final int SWS_BILINEAR = 2;
 	public static final int SWS_BICUBIC = 4;
@@ -41,28 +42,21 @@ public class SwsContext extends SwsContextAbstract {
 	public static final int SWS_SPLINE = 0x400;
 
 	protected SwsContext(int p) {
-		setNative(new SwsContextNative(this, p));
-
-		this.dstW = 0;
-		this.dstH = 0;
-		this.dstFormat = PixelFormat.PIX_FMT_NONE;
+		setNative(new SwsContextNative32(this, p));
 	}
 
-	protected SwsContext(int p, int dstW, int dstH, PixelFormat dstFormat) {
-		setNative(new SwsContextNative(this, p));
-
-		this.dstW = dstW;
-		this.dstH = dstH;
-		this.dstFormat = dstFormat;
+	protected SwsContext(long p) {
+		setNative(new SwsContextNative64(this, p));
 	}
-
-	//static SwsContext create(ByteBuffer p, int dstW, int dstH, PixelFormat dstFormat) {
-	//	return new SwsContext(p, dstW, dstH, dstFormat);
-	//}
 
 	static public SwsContext create(int srcW, int srcH, PixelFormat srcFormat, int dstW, int dstH, PixelFormat dstFormat, int flags) {
-		//return getContext(srcW, srcH, srcFormat, dstW, dstH, dstFormat, flags, null, null, null);
-		return SwsContextNativeAbstract.getContext(srcW, srcH, srcFormat.toC(), dstW, dstH, dstFormat.toC(), flags, null, null, null);
+		SwsContext c = SwsContextNativeAbstract.getContext(srcW, srcH, srcFormat.toC(), dstW, dstH, dstFormat.toC(), flags, null, null, null);
+
+		c.dstW = dstW;
+		c.dstH = dstH;
+		c.dstFormat = dstFormat;
+
+		return c;
 	}
 
 	public int scale(AVFrame src, int srcSliceY, int srcSliceH, AVFrame dst) {
@@ -79,11 +73,9 @@ public class SwsContext extends SwsContextAbstract {
 }
 
 class SwsContextNative extends SwsContextNativeAbstract {
-	int p;
 
-	SwsContextNative(AVObject o, int p) {
+	public SwsContextNative(AVObject o) {
 		super(o);
-		this.p = p;
 	}
 
 	native int scale(AVFrameNative srcFrame, int srcSliceY, int srcSliceH, AVFrameNative dstFrame);
@@ -91,6 +83,34 @@ class SwsContextNative extends SwsContextNativeAbstract {
 	native int scaleIntArray(AVFrameNative srcFrame, int srcSliceY, int srcSliceH, int[] dst, int pixfmt, int width, int height);
 
 	native int scaleByteArray(AVFrameNative srcFrame, int srcSliceY, int srcSliceH, byte[] dst, int pixfmt, int width, int height);
+}
+
+class SwsContextNative32 extends SwsContextNative {
+
+	int p;
+
+	SwsContextNative32(AVObject o, int p) {
+		super(o);
+		this.p = p;
+	}
+
+	@Override
+	public void dispose() {
+		if (p != 0) {
+			freeContext();
+			super.dispose();
+		}
+	}
+}
+
+class SwsContextNative64 extends SwsContextNative {
+
+	long p;
+
+	SwsContextNative64(AVObject o, long p) {
+		super(o);
+		this.p = p;
+	}
 
 	@Override
 	public void dispose() {

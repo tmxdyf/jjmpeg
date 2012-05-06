@@ -21,16 +21,21 @@
  * Contains hand-rolled interfaces
  */
 
+#include "jjmpeg-jni.h"
+
 // 32-bit versions
 #define PTR(jo, type) (jo ? (void *)(*env)->GetIntField(env, jo, type ## _p) : NULL)
 #define SET_PTR(jo, type, co) do { if (jo) (*env)->SetIntField(env, jo, type ## _p, (int)(co)); } while (0);
-
 #define NEWOBJ(cp, type) (cp ? (*env)->NewObject(env, type ## _class, type ## _init_p, (int)cp) : NULL)
 
 #include "jjmpeg-jni.c"
 
 //#define d(x) x; fflush(stdout)
 #define d(x)
+
+#include <android/log.h>
+#define  LOG_TAG    "jjmpegjni"
+#define  LOGI(...)  __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
 
 static jmethodID byteio_readPacket;
 static jmethodID byteio_writePacket;
@@ -91,19 +96,6 @@ JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVNative_getPointerIndex
         return WRAP(((void **)base)[index], size);
 }
 
-JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVNative__1malloc
-(JNIEnv *env, jclass jc, jint size) {
-	jobject res = WRAP(CALLDL(av_malloc)(size), size);
-	return res;
-}
-
-JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_AVNative__1free
-(JNIEnv *env, jclass jc, jobject jmem) {
-        void * mem = ADDR(jmem);
-
-        CALLDL(av_free)(mem);
-}
-
 JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_AVNative_getVersions
 (JNIEnv *env, jclass jc, jobject jvers) {
         int *vers = ADDR(jvers);
@@ -115,6 +107,16 @@ JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_AVNative_getVersions
 	printf("versions = %d %d %d\n", vers[0], vers[1], vers[2]); fflush(stdout);
 }
 
+
+/* ********************************************************************** */
+
+JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_AVCodecContextNativeAbstract_free
+(JNIEnv *env, jobject jptr) {
+	void *ptr = PTR(jptr, AVCodecContext);
+
+	if (ptr)
+		CALLDL(av_free)(ptr);
+}
 
 /* ********************************************************************** */
 
@@ -258,10 +260,6 @@ JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_AVPacketNative_consume
 
 	return packet->size;
 }
-
-#include <android/log.h>
-#define  LOG_TAG    "jjmpegjni"
-#define  LOGI(...)  __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
 
 JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_AVPacketNative_setData
 (JNIEnv *env, jobject jptr, jobject jp, jint size) {

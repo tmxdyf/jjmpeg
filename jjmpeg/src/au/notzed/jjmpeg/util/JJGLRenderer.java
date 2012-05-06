@@ -96,7 +96,7 @@ public class JJGLRenderer implements GLSurfaceView.Renderer {
 
 	public synchronized void setFrame(JJFrame data) {
 		if (pixelData != null) {
-			System.out.println("frame still here, recycling: " + pixelData);
+			//System.out.println("frame still here, recycling: " + pixelData);
 			pixelData.recycle();
 		}
 		pixelData = data;

@@ -74,7 +74,6 @@ abstract class AVCodecContextNativeAbstract extends AVNative {
 	 native int encode_audio(ByteBuffer buf, int buf_size, ShortBuffer samples);
 	 native void flush_buffers();
 	static  native AVCodecContext alloc_context();
-	static  native void init();
 }
 
 abstract class AVCodecContextAbstract extends AVObject {
@@ -264,9 +263,6 @@ abstract class AVCodecContextAbstract extends AVObject {
 	static protected AVCodecContext allocContext() {
 		return AVCodecContextNativeAbstract.alloc_context();
 	}
-	static public void init() {
-		AVCodecContextNativeAbstract.init();
-	}
 }
 abstract class AVCodecNativeAbstract extends AVNative {
 	protected AVCodecNativeAbstract(AVObject o) {
@@ -329,6 +325,7 @@ abstract class AVFormatContextNativeAbstract extends AVNative {
 	 native int seek_file(int stream_index, long min_ts, long ts, long max_ts, int flags);
 	static  native AVFormatContext alloc_context();
 	 native void free_context();
+	static  native int network_init();
 }
 
 abstract class AVFormatContextAbstract extends AVObject {
@@ -403,6 +400,9 @@ abstract class AVFormatContextAbstract extends AVObject {
 	}
 	protected void freeContext() {
 		n.free_context();
+	}
+	static public int networkInit() {
+		return AVFormatContextNativeAbstract.network_init();
 	}
 }
 abstract class AVInputFormatNativeAbstract extends AVNative {
@@ -607,9 +607,6 @@ abstract class AVFrameAbstract extends AVObject {
 		return n.getCodedPictureNumber();
 	}
 	// Public Methods
-	static public AVFrame allocFrame() {
-		return AVFrameNativeAbstract.alloc_frame();
-	}
 	public int alloc(int pix_fmt, int width, int height) {
 		return n.alloc(pix_fmt, width, height);
 	}

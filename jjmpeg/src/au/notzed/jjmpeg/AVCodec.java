@@ -24,31 +24,50 @@ package au.notzed.jjmpeg;
  */
 public class AVCodec extends AVCodecAbstract {
 
-	//AVCodec(long p) {
-	//	setNative(new AVCodecNative(this, p));
-	//}
-
 	AVCodec(int p) {
-		setNative(new AVCodecNative(this, p));
+		setNative(new AVCodecNative32(this, p));
 	}
 
-	//static public AVCodec create(ByteBuffer p) {
-	//	if (p == null)
-	//		return null;
-	//	return new AVCodec(p);
-	//}
+	AVCodec(long p) {
+		setNative(new AVCodecNative64(this, p));
+	}
+
 	static public AVCodec findEncoder(int id) {
 		return AVCodecNativeAbstract.find_encoder(id);
 	}
 }
 
-class AVCodecNative extends AVCodecNativeAbstract {
+abstract class AVCodecNative extends AVCodecNativeAbstract {
+
+	public AVCodecNative(AVObject o) {
+		super(o);
+	}
+}
+
+class AVCodecNative32 extends AVCodecNative {
 
 	int p;
 
-	AVCodecNative(AVObject o, int p) {
+	AVCodecNative32(AVObject o, int p) {
 		super(o);
+		this.p = p;
+	}
 
+	@Override
+	public void dispose() {
+		if (p != 0) {
+			super.dispose();
+			p = 0;
+		}
+	}
+}
+
+class AVCodecNative64 extends AVCodecNative {
+
+	long p;
+
+	AVCodecNative64(AVObject o, long p) {
+		super(o);
 		this.p = p;
 	}
 

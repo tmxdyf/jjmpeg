@@ -27,12 +27,12 @@ package au.notzed.jjmpeg;
 public class ReSampleContext extends ReSampleContextAbstract {
 
 	protected ReSampleContext(int p) {
-		setNative(new ReSampleContextNative(this, p));
+		setNative(new ReSampleContextNative32(this, p));
 	}
 
-	//static ReSampleContext create(ByteBuffer p) {
-	//	return new ReSampleContext(p);
-	//}
+	protected ReSampleContext(long p) {
+		setNative(new ReSampleContextNative64(this, p));
+	}
 
 	static public ReSampleContext create(int output_channels, int input_channels, int output_rate, int input_rate, SampleFormat sample_fmt_out, SampleFormat sample_fmt_in, int filter_length, int log2_phase_count, int linear, double cutoff) {
 		return ReSampleContext.resampleInit(output_channels, input_channels, output_rate, input_rate, sample_fmt_out, sample_fmt_in, filter_length, log2_phase_count, linear, cutoff);
@@ -45,11 +45,36 @@ public class ReSampleContext extends ReSampleContextAbstract {
 
 class ReSampleContextNative extends ReSampleContextNativeAbstract {
 
+	public ReSampleContextNative(AVObject o) {
+		super(o);
+	}
+}
+
+class ReSampleContextNative32 extends ReSampleContextNative {
+
 	int p;
 
-	ReSampleContextNative(AVObject o, int p) {
+	ReSampleContextNative32(AVObject o, int p) {
 		super(o);
+		this.p = p;
+	}
 
+	@Override
+	public void dispose() {
+		if (p != 0) {
+			resample_close();
+			super.dispose();
+			p = 0;
+		}
+	}
+}
+
+class ReSampleContextNative64 extends ReSampleContextNative {
+
+	long p;
+
+	ReSampleContextNative64(AVObject o, long p) {
+		super(o);
 		this.p = p;
 	}
 

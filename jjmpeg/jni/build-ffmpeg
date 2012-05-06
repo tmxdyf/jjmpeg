@@ -36,7 +36,6 @@ for TARGET in ${TARGETS[@]} ; do
 	--arch=arm \
 	--disable-shared \
 	--enable-static \
-	--enable-pthreads \
 	--disable-symver \
 	--disable-debug \
 	--enable-pthreads \

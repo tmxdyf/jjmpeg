@@ -32,7 +32,11 @@ public class AVFormatContext extends AVFormatContextAbstract {
 	public static final int AVSEEK_FLAG_FRAME = 8; ///< seeking based on frame number
 
 	AVFormatContext(int p) {
-		setNative(new AVFormatContextNative(this, p, 0));
+		setNative(new AVFormatContextNative32(this, p, 0));
+	}
+
+	AVFormatContext(long p) {
+		setNative(new AVFormatContextNative64(this, p, 0));
 	}
 
 	//AVFormatContext(long p, int type) {
@@ -139,14 +143,28 @@ public class AVFormatContext extends AVFormatContextAbstract {
 
 class AVFormatContextNative extends AVFormatContextNativeAbstract {
 
-	int p;
-	private final int type;
-
-	AVFormatContextNative(AVObject o, int p, int type) {
+	public AVFormatContextNative(AVObject o) {
 		super(o);
-		this.type = type;
+	}
 
+	native int findStreamInfo(Object[] options);
+
+	static native int open_input(AVFormatContextNative ps, String filename, AVInputFormatNative fmt, AVDictionary options);
+
+	static native void close_input(AVFormatContextNative s);
+
+	native int write_header(AVDictionaryNative options);
+}
+
+class AVFormatContextNative32 extends AVFormatContextNative {
+
+	int p;
+	final int type;
+
+	AVFormatContextNative32(AVObject o, int p, int type) {
+		super(o);
 		this.p = p;
+		this.type = type;
 	}
 
 	@Override
@@ -170,12 +188,38 @@ class AVFormatContextNative extends AVFormatContextNativeAbstract {
 			p = 0;
 		}
 	}
+}
 
-	native int findStreamInfo(Object[] options);
+class AVFormatContextNative64 extends AVFormatContextNative {
 
-	static native int open_input(AVFormatContextNative ps, String filename, AVInputFormatNative fmt, AVDictionary options);
+	long p;
+	final int type;
 
-	static native void close_input(AVFormatContextNative s);
+	AVFormatContextNative64(AVObject o, long p, int type) {
+		super(o);
+		this.p = p;
+		this.type = type;
+	}
 
-	native int write_header(AVDictionaryNative options);
+	@Override
+	public void dispose() {
+		if (p != 0) {
+			switch (type) {
+				case 0:
+					this.free_context();
+					break;
+				case 1:
+					//close_input_file(p);
+					break;
+				case 2:
+					//close_input_stream(p);
+					break;
+				case 3:
+					close_input(this);
+					break;
+			}
+			super.dispose();
+			p = 0;
+		}
+	}
 }

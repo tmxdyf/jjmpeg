@@ -21,10 +21,12 @@ if ($size == 64) {
     $resolveObject ="\t:class: *cptr = (:class: *)(*env)->GetLongField(env, jo, :class:_p);\n";
     $createObject = "(*env)->NewObject(env, :class:_class, :class:_init_p, (long):res:)";
     $jptrsig = "J";
+    $jnative = "Native64";
 } else {
     $resolveObject ="\t:class: *cptr = (:class: *)(*env)->GetIntField(env, jo, :class:_p);\n";
     $createObject = "(*env)->NewObject(env, :class:_class, :class:_init_p, (int):res:)";
     $jptrsig = "I";
+    $jnative = "Native32";
 }
 
 # read api descriptor
@@ -415,7 +417,6 @@ print <<END;
  */
 END
 print "// Auto-generated from native.conf\n";
-print "#include \"jjmpeg-jni.h\"\n\n";
 
 # generate dynamic linkage
 if ($dodl) {
@@ -434,11 +435,6 @@ if ($dodl) {
 
     # output constructor (dlopen stuff)
     print <<END;
-
-//static void *avutil_lib;
-//static void *avcodec_lib;
-//static void *avformat_lib;
-//static void *swscale_lib;
 
 JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_AVNative_initNative
 (JNIEnv *env, jclass jc) {
@@ -499,7 +495,7 @@ END
 	print "\t(*env)->DeleteLocalRef(env, lc);\n";
 	print "\t${class}_init_p = (*env)->GetMethodID(env, ${class}_class, \"<init>\", \"($jptrsig)V\");\n";
 
-	print "\tlc = (*env)->FindClass(env, \"au/notzed/jjmpeg/${class}Native\");\n";
+	print "\tlc = (*env)->FindClass(env, \"au/notzed/jjmpeg/${class}${jnative}\");\n";
 	print "\tif (!lc) return 0;\n";
 	print "\t${class}_native = (*env)->NewGlobalRef(env, lc);\n";
 	print "\t(*env)->DeleteLocalRef(env, lc);\n";
@@ -846,10 +842,6 @@ foreach $classinfo (@classes) {
 
     # Now the java accessor to the native object
     print "abstract class ${class}$jpostfix extends AVObject {\n";
-
-    #print "\tprotected ${class}$jpostfix(AVNative n) {\n";
-    #print "\t\tsuper(n);\n";
-    #print "\t}\n";
 
     print "\t$class$jimpl n;\n";
 

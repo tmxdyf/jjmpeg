@@ -20,23 +20,42 @@ package au.notzed.jjmpeg;
 
 /**
  * Dummy object for binding.
+ *
  * @author notzed
  */
 public class SwsFilter extends SwsFilterAbstract {
 
 	protected SwsFilter(int p) {
-		setNative(new SwsFilterNative(this, p));
+		setNative(new SwsFilterNative32(this, p));
 	}
 
-	//static SwsFilter create(ByteBuffer p) {
-	//	return new SwsFilter(p);
-	//}
+	protected SwsFilter(long p) {
+		setNative(new SwsFilterNative64(this, p));
+	}
 }
 
 class SwsFilterNative extends SwsFilterNativeAbstract {
+
+	SwsFilterNative(AVObject o) {
+		super(o);
+	}
+}
+
+class SwsFilterNative32 extends SwsFilterNative {
+
 	int p;
 
-	SwsFilterNative(AVObject o, int p) {
+	SwsFilterNative32(AVObject o, int p) {
+		super(o);
+		this.p = p;
+	}
+}
+
+class SwsFilterNative64 extends SwsFilterNative {
+
+	long p;
+
+	SwsFilterNative64(AVObject o, long p) {
 		super(o);
 		this.p = p;
 	}

@@ -27,19 +27,12 @@ import java.nio.ByteBuffer;
 public class AVFrame extends AVFrameAbstract {
 
 	AVFrame(int p) {
-		setNative(new AVFrameNative(this, p));
+		setNative(new AVFrameNative32(this, p));
 	}
 
-	AVFrame(int p, boolean allocated) {
-		setNative(new AVFrameNative(this, p, allocated));
+	AVFrame(long p) {
+		setNative(new AVFrameNative64(this, p));
 	}
-
-	//static public AVFrame create(ByteBuffer p) {
-	//	if (p == null) {
-	//		return null;
-	//	}
-	//	return new AVFrame(p, false);
-	//}
 
 	static public AVFrame create() {
 		return allocFrame();
@@ -57,6 +50,14 @@ public class AVFrame extends AVFrameAbstract {
 		return f;
 	}
 
+	static public AVFrame allocFrame() {
+		AVFrame af = AVFrameNativeAbstract.alloc_frame();
+
+		af.n.allocated = true;
+
+		return af;
+	}
+
 	public AVPlane getPlaneAt(int index, PixelFormat fmt, int width, int height) {
 		int lineSize = getLineSizeAt(index);
 
@@ -69,26 +70,53 @@ public class AVFrame extends AVFrameAbstract {
 }
 
 class AVFrameNative extends AVFrameNativeAbstract {
-	int p;
 
 	// Was it allocated (with allocFrame()), or just referenced
-	boolean allocated = true;
+	boolean allocated = false;
 	// Has it been filled using avpicture_alloc()
 	boolean filled = false;
 
-	AVFrameNative(AVObject o, int p) {
+	AVFrameNative(AVObject o) {
 		super(o);
-
-		this.p = p;
-	}
-
-	AVFrameNative(AVObject o, int p, boolean allocated) {
-		this(o, p);
-		this.allocated = allocated;
 	}
 
 	native ByteBuffer getPlaneAt(int index, int pixelFormat, int width, int height);
+
 	native void freeFrame();
+}
+
+class AVFrameNative32 extends AVFrameNative {
+
+	int p;
+
+	AVFrameNative32(AVObject o, int p) {
+		super(o);
+		this.p = p;
+	}
+
+	@Override
+	public void dispose() {
+		if (p != 0) {
+			if (filled) {
+				free();
+			}
+			if (allocated) {
+				freeFrame();
+			}
+			p = 0;
+		}
+		super.dispose();
+	}
+}
+
+class AVFrameNative64 extends AVFrameNative {
+
+	long p;
+
+	AVFrameNative64(AVObject o, long p) {
+		super(o);
+		this.p = p;
+	}
 
 	@Override
 	public void dispose() {
