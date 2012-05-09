@@ -81,6 +81,9 @@ abstract class AVCodecContextAbstract extends AVObject {
 	final protected void setNative(AVCodecContextNative n) {
 		this.n = n;
 	}
+	public void dispose() {
+		n.dispose();
+	}
 	// Fields
 	public  int getBitRate() {
 		return n.getBitRate();
@@ -281,6 +284,9 @@ abstract class AVCodecAbstract extends AVObject {
 	final protected void setNative(AVCodecNative n) {
 		this.n = n;
 	}
+	public void dispose() {
+		n.dispose();
+	}
 	// Fields
 	public  String getName() {
 		return n.getName();
@@ -332,6 +338,9 @@ abstract class AVFormatContextAbstract extends AVObject {
 	AVFormatContextNative n;
 	final protected void setNative(AVFormatContextNative n) {
 		this.n = n;
+	}
+	public void dispose() {
+		n.dispose();
 	}
 	// Fields
 	public  AVInputFormat getInputFormat() {
@@ -412,6 +421,7 @@ abstract class AVInputFormatNativeAbstract extends AVNative {
 	// Fields
 	native String getName();
 	native String getLongName();
+	native int getFlags();
 	// Native Methods
 }
 
@@ -420,12 +430,18 @@ abstract class AVInputFormatAbstract extends AVObject {
 	final protected void setNative(AVInputFormatNative n) {
 		this.n = n;
 	}
+	public void dispose() {
+		n.dispose();
+	}
 	// Fields
 	public  String getName() {
 		return n.getName();
 	}
 	public  String getLongName() {
 		return n.getLongName();
+	}
+	public  int getFlags() {
+		return n.getFlags();
 	}
 	// Public Methods
 }
@@ -451,6 +467,9 @@ abstract class AVOutputFormatAbstract extends AVObject {
 	AVOutputFormatNative n;
 	final protected void setNative(AVOutputFormatNative n) {
 		this.n = n;
+	}
+	public void dispose() {
+		n.dispose();
 	}
 	// Fields
 	public  String getName() {
@@ -498,6 +517,9 @@ abstract class AVFormatParametersAbstract extends AVObject {
 	final protected void setNative(AVFormatParametersNative n) {
 		this.n = n;
 	}
+	public void dispose() {
+		n.dispose();
+	}
 	// Fields
 	// Public Methods
 }
@@ -525,6 +547,9 @@ abstract class AVPacketAbstract extends AVObject {
 	AVPacketNative n;
 	final protected void setNative(AVPacketNative n) {
 		this.n = n;
+	}
+	public void dispose() {
+		n.dispose();
 	}
 	// Fields
 	public  long getPTS() {
@@ -587,6 +612,9 @@ abstract class AVFrameAbstract extends AVObject {
 	final protected void setNative(AVFrameNative n) {
 		this.n = n;
 	}
+	public void dispose() {
+		n.dispose();
+	}
 	// Fields
 	public  int getLineSizeAt(int index) {
 		return n.getLineSizeAt(index);
@@ -635,6 +663,9 @@ abstract class AVStreamAbstract extends AVObject {
 	final protected void setNative(AVStreamNative n) {
 		this.n = n;
 	}
+	public void dispose() {
+		n.dispose();
+	}
 	// Fields
 	public  int getIndex() {
 		return n.getIndex();
@@ -679,6 +710,9 @@ abstract class AVRationalAbstract extends AVObject {
 	final protected void setNative(AVRationalNative n) {
 		this.n = n;
 	}
+	public void dispose() {
+		n.dispose();
+	}
 	// Fields
 	public  int getNum() {
 		return n.getNum();
@@ -708,6 +742,9 @@ abstract class AVIOContextAbstract extends AVObject {
 	final protected void setNative(AVIOContextNative n) {
 		this.n = n;
 	}
+	public void dispose() {
+		n.dispose();
+	}
 	// Fields
 	// Public Methods
 	public int close() {
@@ -729,6 +766,9 @@ abstract class SwsContextAbstract extends AVObject {
 	final protected void setNative(SwsContextNative n) {
 		this.n = n;
 	}
+	public void dispose() {
+		n.dispose();
+	}
 	// Fields
 	// Public Methods
 	public void freeContext() {
@@ -748,6 +788,9 @@ abstract class SwsFilterAbstract extends AVObject {
 	final protected void setNative(SwsFilterNative n) {
 		this.n = n;
 	}
+	public void dispose() {
+		n.dispose();
+	}
 	// Fields
 	// Public Methods
 }
@@ -766,6 +809,9 @@ abstract class ReSampleContextAbstract extends AVObject {
 	ReSampleContextNative n;
 	final protected void setNative(ReSampleContextNative n) {
 		this.n = n;
+	}
+	public void dispose() {
+		n.dispose();
 	}
 	// Fields
 	// Public Methods
@@ -791,6 +837,9 @@ abstract class AVDictionaryAbstract extends AVObject {
 	AVDictionaryNative n;
 	final protected void setNative(AVDictionaryNative n) {
 		this.n = n;
+	}
+	public void dispose() {
+		n.dispose();
 	}
 	// Fields
 	// Public Methods

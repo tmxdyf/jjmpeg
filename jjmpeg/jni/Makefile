@@ -6,7 +6,7 @@
 include ./config.mk
 
 all: ffmpeg.built jjmpeg.built
-	$(NDK)/ndk-build V=1
+	$(NDK)/ndk-build V=1 NDK_DEBUG=1
 
 ffmpeg.built: build-ffmpeg
 	./build-ffmpeg

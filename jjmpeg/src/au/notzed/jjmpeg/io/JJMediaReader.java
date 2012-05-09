@@ -57,6 +57,7 @@ public class JJMediaReader {
 	private boolean freePacket = false;
 	//
 	long seekid = -1;
+	long seekms = -1;
 	//
 
 	public JJMediaReader(String name) throws AVInvalidStreamException, AVIOException, AVInvalidCodecException {
@@ -190,6 +191,61 @@ public class JJMediaReader {
 	}
 
 	/**
+	 * call flushBuffers() on all opened streams codecs.
+	 *
+	 * e.g. after a seek.
+	 */
+	public void flushCodec() {
+		for (JJReaderStream rs : streams) {
+			rs.flushCodec();
+		}
+	}
+
+	/**
+	 * Attempt to seek to the nearest millisecond.
+	 *
+	 * The next frame will have pts (in milliseconds) >= stamp.
+	 *
+	 * @param stamp
+	 * @throws AVIOException
+	 */
+	public void seekMS(long stamp) throws AVIOException {
+		int res;
+
+		//res = format.seekFile(-1, 0, stamp * 1000, stamp * 1000, 0);
+		// SeekFrame seems to work much better with 0.10(+?)
+		res = format.seekFrame(-1, stamp * 1000, 0);
+		if (res < 0) {
+			throw new AVIOException(res, "Cannot seek");
+		}
+
+		seekms = stamp;
+
+		flushCodec();
+	}
+
+	/**
+	 * Seek in stream units
+	 *
+	 * The next frame will have pts >= stamp
+	 *
+	 * @param stamp
+	 * @throws AVIOException
+	 */
+	public void seek(long stamp) throws AVIOException {
+		int res;
+
+		res = format.seekFile(-1, 0, stamp, stamp, 0);
+		if (res < 0) {
+			throw new AVIOException(res, "Cannot seek");
+		}
+
+		seekid = stamp;
+
+		flushCodec();
+	}
+
+	/**
 	 * Reads and decodes packets until data is ready in one
 	 * of the opened streams.
 	 *
@@ -215,8 +271,13 @@ public class JJMediaReader {
 						if (seekid != -1
 								&& pts < seekid) {
 							continue;
+						} else if (seekms != -1
+								&& ms.convertPTS(pts) < seekms) {
+							System.out.println(" seek skip " + ms.convertPTS(pts) + " < " + seekms);
+							continue;
 						}
 						seekid = -1;
+						seekms = -1;
 						freePacket = true;
 						return ms;
 					}
@@ -233,55 +294,13 @@ public class JJMediaReader {
 		return null;
 	}
 
-	/**
-	 * Attempt to seek to the nearest millisecond.
-	 *
-	 * The next frame read should match the stamp.
-	 *
-	 * This only seeks to key frames
-	 *
-	 * TODO: unimplemented
-	 *
-	 * @param stamp
-	 * @throws AVIOException
-	 */
-	public void seekMS(long stamp) throws AVIOException {
-		int res;
-
-		res = format.seekFile(-1, 0, stamp * 1000, stamp * 1000, 0);
-		if (res < 0) {
-			throw new AVIOException(res, "Cannot seek");
-		}
-
-		//vcontext.flushBuffers();
-	}
-
-	/**
-	 * Seek in stream units
-	 *
-	 * UNIMPLEMENTED
-	 *
-	 * @param stamp
-	 * @throws AVIOException
-	 */
-	public void seek(long stamp) throws AVIOException {
-		int res;
-
-		//res = format.seekFile(videoStream, 0, stamp, stamp, 0);
-		//if (res < 0) {
-		//	throw new AVIOException(res, "Cannot seek");
-		//}
-
-		//seekid = stamp;
-		//vcontext.flushBuffers();
-	}
-
 	public abstract class JJReaderStream {
 
 		AVStream stream;
 		AVCodecContext c;
 		int streamID = -1;
-		AVCodec codec;
+		protected AVCodec codec;
+		protected boolean opened = false;
 		// timebase
 		int tb_Num;
 		int tb_Den;
@@ -335,6 +354,10 @@ public class JJMediaReader {
 			return durationms;
 		}
 
+		public long getDurationCalc() {
+			return AVRational.starSlash(stream.getDuration() * 1000, tb_Num, tb_Den);
+		}
+
 		/**
 		 * Get duration in timebase units (i.e. frames?)
 		 *
@@ -371,6 +394,12 @@ public class JJMediaReader {
 		 * @return
 		 */
 		abstract public int getType();
+
+		void flushCodec() {
+			if (opened) {
+				c.flushBuffers();
+			}
+		}
 	}
 
 	public class JJReaderVideo extends JJReaderStream {
@@ -430,6 +459,8 @@ public class JJMediaReader {
 			}
 
 			c.open(codec);
+
+			opened = true;
 
 			iframe = ready.remove();
 
@@ -642,6 +673,8 @@ public class JJMediaReader {
 			}
 
 			c.open(codec);
+
+			opened = true;
 
 			System.out.println(" codec : " + codec.getName());
 			System.out.println(" sampleformat : " + c.getSampleFmt());

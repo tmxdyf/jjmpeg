@@ -24,7 +24,9 @@ import java.nio.ByteBuffer;
  *
  * @author notzed
  */
-public class AVInputFormat extends AVInputFormatAbstract {
+public class AVInputFormat extends AVInputFormatAbstract implements AVFormat {
+
+
 
 	protected AVInputFormat(int p) {
 		setNative(new AVInputFormatNative32(this, p));
