@@ -18,6 +18,7 @@
  */
 package au.notzed.jjmpeg;
 
+import android.util.Log;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
@@ -100,12 +101,23 @@ abstract public class AVNative extends WeakReference<AVObject> {
 	}
 
 	/**
+	 * Check if any objects are still lying around
+	 */
+	public static void check() {
+		System.err.println("active objects:");
+		for (AVNative n : reflist) {
+			System.err.println(" " + n);
+		}
+	}
+
+	/**
 	 * Dispose of this resource. It must be safe to call this multiple times.
 	 *
 	 * The default dispose removes it from the weak reference list, so
 	 * must be called.
 	 */
 	public void dispose() {
+		Log.d("jjmpeg", "dispose native: " + this);
 		reflist.remove(this);
 	}
 }

@@ -169,8 +169,8 @@ class AVIOContextNative32 extends AVIOContextNative {
 			if (type == 1) {
 				AVIOContextNative.unbind((AVIOContext) this.get(), this);
 			}
-			super.dispose();
 		}
+		super.dispose();
 	}
 }
 
@@ -189,7 +189,7 @@ class AVIOContextNative64 extends AVIOContextNative {
 			if (type == 1) {
 				AVIOContextNative.unbind((AVIOContext) this.get(), this);
 			}
-			super.dispose();
 		}
+		super.dispose();
 	}
 }

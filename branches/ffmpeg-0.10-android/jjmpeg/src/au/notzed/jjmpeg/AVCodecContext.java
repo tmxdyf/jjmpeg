@@ -287,6 +287,7 @@ class AVCodecContextNative extends AVCodecContextNativeAbstract {
 	public void dispose() {
 		if (allocated) {
 			free();
+			allocated = false;
 		}
 		super.dispose();
 	}

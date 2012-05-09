@@ -8,45 +8,49 @@ declare -a TARGETS_OPTS TARGETS_CFLAGS
 
 FF=ffmpeg-0.10
 
-TARGETS=('armeabi' 'armeabi-v7a')
+DEBUG_CFLAGS=""
+#DEBUG_CFLAGS="-g -O0"
+
+TARGETS_LIST=('armeabi' 'armeabi-v7a')
 TARGETS_OPTS=( '' '' )
 TARGETS_CFLAGS=( '' '-mfloat-abi=softfp -mfpu=neon -marm -march=armv7-a' )
-#TARGETS_CFLAGS=( '' '-mfloat-abi=softfp -mfpu=vfpv3-d16 -marm -march=armv7-a -mfpu=neon' )
 
 export SYSROOT=$PLATFORM
 
 this=`pwd`
 i=0
-for TARGET in ${TARGETS[@]} ; do
-    mkdir -p $this/build/$TARGET
-    mkdir -p $this/$TARGET
-    cd $this/build/$TARGET
+for TARGET in ${TARGETS_LIST[@]} ; do
+    if [[ "$TARGETS" == *"$TARGET"* ]]; then
+	mkdir -p $this/build/$TARGET
+	mkdir -p $this/$TARGET
+	cd $this/build/$TARGET
 
-    opts=${TARGETS_OPTS[$i]}
-    cflags=${TARGETS_CFLAGS[$i]}
+	opts=${TARGETS_OPTS[$i]}
+	cflags="${TARGETS_CFLAGS[$i]} $DEBUG_CFLAGS"
 
-    $this/$FF/configure \
-	$opts \
-	--prefix=$this/$TARGET \
-	--cross-prefix=$PREBUILT/bin/arm-linux-androideabi- \
-	--enable-cross-compile \
-	--target-os=linux \
-	--extra-cflags="-I$PLATFORM/usr/include $cflags --sysroot=$SYSROOT" \
-	--extra-ldflags="-L$PLATFORM/usr/lib --sysroot=$SYSROOT" \
-	--arch=arm \
-	--disable-shared \
-	--enable-static \
-	--disable-symver \
-	--disable-debug \
-	--enable-pthreads \
-	--enable-gpl --enable-version3 \
-	--disable-doc \
-	--disable-ffmpeg --disable-ffplay --disable-ffprobe --disable-ffprobe \
-	--disable-avdevice --disable-avfilter --disable-postproc || exit 1
-
-    i=`expr $i + 1`
-    make V=1 -j8 || exit 1
-    make V=1 install || (echo "Error" ; exit 1)
+	$this/$FF/configure \
+	    $opts \
+	    --prefix=$this/$TARGET \
+	    --cross-prefix=$PREBUILT/bin/arm-linux-androideabi- \
+	    --enable-cross-compile \
+	    --target-os=linux \
+	    --extra-cflags="-I$PLATFORM/usr/include $cflags --sysroot=$SYSROOT" \
+	    --extra-ldflags="-L$PLATFORM/usr/lib --sysroot=$SYSROOT" \
+	    --arch=arm \
+	    --disable-shared \
+	    --enable-static \
+	    --disable-symver \
+	    --disable-debug \
+	    --enable-pthreads \
+	    --enable-gpl --enable-version3 \
+	    --disable-doc \
+	    --disable-ffmpeg --disable-ffplay --disable-ffprobe --disable-ffprobe \
+	    --disable-avdevice --disable-avfilter --disable-postproc || exit 1
+	
+	i=`expr $i + 1`
+	make V=1 -j8 || exit 1
+	make V=1 install || (echo "Error" ; exit 1)
+    fi
 done
 
 

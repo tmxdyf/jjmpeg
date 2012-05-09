@@ -10,11 +10,14 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.*;
 import android.widget.AdapterView.OnItemSelectedListener;
+import android.widget.FrameLayout.LayoutParams;
+import android.widget.SeekBar.OnSeekBarChangeListener;
 import au.notzed.jjmpeg.*;
 import au.notzed.jjmpeg.exception.AVDecodingError;
 import au.notzed.jjmpeg.exception.AVException;
@@ -29,20 +32,17 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Attempts to use GL for display.
+ * This is a really nasty hacked up player full of spaghetti code
+ * and nastiness.
  *
- * TBH it's hardly much different for the display part.
- *
- * But the colour conversion is better.
- *
- * Also include rudimentary, unfinished, unsynchronised
- * sound stuff.
+ * Still experimenting to find out what works and what doesn't.
  *
  * @author notzed
  */
 public class JJGLPlayer extends Activity {
 
 	JJGLSurfaceView view;
+	SeekBar seek;
 	DecoderGL decoder;
 	Throttle throttle;
 	//
@@ -50,6 +50,8 @@ public class JJGLPlayer extends Activity {
 	AudioTrack track;
 	//
 	long startms;
+	// commands (seek, etc)
+	LinkedBlockingQueue<Command> commands = new LinkedBlockingQueue<Command>();
 	// frames ready for being used
 	LinkedBlockingQueue<FrameData> recycle = new LinkedBlockingQueue<FrameData>();
 	// frames queued for display
@@ -154,6 +156,26 @@ public class JJGLPlayer extends Activity {
 		});
 		ll.addView(sp);
 
+		seek = new SeekBar(this);
+
+		seek.setOnSeekBarChangeListener(new OnSeekBarChangeListener() {
+
+			public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+				seekTo(progress);
+			}
+
+			public void onStartTrackingTouch(SeekBar seekBar) {
+				fingerdown = true;
+			}
+
+			public void onStopTrackingTouch(SeekBar seekBar) {
+				fingerdown = false;
+			}
+		});
+
+		FrameLayout.LayoutParams fp = new FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT, Gravity.BOTTOM);
+		frame.addView(seek, fp);
+
 		setContentView(frame);
 
 		throttle = new Throttle();
@@ -214,6 +236,53 @@ public class JJGLPlayer extends Activity {
 			Logger.getLogger(JJGLPlayer.class.getName()).log(Level.SEVERE, null, ex);
 		}
 
+		AVNative.check();
+	}
+	boolean inreport = false;
+	boolean fingerdown = false;
+
+	void seekTo(long ms) {
+		if (!inreport) {
+			commands.offer(new Command(Command.SEEK, ms));
+		}
+	}
+
+	// callback for file state
+	void fileOpened(String path, long duration) {
+		System.out.println("file opened, duration = " + duration);
+		if (duration == 0)
+			duration = 60000;
+		seek.setMax((int) duration);
+	}
+
+	void positionChanged(long position) {
+		if (!fingerdown) {
+			inreport = true;
+			seek.setProgress((int) position);
+			inreport = false;
+		}
+	}
+
+	static class Command {
+
+		int cmd;
+		String file;
+		long position;
+		static final int OPEN = 1;
+		static final int PLAY = 2;
+		static final int PAUSE = 3;
+		static final int SEEK = 4;
+		static final int QUIT = 5;
+
+		public Command(int cmd, long position) {
+			this.cmd = cmd;
+			this.position = position;
+		}
+
+		public Command(int cmd, String file) {
+			this.cmd = cmd;
+			this.file = file;
+		}
 	}
 
 	class FrameData implements Runnable, JJFrame {
@@ -292,6 +361,8 @@ public class JJGLPlayer extends Activity {
 					} finally {
 					}
 				}
+			} catch (Throwable ex) {
+				Logger.getLogger(JJAudioPlayer.class.getName()).log(Level.SEVERE, null, ex);
 			} finally {
 				Log.i("jjmpeg", "Audio thread done");
 			}
@@ -303,26 +374,37 @@ public class JJGLPlayer extends Activity {
 	 */
 	class Throttle extends Thread {
 
+		long startpts = -1;
+		long startms = -1;
+
+		public Throttle() {
+			super("jjmpeg: throttle");
+		}
+
+		void postSeek(long ms) {
+			startms = -1;
+		}
+
 		@Override
 		public void run() {
-			long startpts = -1;
 			long sleep = 0;
-			long startms = -1;
 
 			try {
 				while (true) {
 					try {
-						FrameData fd = frames.take();
+						final FrameData fd = frames.take();
 
-						if (fd.frame == null)
+						if (fd.frame == null) {
+							System.out.println("Throttle thread exit invoked");
 							break;
+						}
 
 						// fix streams that don't start at 0
 						if (startpts == -1) {
 							startpts = fd.pts;
 						}
 
-						long pts = fd.pts - startpts;
+						long pts = fd.pts;// - startpts;
 						long targetms = pts + startms;
 						long now = System.currentTimeMillis();
 
@@ -340,6 +422,11 @@ public class JJGLPlayer extends Activity {
 
 						if (delay >= 0) {
 							sleep += delay;
+
+							if (delay > 100) {
+								System.out.println("waiting for frame: " + delay);
+							}
+
 							Thread.sleep(delay);
 							//view.post(fd);
 						} else {
@@ -348,10 +435,24 @@ public class JJGLPlayer extends Activity {
 							//view.post(fd);
 						}
 						fd.run();
+
+						// indicate frame shown
+						postSeekFrame = false;
+
+						// report location
+						runOnUiThread(new Runnable() {
+
+							public void run() {
+								positionChanged(fd.pts);
+							}
+						});
+
 					} catch (InterruptedException ex) {
 						Logger.getLogger(JJGLPlayer.class.getName()).log(Level.SEVERE, null, ex);
 					}
 				}
+			} catch (Throwable ex) {
+				Logger.getLogger(JJGLPlayer.class.getName()).log(Level.SEVERE, null, ex);
 			} finally {
 				Log.i("jjmpeg", String.format("Throttle thread stopped, total sleep=%d.%03ds\n", sleep / 1000, sleep % 1000));
 			}
@@ -362,16 +463,25 @@ public class JJGLPlayer extends Activity {
 	JJReaderAudio as;
 	int w;
 	int h;
-	PixelFormat fmt = PixelFormat.PIX_FMT_RGB565LE;
+	PixelFormat fmt;
+	static final boolean enableaudio = true;
+	static final boolean enablevideo = true;
+	// If true, then output at least 1 video frame after a seek to make it feel more responsive
+	boolean postSeekFrame = false;
 
 	// CPU thread for demux + decode, uses GL for colour conversion
 	class DecoderGL extends Thread {
 
+		public DecoderGL() {
+			super("jjmpeg: decoder");
+		}
 		boolean cancelled;
-		// how many decoder buffers to use, this is the only buffering now
-		static final int NDECODED = 3;
+		// how many decoder buffers to use, this is the only buffering
+		static final int NDECODED = 5;
 		// audioframes frames to buffer ahead.  Must be at least enough to fit betwen video frames
 		static final int NAUDIO = 30;
+		//
+		long duration;
 
 		void open() throws AVIOException, AVException {
 			mr = new JJMediaReader(filename);
@@ -379,18 +489,25 @@ public class JJGLPlayer extends Activity {
 			for (JJReaderStream rs : mr.getStreams()) {
 				switch (rs.getType()) {
 					case AVCodecContext.AVMEDIA_TYPE_AUDIO:
-						if (as == null) {
+						if (enableaudio && as == null) {
 							as = (JJReaderAudio) rs;
 							as.open();
 							Log.i("jjplayer", String.format("Found Audio: %dHz channels %d", as.getContext().getSampleRate(), as.getContext().getChannels()));
 						}
 						break;
 					case AVCodecContext.AVMEDIA_TYPE_VIDEO:
-						if (vs == null) {
+						if (enablevideo && vs == null) {
 							vs = (JJReaderVideo) rs;
-							Log.i("jjplayer", String.format("Found Video: %dx%d fmt %s", vs.getWidth(), vs.getHeight(), vs.getPixelFormat()));
 						}
+						break;
 				}
+			}
+			AVInputFormat avif = mr.getFormat().getInputFormat();
+			int flags = avif.getFlags();
+			if ((flags & AVFormat.AVFMT_NO_BYTE_SEEK) != 0) {
+				System.out.println("No byte seek allowed");
+			} else {
+				System.out.println("Byte seek allowed");
 			}
 
 			if (vs != null) {
@@ -405,6 +522,12 @@ public class JJGLPlayer extends Activity {
 
 				w = vs.getWidth();
 				h = vs.getHeight();
+				fmt = vs.getPixelFormat();
+				duration = vs.getDurationMS();
+
+				long pduration = vs.getDurationCalc();
+
+				Log.i("jjplayer", "Duraton = " + duration + " post-open eudration = " + pduration);
 			}
 
 			// Setup audio streams
@@ -418,7 +541,16 @@ public class JJGLPlayer extends Activity {
 						cc.getChannels() >= 2 ? AudioFormat.CHANNEL_OUT_STEREO : AudioFormat.CHANNEL_OUT_MONO,
 						AudioFormat.ENCODING_PCM_16BIT, 8192 * 2, AudioTrack.MODE_STREAM);
 				track.play();
+				if (duration == 0)
+					duration = as.getDurationMS();
 			}
+
+			runOnUiThread(new Runnable() {
+
+				public void run() {
+					fileOpened(filename, duration);
+				}
+			});
 		}
 
 		@Override
@@ -427,6 +559,7 @@ public class JJGLPlayer extends Activity {
 			long start = System.currentTimeMillis();
 			try {
 				open();
+				Command seekCmd = null;
 
 				view.renderer.setVideoSize(w, h);
 
@@ -434,9 +567,51 @@ public class JJGLPlayer extends Activity {
 					long now = System.currentTimeMillis();
 					JJReaderStream rs;
 
+					// Collapse incoming commands here
+					Command cmd;
+
+					while ((cmd = commands.poll()) != null) {
+						switch (cmd.cmd) {
+							case Command.SEEK:
+								seekCmd = cmd;
+								break;
+						}
+					}
+
+					if (!postSeekFrame && seekCmd != null && seekCmd.position > 0) {
+						Log.i("jjplayer", "Seek to: " + seekCmd.position);
+
+						audioframes.drainTo(audiorecycle);
+						FrameData fd;
+						while ((fd = frames.poll()) != null) {
+							fd.recycle();
+						}
+
+						throttle.postSeek(seekCmd.position);
+
+						long n = System.currentTimeMillis();
+						Log.i("jjplayer", "CALL SEEK");
+						try {
+							mr.seekMS(seekCmd.position);
+						} catch (AVIOException ex) {
+							Logger.getLogger(JJGLPlayer.class.getName()).log(Level.SEVERE, null, ex);
+						}
+						n = System.currentTimeMillis() - n;
+						Log.i("jjplayer", "post SEEK took:" + n);
+						seekCmd = null;
+						if (vs != null)
+							postSeekFrame = true;
+					}
+
+					long r = System.currentTimeMillis();
 					rs = mr.readFrame();
+					r = System.currentTimeMillis() - r;
 					if (rs == null)
 						break;
+
+					if (r > 150) {
+						Log.i("jjplayer", "Slow Read Frame: " + r);
+					}
 
 					if (rs.equals(vs)) {
 						AVFrame iframe = vs.getFrame();
@@ -475,12 +650,12 @@ public class JJGLPlayer extends Activity {
 			} catch (AVException ex) {
 				Logger.getLogger(JJGLPlayer.class.getName()).log(Level.SEVERE, null, ex);
 			} finally {
+				start = System.currentTimeMillis() - start;
+				Log.i("jjmpeg", String.format("Demux/decoder thread busy=%d.%03ds total: %d.%03ds", busy / 1000, busy % 1000, start / 1000, start % 1000));
+
 				if (mr != null)
 					mr.dispose();
 				frames.offer(new FrameData(0, null));
-
-				start = System.currentTimeMillis() - start;
-				Log.i("jjmpeg", String.format("Demux/decoder thread busy=%d.%03ds total: %d.%03ds", busy / 1000, busy % 1000, start / 1000, start % 1000));
 			}
 		}
 	}

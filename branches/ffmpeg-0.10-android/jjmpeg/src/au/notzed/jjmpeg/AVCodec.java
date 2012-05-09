@@ -56,9 +56,9 @@ class AVCodecNative32 extends AVCodecNative {
 	@Override
 	public void dispose() {
 		if (p != 0) {
-			super.dispose();
 			p = 0;
 		}
+		super.dispose();
 	}
 }
 
@@ -74,8 +74,8 @@ class AVCodecNative64 extends AVCodecNative {
 	@Override
 	public void dispose() {
 		if (p != 0) {
-			super.dispose();
 			p = 0;
 		}
+		super.dispose();
 	}
 }

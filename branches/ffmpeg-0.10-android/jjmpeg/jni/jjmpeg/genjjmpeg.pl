@@ -849,6 +849,10 @@ foreach $classinfo (@classes) {
     print "\t\tthis.n = n;\n";
     print "\t}\n";
 
+    print "\tpublic void dispose() {\n";
+    print "\t\tn.dispose();\n";
+    print "\t}\n";
+
     $aclass = "$class$npostfix.";
 
     print "\t// Fields\n";

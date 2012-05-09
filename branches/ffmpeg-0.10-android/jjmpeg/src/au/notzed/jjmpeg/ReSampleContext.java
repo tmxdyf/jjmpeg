@@ -63,9 +63,9 @@ class ReSampleContextNative32 extends ReSampleContextNative {
 	public void dispose() {
 		if (p != 0) {
 			resample_close();
-			super.dispose();
 			p = 0;
 		}
+		super.dispose();
 	}
 }
 
@@ -82,8 +82,8 @@ class ReSampleContextNative64 extends ReSampleContextNative {
 	public void dispose() {
 		if (p != 0) {
 			resample_close();
-			super.dispose();
 			p = 0;
 		}
+		super.dispose();
 	}
 }

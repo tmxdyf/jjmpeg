@@ -184,9 +184,9 @@ class AVFormatContextNative32 extends AVFormatContextNative {
 					close_input(this);
 					break;
 			}
-			super.dispose();
 			p = 0;
 		}
+		super.dispose();
 	}
 }
 
@@ -218,8 +218,8 @@ class AVFormatContextNative64 extends AVFormatContextNative {
 					close_input(this);
 					break;
 			}
-			super.dispose();
 			p = 0;
 		}
+		super.dispose();
 	}
 }

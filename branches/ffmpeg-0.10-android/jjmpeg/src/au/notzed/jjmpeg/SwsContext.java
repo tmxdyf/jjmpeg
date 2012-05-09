@@ -98,8 +98,8 @@ class SwsContextNative32 extends SwsContextNative {
 	public void dispose() {
 		if (p != 0) {
 			freeContext();
-			super.dispose();
 		}
+		super.dispose();
 	}
 }
 
@@ -116,7 +116,7 @@ class SwsContextNative64 extends SwsContextNative {
 	public void dispose() {
 		if (p != 0) {
 			freeContext();
-			super.dispose();
 		}
+		super.dispose();
 	}
 }

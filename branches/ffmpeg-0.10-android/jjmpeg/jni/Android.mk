@@ -33,6 +33,7 @@ LOCAL_EXPORT_C_INCLUDES := $(FF)/include
 include $(PREBUILT_STATIC_LIBRARY)
 
 include $(CLEAR_VARS)
+#APP_OPTIM=debug
 LOCAL_MODULE := jjmpeg
 LOCAL_SRC_FILES := jjmpeg/jjmpeg.c
 LOCAL_STATIC_LIBRARIES := avformat avcodec swscale avutil
