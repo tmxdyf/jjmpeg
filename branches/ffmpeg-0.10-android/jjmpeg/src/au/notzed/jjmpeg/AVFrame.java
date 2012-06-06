@@ -18,7 +18,9 @@
  */
 package au.notzed.jjmpeg;
 
+import au.notzed.jjmpeg.exception.AVIOException;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 /**
  *
@@ -45,12 +47,65 @@ public class AVFrame extends AVFrameAbstract {
 		if (res != 0) {
 			throw new ExceptionInInitializerError("Unable to allocate bitplanes");
 		}
-		((AVFrameNative) f.n).filled = true;
+		f.n.filled = true;
 
 		return f;
 	}
 
-	static public AVFrame allocFrame() {
+	/**
+	 * Allocate a new audio frame
+	 *
+	 * @param fmt
+	 * @param channels
+	 * @param samples
+	 * @return
+	 */
+	static public AVFrame create(SampleFormat fmt, int channels, int samples) throws AVIOException {
+		if (fmt != SampleFormat.SAMPLE_FMT_S16)
+			throw new UnsupportedOperationException("Only S16 sample format implemented");
+
+		AVFrame f = create();
+
+		try {
+			f.fillAudioFrame(channels, fmt, samples);
+		} catch (AVIOException ex) {
+			f.dispose();
+			throw ex;
+		}
+
+		return f;
+	}
+
+	/**
+	 * Set up data pointers for an audio frame.
+	 *
+	 * Backing memory is allocated as required.
+	 * @param fmt
+	 * @param channels
+	 * @param samples
+	 * @throws AVIOException
+	 */
+	public void fillAudioFrame(int channels, SampleFormat fmt, int samples) throws AVIOException {
+		if (fmt != SampleFormat.SAMPLE_FMT_S16)
+			throw new UnsupportedOperationException("Only S16 sample format implemented");
+
+		int size = channels * samples * 2;
+		int res;
+
+		if (n.backing == null
+				|| n.backing.capacity() < size) {
+			n.backing = ByteBuffer.allocateDirect(size).order(ByteOrder.nativeOrder());
+		}
+
+		setNbSamples(samples);
+		res = fillAudioFrame(channels, fmt, n.backing, size, 1);
+
+		if (res < 0) {
+			throw new AVIOException(res, "filling audio frame");
+		}
+	}
+
+	static AVFrame allocFrame() {
 		AVFrame af = AVFrameNativeAbstract.alloc_frame();
 
 		af.n.allocated = true;
@@ -71,15 +126,31 @@ public class AVFrame extends AVFrameAbstract {
 	 * Only need to provide texture channels for each plane of the given format.
 	 *
 	 * This allows textures to be loaded without createing temporary AVPlane objects.
-	 * 
-	 * @param fmt must match format for picture.  Only YUV420P is supported.
+	 *
+	 * @param fmt must match format for picture. Only YUV420P is supported.
+	 * @param width size of picture
+	 * @param height size of picture
 	 * @param create call glTexImage2D if true, else call glTexSubImage2D
 	 * @param tex0 texture channel 0 (e.g. Y)
 	 * @param tex1 texture channel 1
 	 * @param tex2 texture channel 2
 	 */
-	public void loadTexture2D(PixelFormat fmt, boolean create, int tex0, int tex1, int tex2) {
-		n.loadTexture2D(fmt.toC(), create, tex0, tex1, tex2);
+	public void loadTexture2D(PixelFormat fmt, int width, int height, boolean create, int tex0, int tex1, int tex2) {
+		n.loadTexture2D(fmt.toC(), width, height, create, tex0, tex1, tex2);
+	}
+
+	/**
+	 * Assuming this is an audio avframe, copy samples out of AVFrame
+	 *
+	 * @param fmt must be a short format
+	 * @param channels from context
+	 * @param samples should be long enough to hold samples (channels * frame.getNbSamples()), but will not overflow if not.
+	 * (todo: should probably throw exception)
+	 * @return number of (short) samples copied
+	 */
+	public int getSamples(SampleFormat fmt, int channels, short[] samples) {
+		// TODO: Use back buffer if set?
+		return n.getSamples(fmt.toC(), channels, samples);
 	}
 
 	public boolean isKeyFrame() {
@@ -89,6 +160,8 @@ public class AVFrame extends AVFrameAbstract {
 
 class AVFrameNative extends AVFrameNativeAbstract {
 
+	// For use createFrame(audio)
+	ByteBuffer backing;
 	// Was it allocated (with allocFrame()), or just referenced
 	boolean allocated = false;
 	// Has it been filled using avpicture_alloc()
@@ -100,9 +173,11 @@ class AVFrameNative extends AVFrameNativeAbstract {
 
 	native ByteBuffer getPlaneAt(int index, int pixelFormat, int width, int height);
 
-	native void loadTexture2D(int pixelFormat, boolean create, int tex0, int tex1, int tex2);
+	native void loadTexture2D(int pixelFormat, int width, int height, boolean create, int tex0, int tex1, int tex2);
 
 	native void freeFrame();
+
+	native int getSamples(int sampleFormat, int channels, short[] samples);
 }
 
 class AVFrameNative32 extends AVFrameNative {

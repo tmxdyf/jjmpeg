@@ -26,8 +26,8 @@ abstract class AVCodecContextNativeAbstract extends AVNative {
 	native int setSampleRate(int val);
 	native int getChannels();
 	native int setChannels(int val);
-	native int getChannelLayout();
-	native int setChannelLayout(int val);
+	native long getChannelLayout();
+	native long setChannelLayout(long val);
 	native int getSampleFmt();
 	native int setSampleFmt(int val);
 	native int getFrameSize();
@@ -71,6 +71,7 @@ abstract class AVCodecContextNativeAbstract extends AVNative {
 	 native int decode_video2(AVFrameNative picture, IntBuffer got_picture_ptr, AVPacketNative avpkt);
 	 native int encode_video(ByteBuffer buf, int buf_size, AVFrameNative pict);
 	 native int decode_audio3(ShortBuffer samples, IntBuffer frame_size_ptr, AVPacketNative avpkt);
+	 native int decode_audio4(AVFrameNative frame, IntBuffer got_frame_ptr, AVPacketNative avpkt);
 	 native int encode_audio(ByteBuffer buf, int buf_size, ShortBuffer samples);
 	 native void flush_buffers();
 	static  native AVCodecContext alloc_context();
@@ -127,10 +128,10 @@ abstract class AVCodecContextAbstract extends AVObject {
 	public  void setChannels(int val) {
 		n.setChannels(val);
 	}
-	public  int getChannelLayout() {
+	public  long getChannelLayout() {
 		return n.getChannelLayout();
 	}
-	public  void setChannelLayout(int val) {
+	public  void setChannelLayout(long val) {
 		n.setChannelLayout(val);
 	}
 	public  SampleFormat getSampleFmt() {
@@ -256,6 +257,9 @@ abstract class AVCodecContextAbstract extends AVObject {
 	}
 	 int decodeAudio3(ShortBuffer samples, IntBuffer frame_size_ptr, AVPacket avpkt) {
 		return n.decode_audio3(samples, frame_size_ptr, avpkt != null ? avpkt.n : null);
+	}
+	 int decodeAudio4(AVFrame frame, IntBuffer got_frame_ptr, AVPacket avpkt) {
+		return n.decode_audio4(frame != null ? frame.n : null, got_frame_ptr, avpkt != null ? avpkt.n : null);
 	}
 	public int encodeAudio(ByteBuffer buf, int buf_size, ShortBuffer samples) {
 		return n.encode_audio(buf, buf_size, samples);
@@ -601,10 +605,15 @@ abstract class AVFrameNativeAbstract extends AVNative {
 	native long setPTS(long val);
 	native int getDisplayPictureNumber();
 	native int getCodedPictureNumber();
+	native int getNbSamples();
+	native int setNbSamples(int val);
 	// Native Methods
 	static  native AVFrame alloc_frame();
+	 native void get_frame_defaults();
+	 native int fill_audio_frame(int nb_channels, int sample_fmt, ByteBuffer buf, int buf_size, int align);
 	 native int alloc(int pix_fmt, int width, int height);
 	 native void free();
+	 native void copy(AVFrameNative src, int fmt, int width, int height);
 }
 
 abstract class AVFrameAbstract extends AVObject {
@@ -634,12 +643,27 @@ abstract class AVFrameAbstract extends AVObject {
 	public  int getCodedPictureNumber() {
 		return n.getCodedPictureNumber();
 	}
+	public  int getNbSamples() {
+		return n.getNbSamples();
+	}
+	public  void setNbSamples(int val) {
+		n.setNbSamples(val);
+	}
 	// Public Methods
+	public void getFrameDefaults() {
+		n.get_frame_defaults();
+	}
+	public int fillAudioFrame(int nb_channels, SampleFormat sample_fmt, ByteBuffer buf, int buf_size, int align) {
+		return n.fill_audio_frame(nb_channels, sample_fmt.toC(), buf, buf_size, align);
+	}
 	public int alloc(int pix_fmt, int width, int height) {
 		return n.alloc(pix_fmt, width, height);
 	}
 	public void free() {
 		n.free();
+	}
+	public void copy(AVFrame src, PixelFormat fmt, int width, int height) {
+		n.copy(src != null ? src.n : null, fmt.toC(), width, height);
 	}
 }
 abstract class AVStreamNativeAbstract extends AVNative {
@@ -703,6 +727,7 @@ abstract class AVRationalNativeAbstract extends AVNative {
 	native int getDen();
 	native int setDen(int val);
 	// Native Methods
+	static  native long rescale(long a, long b, long c);
 }
 
 abstract class AVRationalAbstract extends AVObject {
@@ -727,6 +752,9 @@ abstract class AVRationalAbstract extends AVObject {
 		n.setDen(val);
 	}
 	// Public Methods
+	static public long rescale(long a, long b, long c) {
+		return AVRationalNativeAbstract.rescale(a, b, c);
+	}
 }
 abstract class AVIOContextNativeAbstract extends AVNative {
 	protected AVIOContextNativeAbstract(AVObject o) {
@@ -793,6 +821,29 @@ abstract class SwsFilterAbstract extends AVObject {
 	}
 	// Fields
 	// Public Methods
+}
+abstract class SwrContextNativeAbstract extends AVNative {
+	protected SwrContextNativeAbstract(AVObject o) {
+		super(o);
+	}
+	// Fields
+	// Native Methods
+	 native int set_compensation(int sample_delta, int compensation_distance);
+}
+
+abstract class SwrContextAbstract extends AVObject {
+	SwrContextNative n;
+	final protected void setNative(SwrContextNative n) {
+		this.n = n;
+	}
+	public void dispose() {
+		n.dispose();
+	}
+	// Fields
+	// Public Methods
+	public int setCompensation(int sample_delta, int compensation_distance) {
+		return n.set_compensation(sample_delta, compensation_distance);
+	}
 }
 abstract class ReSampleContextNativeAbstract extends AVNative {
 	protected ReSampleContextNativeAbstract(AVObject o) {

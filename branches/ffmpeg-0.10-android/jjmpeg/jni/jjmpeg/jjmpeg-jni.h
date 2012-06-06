@@ -47,7 +47,12 @@ typedef struct SwsContext SwsContext;
 struct ReSampleContext {
 	int dummy;
 };
-//typedef struct ReSampleContext ReSampleContext;
+
+#include <libswresample/swresample.h>
+struct SwrContext {
+	int dummy;
+};
+typedef struct SwrContext SwrContext;
 
 // and AVDictionary
 struct AVDictionary {

@@ -1,6 +1,7 @@
 package au.notzed.jjmpeg.util;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
 import android.os.Bundle;
@@ -29,11 +30,27 @@ public class JJPlayer extends Activity {
 	ImageView iview;
 	Throttle throttle;
 	Decoder decoder;
+	//
+	String filename;
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.main);
+
+		Intent it = getIntent();
+		System.out.println("intent action = " + it.getAction());
+		System.out.println("intent datas = " + it.getDataString());
+		System.out.println("intent data  = " + it.getData());
+
+		if (it.getData() != null) {
+			if (it.getData().getScheme().equals("content"))
+				filename = JJGLPlayerCopy.getRealPathFromURI(this, it.getData());
+			else
+				filename = it.getDataString();
+		} else {
+			filename = "/sdcard/trailer.mp4";
+		}
 
 		iview = (ImageView) findViewById(R.id.image);
 
@@ -68,6 +85,8 @@ public class JJPlayer extends Activity {
 
 	}
 
+	FrameData last = null;
+
 	class FrameData implements Runnable {
 
 		long pts;
@@ -80,7 +99,9 @@ public class JJPlayer extends Activity {
 
 		public void run() {
 			iview.setImageBitmap(bm);
-			recycle.offer(this);
+			if (last != null)
+				recycle.offer(last);
+			last = this;
 		}
 	}
 	long startms;
@@ -149,12 +170,11 @@ public class JJPlayer extends Activity {
 		int w;
 		int h;
 		PixelFormat fmt = PixelFormat.PIX_FMT_RGBA;
-		// how many frames to 'buffer' ahead of time (assiv we'd ever get that far ahead)
-		static final int NFRAMES = 10;
+		// how many frames to 'buffer' ahead of time
+		static final int NFRAMES = 5;
 
 		void open() throws AVIOException, AVException {
-			//mr = new JJMediaReader("/sdcard/bbb.mov");
-			mr = new JJMediaReader("/sdcard/yard.mp4");
+			mr = new JJMediaReader(filename);
 			vs = mr.openFirstVideoStream();
 
 			Log.i("jjplayer", String.format("Opened Video: %dx%d fmt %s", vs.getWidth(), vs.getHeight(), vs.getPixelFormat()));
@@ -189,7 +209,7 @@ public class JJPlayer extends Activity {
 						if (mr.readFrame() == null)
 							break;
 
-						if (false) {
+						if (true) {
 							AVFrame frame = vs.getOutputFrame();
 							AVPlane plane = frame.getPlaneAt(0, fmt, w, h);
 

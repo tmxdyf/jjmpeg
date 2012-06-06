@@ -1,6 +1,7 @@
 package au.notzed.jjmpeg.util;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.media.AudioFormat;
@@ -29,8 +30,8 @@ import au.notzed.jjmpeg.io.JJMediaReader.JJReaderStream;
 import au.notzed.jjmpeg.io.JJMediaReader.JJReaderVideo;
 import au.notzed.jjmpeg.io.JJQueue;
 import java.nio.ShortBuffer;
+import java.util.Queue;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.Semaphore;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -40,10 +41,16 @@ import java.util.logging.Logger;
  *
  * Still experimenting to find out what works and what doesn't.
  *
+ * This version copies the frames to a new frame as the buffering mechanism.
+ *
  * @author notzed
  */
-public class JJGLPlayer extends Activity {
+public class JJGLPlayerCopy extends Activity {
 
+	boolean videoout = true;
+	boolean videodecode = true;
+	boolean audioout = false;
+	boolean audiodecode = false;
 	JJGLSurfaceView view;
 	SeekBar seek;
 	DecoderGL decoder;
@@ -57,24 +64,92 @@ public class JJGLPlayer extends Activity {
 	LinkedBlockingQueue<Command> commands = new LinkedBlockingQueue<Command>();
 	// frames ready for being used
 	//LinkedBlockingQueue<FrameData> recycle = new LinkedBlockingQueue<FrameData>();
+	//ArrayBlockingQueue<FrameData> recycle = new ArrayBlockingQueue<FrameData>(NDECODED + 1);
 	// frames queued for display
 	//LinkedBlockingQueue<FrameData> frames = new LinkedBlockingQueue<FrameData>();
+	//ArrayBlockingQueue<FrameData> frames = new ArrayBlockingQueue<FrameData>(NDECODED + 1);
+	JJQueue<FrameData> frames = new JJQueue<FrameData>(16);
+	JJQueue<FrameData> recycle = new JJQueue<FrameData>(16);
 	// same for audio frames
 	//LinkedBlockingQueue<AudioData> audioframes = new LinkedBlockingQueue<AudioData>();
 	//LinkedBlockingQueue<AudioData> audiorecycle = new LinkedBlockingQueue<AudioData>();
-	JJQueue<FrameData> frames = new JJQueue<FrameData>(16);
-	JJQueue<FrameData> recycle = new JJQueue<FrameData>(16);
 	JJQueue<AudioData> audioframes = new JJQueue<AudioData>(32);
 	JJQueue<AudioData> audiorecycle = new JJQueue<AudioData>(32);
 	//
 	String filename;
 
-	public JJGLPlayer() {
+	public JJGLPlayerCopy() {
 	}
 
-	public String getRealPathFromURI(Uri contentUri) {
+	// blocks on offer if full
+	static class Queue2<T> {
+
+		Object[] data;
+		int head = 0;
+		int tail = 0;
+		final int mask;
+
+		public Queue2(int size) {
+			data = new Object[size];
+			mask = size - 1;
+		}
+
+		synchronized public T take() throws InterruptedException {
+			// empty queue
+			while (head == tail) {
+				wait();
+			}
+
+			// if it's full, send out a notify
+			int next = (tail + 1) & mask;
+			boolean notify = next == head;
+
+			Object o = data[head];
+			head = (head + 1) & mask;
+
+			if (notify)
+				notify();
+
+			return (T) o;
+		}
+
+		synchronized public void offer(T o) throws InterruptedException {
+			int next = (tail + 1) & mask;
+
+			while (head == next) {
+				wait();
+				next = (tail + 1) & mask;
+			}
+
+			boolean notify = head == tail;
+
+			data[tail] = o;
+			tail = next;
+			if (notify)
+				notify();
+		}
+
+		synchronized void clear() {
+			head = tail = 0;
+		}
+
+		synchronized public T poll() {
+			if (head == tail)
+				return null;
+			return (T) data[head];
+		}
+
+		synchronized public void drainTo(Queue<T> dst) {
+			while (head != tail) {
+				dst.offer((T) data[head]);
+				head = (head + 1) & mask;
+			}
+		}
+	}
+
+	static public String getRealPathFromURI(Context ctx, Uri contentUri) {
 		String[] proj = {MediaStore.Images.Media.DATA, MediaStore.Images.Media.MIME_TYPE, MediaStore.Images.Media.DISPLAY_NAME};
-		Cursor cursor = getContentResolver().query(contentUri, proj, null, null, null);
+		Cursor cursor = ctx.getContentResolver().query(contentUri, proj, null, null, null);
 
 		if (cursor == null)
 			return contentUri.getPath();
@@ -114,11 +189,11 @@ public class JJGLPlayer extends Activity {
 
 		if (it.getData() != null) {
 			if (it.getData().getScheme().equals("content"))
-				filename = getRealPathFromURI(it.getData());
+				filename = getRealPathFromURI(this, it.getData());
 			else
 				filename = it.getDataString();
 		} else {
-			filename = "/sdcard/trailer.mp4";
+			filename = "/sdcard/Download/long.avi";
 		}
 
 		FrameLayout frame = new FrameLayout(this);
@@ -183,7 +258,13 @@ public class JJGLPlayer extends Activity {
 		FrameLayout.LayoutParams fp = new FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT, Gravity.BOTTOM);
 		frame.addView(seek, fp);
 
-		setContentView(frame);
+		if (false) {
+			setContentView(frame);
+		} else {
+			TextView tv = new TextView(this);
+			tv.setText("no display");
+			setContentView(tv);
+		}
 
 		throttle = new Throttle();
 		decoder = new DecoderGL();
@@ -305,11 +386,13 @@ public class JJGLPlayer extends Activity {
 		public void run() {
 			// ""display frame""
 			view.renderer.setFrame(this);
+			//view.renderer.setFrameDirect(this);
+			//recycle.offer(this);
 		}
 
 		public void recycle() {
-			vs.recycleFrame(frame);
-			this.frame = null;
+//			vs.recycleFrame(frame);
+			//this.frame = null;
 			recycle.offer(this);
 		}
 
@@ -327,15 +410,20 @@ public class JJGLPlayer extends Activity {
 		short[] data = new short[8192 * 6];
 		int size;
 
-		public void setData(AVFrame aframe, int channels, int nsamples) {
-			aframe.getSamples(SampleFormat.SAMPLE_FMT_S16, channels, data);
-			size = nsamples * channels;
-		}
-
 		public void setData(ShortBuffer src, int cc) {
 			size = src.remaining();
 			src.get(data, 0, size);
 
+			if (cc > 2) {
+				for (int i = 0; i < size / 6; i++) {
+					data[i * 2 + 0] = data[i * 6 + 0];
+					data[i * 2 + 1] = data[i * 6 + 1];
+				}
+				size = size / 6 * 2;
+			}
+		}
+
+		void fix(int cc) {
 			if (cc > 2) {
 				for (int i = 0; i < size / 6; i++) {
 					data[i * 2 + 0] = data[i * 6 + 0];
@@ -400,7 +488,8 @@ public class JJGLPlayer extends Activity {
 		@Override
 		public void run() {
 			long sleep = 0;
-
+			long thread = Debug.threadCpuTimeNanos();
+			int count = 0;
 			try {
 				while (true) {
 					try {
@@ -442,22 +531,27 @@ public class JJGLPlayer extends Activity {
 							Thread.sleep(delay);
 							//view.post(fd);
 						} else {
-							Log.i("jjmpeg", "frame lag: " + delay);
+							//Log.i("jjmpeg", "frame lag: " + delay);
 							//recycle.offer(fd);
 							//view.post(fd);
 						}
-						fd.run();
+
+						//fd.run();
+						fd.recycle();
 
 						// indicate frame shown
 						postSeekFrame = false;
 
-						// report location
-						runOnUiThread(new Runnable() {
+						count++;
+						if ((count & 7) == 0) {
+							// report location
+							runOnUiThread(new Runnable() {
 
-							public void run() {
-								positionChanged(fd.pts);
-							}
-						});
+								public void run() {
+									positionChanged(fd.pts);
+								}
+							});
+						}
 
 					} catch (InterruptedException ex) {
 						Logger.getLogger(JJGLPlayer.class.getName()).log(Level.SEVERE, null, ex);
@@ -467,17 +561,14 @@ public class JJGLPlayer extends Activity {
 				Logger.getLogger(JJGLPlayer.class.getName()).log(Level.SEVERE, null, ex);
 			} finally {
 				Log.i("jjmpeg", String.format("Throttle thread stopped, total sleep=%d.%03ds\n", sleep / 1000, sleep % 1000));
+				thread = (Debug.threadCpuTimeNanos() - thread) / 1000L;
+				Log.i("jjmpeg", String.format("Demux/decoder thread time=%d.%06ds", thread / 1000000L, thread % 1000000L));
 			}
 		}
 	}
 	JJMediaReader mr = null;
 	JJReaderVideo vs;
 	JJReaderAudio as;
-	AVFrame audioFrame;
-	int audioChannels;
-	// for multi-channel inputs
-	SwrContext resample;
-	AVFrame resampledFrame;
 	int w;
 	int h;
 	PixelFormat fmt;
@@ -485,6 +576,14 @@ public class JJGLPlayer extends Activity {
 	static final boolean enablevideo = true;
 	// If true, then output at least 1 video frame after a seek to make it feel more responsive
 	boolean postSeekFrame = false;
+	// how many decoder buffers to use, this is the only buffering
+	static final int NDECODED = 5;
+	// audioframes frames to buffer ahead.  Must be at least enough to fit betwen video frames
+	static final int NAUDIO = 30;
+
+	int roundup(int v, int m) {
+		return (v + m - 1) & ~(m - 1);
+	}
 
 	// CPU thread for demux + decode, uses GL for colour conversion
 	class DecoderGL extends Thread {
@@ -493,10 +592,6 @@ public class JJGLPlayer extends Activity {
 			super("jjmpeg: decoder");
 		}
 		boolean cancelled;
-		// how many decoder buffers to use, this is the only buffering
-		static final int NDECODED = 5;
-		// audioframes frames to buffer ahead.  Must be at least enough to fit betwen video frames
-		static final int NAUDIO = 30;
 		//
 		long duration;
 
@@ -532,7 +627,7 @@ public class JJGLPlayer extends Activity {
 				//vs.getContext().setSkipFrame(16);
 				vs.getContext().setThreadCount(4);
 
-				vs.setFrameCount(NDECODED);
+				vs.setFrameCount(1);
 				vs.open();
 
 				Log.i("jjplayer", String.format("Opened Video: %dx%d fmt %s", vs.getWidth(), vs.getHeight(), vs.getPixelFormat()));
@@ -544,11 +639,14 @@ public class JJGLPlayer extends Activity {
 
 				long pduration = vs.getDurationCalc();
 
+				Log.i("jjplayer", "Duraton = " + duration + " post-open eudration = " + pduration);
+
 				for (int i = 0; i < NDECODED; i++) {
-					recycle.offer(new FrameData(0, null));
+					AVFrame frame = AVFrame.create(fmt, roundup(w, 128), h);
+					recycle.offer(new FrameData(0, frame));
 				}
 
-				Log.i("jjplayer", "Duraton = " + duration + " post-open eudration = " + pduration);
+				vs.getContext().debug();
 			}
 
 			// Setup audio streams
@@ -561,17 +659,10 @@ public class JJGLPlayer extends Activity {
 				track = new AudioTrack(AudioManager.STREAM_MUSIC, cc.getSampleRate(),
 						cc.getChannels() >= 2 ? AudioFormat.CHANNEL_OUT_STEREO : AudioFormat.CHANNEL_OUT_MONO,
 						AudioFormat.ENCODING_PCM_16BIT, 8192 * 2, AudioTrack.MODE_STREAM);
-				track.play();
+				if (audioout && audiodecode)
+					track.play();
 				if (duration == 0)
 					duration = as.getDurationMS();
-
-				audioFrame = AVFrame.create();
-				audioChannels = cc.getChannels();
-				if (cc.getChannels() > 2) {
-					resample = SwrContext.create(3, SampleFormat.SAMPLE_FMT_S16, cc.getSampleRate(), cc.getChannelLayout(), cc.getSampleFmt(), cc.getSampleRate());
-					resampledFrame = AVFrame.create();
-					audioChannels = 2;
-				}
 			}
 
 			runOnUiThread(new Runnable() {
@@ -586,6 +677,9 @@ public class JJGLPlayer extends Activity {
 		public void run() {
 			long busy = 0;
 			long start = System.currentTimeMillis();
+			long loadtext = 0;
+			long thread = Debug.threadCpuTimeNanos();
+
 			try {
 				open();
 				Command seekCmd = null;
@@ -638,30 +732,35 @@ public class JJGLPlayer extends Activity {
 					if (rs == null)
 						break;
 
+					busy += r;
+
 					if (r > 150) {
 						Log.i("jjplayer", "Slow Read Frame: " + r);
 					}
 
 					if (rs.equals(vs)) {
-						AVFrame iframe = vs.getFrame();
-
-						if (iframe == null) {
-							System.err.println("input frame is null1?");
+						if (!videodecode)
 							continue;
-						}
-
+						AVFrame iframe = vs.getFrame();
 						FrameData fd = recycle.take();
 
 						fd.pts = vs.convertPTS(mr.getPTS());
-						fd.frame = iframe;
 
-						busy += System.currentTimeMillis() - now;
+						long n = System.currentTimeMillis();
 
-						fd.pts = vs.convertPTS(mr.getPTS());
-						frames.offer(fd);
+						fd.frame.copy(iframe, fmt, w, h);
+
+						loadtext += (System.currentTimeMillis() - n);
+
+						//System.out.println("frame");
+						if (videoout)
+							frames.offer(fd);
+						else
+							fd.recycle();
 					} else if (rs.equals(as)) {
+						if (!audiodecode)
+							continue;
 						if (false) {
-							// old api
 							AVSamples samples;
 							try {
 								while ((samples = as.getSamples()) != null) {
@@ -676,26 +775,31 @@ public class JJGLPlayer extends Activity {
 								Log.i("jjmpeg", String.format("Audio decode error ignored: " + ex.getLocalizedMessage()));
 							}
 						} else {
-							// new api, which also allows for resampling/downmixing
+							AudioData ad = null;
 							try {
-								int len;
-
-								while ((len = as.getSamples(audioFrame)) > 0) {
-									AVFrame data = audioFrame;
-
-									if (resample != null) {
-										resampledFrame.fillAudioFrame(2, SampleFormat.SAMPLE_FMT_S16, len);
-										len = resample.convert(resampledFrame, audioFrame);
-										data = resampledFrame;
+								boolean go = true;
+								do {
+									ad = audiorecycle.take();
+									ad.size = as.getSamples(ad.data);
+									if (ad.size > 0) {
+										// HACK: resample properly
+										ad.fix(as.getContext().getChannels());
+										if (audioout)
+											audioframes.offer(ad);
+										else
+											audiorecycle.offer(ad);
+										ad = null;
+									} else {
+										go = false;
 									}
-
-									AudioData ad = audiorecycle.take();
-									ad.setData(data, audioChannels, len);
-									audioframes.offer(ad);
-								}
+								} while (go);
 							} catch (AVDecodingError ex) {
 								// ignore audio decoding errors
 								Log.i("jjmpeg", String.format("Audio decode error ignored: " + ex.getLocalizedMessage()));
+							} finally {
+								if (ad != null) {
+									audiorecycle.offer(ad);
+								}
 							}
 						}
 					}
@@ -708,7 +812,14 @@ public class JJGLPlayer extends Activity {
 				Logger.getLogger(JJGLPlayer.class.getName()).log(Level.SEVERE, null, ex);
 			} finally {
 				start = System.currentTimeMillis() - start;
-				Log.i("jjmpeg", String.format("Demux/decoder thread busy=%d.%03ds total: %d.%03ds", busy / 1000, busy % 1000, start / 1000, start % 1000));
+				Log.i("jjmpeg", String.format("Demux/decoder thread busy=%d.%03ds total: %d.%03ds  loadtext=%d.%03ds",
+						busy / 1000, busy % 1000, start / 1000, start % 1000, loadtext / 1000, loadtext % 1000));
+
+				thread = (Debug.threadCpuTimeNanos() - thread) / 1000L;
+				Log.i("jjmpeg", String.format("Demux/decoder thread time=%d.%06ds", thread / 1000000L, thread % 1000000L));
+
+				thread = (view.renderer.threadLast - view.renderer.thread) / 1000L;
+				Log.i("jjmpeg", String.format("GL thread time=%d.%06ds", thread / 1000000L, thread % 1000000L));
 
 				if (mr != null)
 					mr.dispose();

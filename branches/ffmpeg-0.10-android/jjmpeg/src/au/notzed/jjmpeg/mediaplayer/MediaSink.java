@@ -1,7 +1,7 @@
 /*
- * Copyright (c) 2011 Michael Zucchi
+ * Copyright (c) 2012 Michael Zucchi
  *
- * This file is part of jjmpeg, a java binding to ffmpeg's libraries.
+ * This file is part of jjmpeg.
  *
  * jjmpeg is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,27 +16,26 @@
  * You should have received a copy of the GNU General Public License
  * along with jjmpeg.  If not, see <http://www.gnu.org/licenses/>.
  */
-package au.notzed.jjmpeg.util;
-
-import android.content.Context;
-import android.opengl.GLSurfaceView;
+package au.notzed.jjmpeg.mediaplayer;
 
 /**
+ * Interface to a player that takes the audio/video frames and synchronises them.
  *
  * @author notzed
  */
-public class JJGLSurfaceView extends GLSurfaceView {
+public interface MediaSink {
 
-	JJGLRenderer renderer;
-	private static int EGL_CONTEXT_CLIENT_VERSION = 0x3098;
+	public void addMediaSinkListener(MediaSinkListener listener);
 
-	public JJGLSurfaceView(Context context) {
-		super(context);
+	public AudioFrame getAudioFrame() throws InterruptedException;
 
-		setEGLContextClientVersion(2);
-		renderer = new JJGLRenderer(context, this);
-		setRenderer(renderer);
+	public VideoFrame getVideoFrame() throws InterruptedException;
 
-		setRenderMode(RENDERMODE_WHEN_DIRTY);
-	}
+	public void postSeek(long stampms);
+
+	public void pause();
+
+	public void unpause();
+
+	public void finished();
 }
