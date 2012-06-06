@@ -73,11 +73,13 @@ public class AVRational extends AVRationalAbstract {
 	/**
 	 * Performs A * B / C, where A * B is treated as 128 bit
 	 *
+	 * @deprecated Use rescale() instead
 	 * @param a
 	 * @param b
 	 * @param c
 	 * @return
 	 */
+	@Deprecated
 	static public long starSlash(long a, long b, long c) {
 		// lazy today .. just use BigInteger, even if it's SAF
 		byte[] longBytes = new byte[8];

@@ -23,19 +23,41 @@
 
 #include "jjmpeg-jni.h"
 
+//#define d(x) x; fflush(stdout)
+#define d(x)
+
 // 32-bit versions
 #define PTR(jo, type) (jo ? (void *)(*env)->GetIntField(env, jo, type ## _p) : NULL)
 #define SET_PTR(jo, type, co) do { if (jo) (*env)->SetIntField(env, jo, type ## _p, (int)(co)); } while (0);
 #define NEWOBJ(cp, type) (cp ? (*env)->NewObject(env, type ## _class, type ## _init_p, (int)cp) : NULL)
 
-#include "jjmpeg-jni.c"
-
-//#define d(x) x; fflush(stdout)
-#define d(x)
-
 #include <android/log.h>
 #define  LOG_TAG    "jjmpegjni"
 #define  LOGI(...)  __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
+
+static void checkPacket(AVPacket *p) {
+	int i;
+	int logged = 0;
+	if (p->data) {
+		int *d = (int *)p->data;
+		int size = d[-1] - 4;
+
+		if (size < p->size + FF_INPUT_BUFFER_PADDING_SIZE) {
+			LOGI("packet not big enough?  want %d got %d",  p->size + FF_INPUT_BUFFER_PADDING_SIZE, size);
+		}
+		
+		for (i=0;i< FF_INPUT_BUFFER_PADDING_SIZE;i++) {
+			if (p->data[i+p->size]) {
+				if (!logged) {
+					LOGI("packet not padded properly: %d", i);
+					logged = 1;
+				}
+			}
+		}
+	}
+}
+
+#include "jjmpeg-jni.c"
 
 static jmethodID byteio_readPacket;
 static jmethodID byteio_writePacket;
@@ -110,12 +132,40 @@ JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_AVNative_getVersions
 
 /* ********************************************************************** */
 
-JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_AVCodecContextNativeAbstract_free
+JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_AVCodecContextNative_free
 (JNIEnv *env, jobject jptr) {
 	void *ptr = PTR(jptr, AVCodecContext);
 
 	if (ptr)
 		CALLDL(av_free)(ptr);
+}
+
+static int jjmpeg_get_buffer(struct AVCodecContext *c, AVFrame *pic) {
+	//LOGI("get buffer: %p", pic);
+	return avcodec_default_get_buffer(c, pic);
+}
+
+static void jjmpeg_release_buffer(struct AVCodecContext *c, AVFrame *pic) {
+	//LOGI("release buffer: %p", pic);
+	avcodec_default_release_buffer(c, pic);
+}
+
+static int jjmpeg_reget_buffer(struct AVCodecContext *c, AVFrame *pic) {
+	//LOGI("reget buffer: %p", pic);
+	return avcodec_default_reget_buffer(c, pic);
+}
+
+/*
+  Sets up some tracing allocators for debugging */
+JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_AVCodecContextNative_debug
+(JNIEnv *env, jobject jptr) {
+	AVCodecContext *ptr = PTR(jptr, AVCodecContext);
+
+	if (ptr) {
+		ptr->get_buffer = jjmpeg_get_buffer;
+		ptr->release_buffer = jjmpeg_release_buffer;
+		ptr->reget_buffer = jjmpeg_reget_buffer;
+	}
 }
 
 /* ********************************************************************** */
@@ -204,6 +254,8 @@ JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVFrameNative_getPlaneAt
 (JNIEnv *env, jobject jptr, jint index, jint fmt, jint width, jint height) {
 	AVFrame *cptr = PTR(jptr, AVFrame);
 
+	//LOGI("get plane %d, linesize[] = %d data = %p\n", index, cptr->linesize[index], cptr->data[index]);
+
 	// FIXME: this depends on pixel format
 	// TODO: keep this in java?
 	if (index > 0)
@@ -235,33 +287,52 @@ static int texture_size(int v) {
 }
 
 JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_AVFrameNative_loadTexture2D
-(JNIEnv *env, jobject jptr, int fmt, jboolean create, int t0, int t1, int t2) {
+(JNIEnv *env, jobject jptr, jint fmt, jint width, jint height, jboolean create, jint t0, jint t1, jint t2) {
 	AVFrame *cptr = PTR(jptr, AVFrame);
-	int height = cptr->height;
-	int width = cptr->width;
 
 	// FIXME: handle different formats
 
 	int twidth = texture_size(width);
 	int theight = texture_size(height);
 
-	if (create) {
-		glBindTexture(GL_TEXTURE_2D, t0);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, twidth, theight, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, NULL);
-
-		glBindTexture(GL_TEXTURE_2D, t1);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, twidth/2, theight/2, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, NULL);
-
-		glBindTexture(GL_TEXTURE_2D, t2);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, twidth/2, theight/2, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, NULL);
-	}
+	glPixelStorei(GL_PACK_ALIGNMENT, 4);
 
 	glBindTexture(GL_TEXTURE_2D, t0);
+	if (create)
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, twidth, theight, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, NULL);
 	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, cptr->linesize[0], height, GL_LUMINANCE, GL_UNSIGNED_BYTE, cptr->data[0]);
+	
 	glBindTexture(GL_TEXTURE_2D, t1);
+	if (create)
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, twidth/2, theight/2, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, NULL);
 	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, cptr->linesize[1], height/2, GL_LUMINANCE, GL_UNSIGNED_BYTE, cptr->data[1]);
+	
 	glBindTexture(GL_TEXTURE_2D, t2);
+	if (create)
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, twidth/2, theight/2, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, NULL);
 	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, cptr->linesize[2], height/2, GL_LUMINANCE, GL_UNSIGNED_BYTE, cptr->data[2]);
+}
+
+// Audio stuff for AVFrame
+
+
+JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_AVFrameNative_getSamples
+(JNIEnv *env, jobject jptr, jint fmt, int channels, jshortArray jsamples) {
+	AVFrame *frame = PTR(jptr, AVFrame);
+	int jlen = (*env)->GetArrayLength(env, jsamples);
+	int planesize;
+	int clen = av_samples_get_buffer_size(&planesize, channels, frame->nb_samples, fmt, 1) / 2;
+
+	// TODO: format must be S16
+
+	if (jlen < clen) {
+		LOGI("getSamples() short array write had %d needed %d", jlen, clen);
+		clen = jlen;
+	}
+
+	(*env)->SetShortArrayRegion(env, jsamples, 0, clen, (const jshort *)frame->extended_data[0]);
+
+	return clen;
 }
 
 /* ********************************************************************** */
@@ -378,6 +449,40 @@ JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_SwsContextNative_scaleByteArray
 	struct AVFrame *src = PTR(jsrc, AVFrame);
 
 	return scaleArray(env, sws, src, srcSliceY, srcSliceH, jdst, 1, fmt, width, height);
+}
+
+/* ********************************************************************** */
+
+JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_SwrContextNative_alloc
+(JNIEnv *env, jclass jc, jlong dstLayout, jint dstFormat, jint dstRate, jlong srcLayout, jint srcFormat, jint srcRate) {
+	struct SwrContext *swr;
+
+	swr = CALLDL(swr_alloc_set_opts)(NULL, dstLayout, dstFormat, dstRate, srcLayout, srcFormat, srcRate, 0, NULL);
+	if (swr)
+		swr_init(swr);
+
+	return NEWOBJ(swr, SwrContext);
+}
+
+JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_SwrContextNative_free
+(JNIEnv *env, jobject jptr) {
+	struct SwrContext *swr = PTR(jptr, SwrContext);
+
+	swr_free(&swr);
+
+	SET_PTR(jptr, SwrContext, swr);
+}
+
+JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_SwrContextNative_convert
+(JNIEnv *env, jobject jptr, jobject jdst, jobject jsrc) {
+	struct SwrContext *swr = PTR(jptr, SwrContext);
+	struct AVFrame *src = PTR(jsrc, AVFrame);
+	struct AVFrame *dst = PTR(jdst, AVFrame);
+
+	// if null ...
+	//LOGI("converting src %p len %d dst %p len %d\n", src->data[0], src->nb_samples, dst->data[0], dst->nb_samples);
+
+	return swr_convert(swr, dst->data, dst->nb_samples, (const uint8_t **)src->data, src->nb_samples);
 }
 
 /* ********************************************************************** */

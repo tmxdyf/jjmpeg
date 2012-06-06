@@ -105,4 +105,8 @@ public class AVSamples {
 			obuf.put(i, (byte) 0);
 		}
 	}
+
+	public void dispose() {
+		// noop
+	}
 }

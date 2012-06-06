@@ -252,7 +252,6 @@ public class JJMediaReader {
 	 * @return
 	 */
 	public JJReaderStream readFrame() {
-
 		if (freePacket) {
 			packet.freePacket();
 		}
@@ -375,7 +374,8 @@ public class JJMediaReader {
 		 * @return
 		 */
 		public long convertPTS(long pts) {
-			return AVRational.starSlash(pts * 1000, tb_Num, tb_Den) - startms;
+			//return AVRational.starSlash(pts * 1000, tb_Num, tb_Den) - startms;
+			return AVRational.rescale(pts * 1000, tb_Num, tb_Den) - startms;
 		}
 
 		/**
@@ -413,7 +413,7 @@ public class JJMediaReader {
 		AVFrame iframe;
 		int iframeCount = 1;
 		// For cyclic re-use of frames.
-		LinkedBlockingQueue<AVFrame> ready;
+		JJQueue<AVFrame> ready;
 		LinkedList<AVFrame> allocated;
 		//
 		PixelFormat ofmt;
@@ -446,7 +446,7 @@ public class JJMediaReader {
 			}
 
 			allocated = new LinkedList<AVFrame>();
-			ready = new LinkedBlockingQueue<AVFrame>();
+			ready = new JJQueue<AVFrame>(iframeCount);
 			for (int i = 0; i < iframeCount; i++) {
 				AVFrame frame = AVFrame.create();
 
@@ -455,7 +455,7 @@ public class JJMediaReader {
 				}
 
 				allocated.add(frame);
-				ready.add(frame);
+				ready.offer(frame);
 			}
 
 			c.open(codec);
@@ -655,6 +655,7 @@ public class JJMediaReader {
 
 		AVPacket apacket;
 		AVSamples samples;
+		AVFrame frame;
 
 		public JJReaderAudio(AVStream stream) throws AVInvalidCodecException, AVIOException {
 			super(stream);
@@ -682,6 +683,7 @@ public class JJMediaReader {
 
 			apacket = AVPacket.create();
 			samples = new AVSamples(c.getSampleFmt());
+			frame = AVFrame.create();
 		}
 
 		public boolean decode(AVPacket packet) throws AVDecodingError {
@@ -715,6 +717,20 @@ public class JJMediaReader {
 				}
 			}
 			return null;
+		}
+
+		public int getSamples(short[] buffer) throws AVDecodingError {
+			int len = c.decodeAudio(frame, apacket);
+
+			if (len > 0) {
+				return frame.getSamples(c.getSampleFmt(), c.getChannels(), buffer);
+			}
+
+			return len;
+		}
+
+		public int getSamples(AVFrame frame) throws AVDecodingError {
+			return c.decodeAudio(frame, apacket);
 		}
 	}
 }

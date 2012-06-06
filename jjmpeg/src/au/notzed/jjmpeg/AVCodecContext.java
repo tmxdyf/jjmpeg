@@ -257,6 +257,37 @@ public class AVCodecContext extends AVCodecContextAbstract {
 		return data;
 	}
 
+	/**
+	 * New interface to decodeAudio that goes through AVFrame.
+	 *
+	 * @param frame
+	 * @param packet
+	 * @return number of samples decoded into frame
+	 * @throws AVDecodingError
+	 */
+	public int decodeAudio(AVFrame frame, AVPacket packet) throws AVDecodingError {
+		int len;
+		int gotframe;
+
+		frame.getFrameDefaults();
+		while (packet.getSize() > 0) {
+			fin.put(0, 0);
+			len = decodeAudio4(frame, fin, packet);
+			if (len < 0) {
+				// error, skip packet
+				System.err.println("decodeAudio4() error (ignored): " + len);
+				packet.consume(packet.getSize());
+				return 0;
+			}
+			packet.consume(len);
+			gotframe = fin.get(0);
+			if (gotframe != 0)
+				return frame.getNbSamples();
+		}
+
+		return 0;
+	}
+
 	public int encodeAudio(ByteBuffer buf, AVSamples samples) throws AVEncodingError {
 		int buf_size = buf.capacity();
 		int len = encodeAudio(buf, buf_size, (ShortBuffer) samples.getSamples());
@@ -271,6 +302,10 @@ public class AVCodecContext extends AVCodecContextAbstract {
 			throw new AVEncodingError(-len);
 		}
 	}
+
+	public void debug() {
+		n.debug();
+	}
 }
 
 class AVCodecContextNative extends AVCodecContextNativeAbstract {
@@ -282,6 +317,8 @@ class AVCodecContextNative extends AVCodecContextNativeAbstract {
 	}
 
 	native void free();
+
+	native void debug();
 
 	@Override
 	public void dispose() {

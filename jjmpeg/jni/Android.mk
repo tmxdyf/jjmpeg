@@ -20,11 +20,11 @@ LOCAL_SRC_FILES := $(FF)/lib/libavutil.a
 LOCAL_EXPORT_C_INCLUDES := $(FF)/include
 include $(PREBUILT_STATIC_LIBRARY)
 
-#include $(CLEAR_VARS)
-#LOCAL_MODULE := swresample
-#LOCAL_SRC_FILES := $(FF)/lib/libswresample.a
-#LOCAL_EXPORT_C_INCLUDES := $(FF)/include
-#include $(PREBUILT_STATIC_LIBRARY)
+include $(CLEAR_VARS)
+LOCAL_MODULE := swresample
+LOCAL_SRC_FILES := $(FF)/lib/libswresample.a
+LOCAL_EXPORT_C_INCLUDES := $(FF)/include
+include $(PREBUILT_STATIC_LIBRARY)
 
 include $(CLEAR_VARS)
 LOCAL_MODULE := swscale
@@ -36,7 +36,7 @@ include $(CLEAR_VARS)
 #APP_OPTIM=debug
 LOCAL_MODULE := jjmpeg
 LOCAL_SRC_FILES := jjmpeg/jjmpeg.c
-LOCAL_STATIC_LIBRARIES := avformat avcodec swscale avutil
+LOCAL_STATIC_LIBRARIES := avformat avcodec swscale avutil swresample
 LOCAL_CFLAGS := -I$(FF) -Ijjmpeg
 LOCAL_LDLIBS := -lz -llog -lGLESv2
 
