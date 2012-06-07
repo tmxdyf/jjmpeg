@@ -57,6 +57,10 @@ public class GLVideoView extends GLSurfaceView implements EGLContextFactory {
 	}
 	int[] attrs = {EGL_CONTEXT_CLIENT_VERSION, 2, EGL10.EGL_NONE};
 
+	public void stop() {
+		setRenderMode(RENDERMODE_WHEN_DIRTY);
+	}
+
 	public EGLContext createContext(EGL10 egl, EGLDisplay display, EGLConfig eglConfig) {
 		System.err.println("create egl context  ctx = " + ctx);
 
@@ -92,6 +96,7 @@ public class GLVideoView extends GLSurfaceView implements EGLContextFactory {
 	}
 
 	private static class ConfigChooser implements GLSurfaceView.EGLConfigChooser {
+
 		static final boolean DEBUG = false;
 
 		public ConfigChooser(int r, int g, int b, int a, int depth, int stencil) {

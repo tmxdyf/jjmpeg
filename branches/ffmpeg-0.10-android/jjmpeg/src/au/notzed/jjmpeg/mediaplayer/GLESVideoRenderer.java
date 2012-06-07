@@ -63,6 +63,7 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 	static final int NBUFFERS = 3;
 	boolean bindTexture = false;
 	boolean dataChanged = false;
+	boolean stopped = false;
 	int vwidth, vheight;
 	int twidth, theight;
 	int pwidth, pheight;
@@ -92,6 +93,11 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 	public void postSeek(long position) {
 		lastpts = position;
 		startms = -1;
+	}
+
+	// When finishing off, indicates no more work to be done
+	public void stop() {
+		stopped = true;
 	}
 
 	/**
@@ -233,6 +239,9 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 	GLTextureFrame display;
 
 	public void onDrawFrame(GL10 glUnused) {
+		if (stopped)
+			return;
+		
 		if (thread == 0)
 			thread = Debug.threadCpuTimeNanos();
 		GLTextureFrame displayNew = null;

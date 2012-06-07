@@ -94,6 +94,8 @@ public class MediaPlayer extends Activity implements MediaSink {
 		} else {
 			filename = "/sdcard/trailer.mp4";
 			filename = "http://192.168.1.5:50500/content/media/object_id/91819/res_id/0/ext/file.mp4";
+			filename = "http://192.168.1.5:50500/content/media/object_id/7853/res_id/0/ext/file.mkv";
+			//filename = "http://192.168.1.5:6544/Myth/GetRecording?ChanId=3099&StartTime=2012-06-06T23:35:00";
 		}
 
 		seek = new SeekBar(this);
@@ -288,6 +290,9 @@ public class MediaPlayer extends Activity implements MediaSink {
 
 	public void finished() {
 		if (vRenderer != null) {
+			vRenderer.stop();
+			view.stop();
+			aRenderer.stop();
 			long start = (vRenderer.threadLast - vRenderer.thread) / 1000;
 			System.err.printf(" GL thread finished cpu time = %d.%06ds\n", start / 1000000L, start % 1000000L);
 		}
