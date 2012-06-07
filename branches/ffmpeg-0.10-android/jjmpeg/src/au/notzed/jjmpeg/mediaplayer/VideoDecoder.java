@@ -52,7 +52,8 @@ public class VideoDecoder extends MediaDecoder {
 		height = cc.getHeight();
 		width = cc.getWidth();
 		format = cc.getPixFmt();
-		frame = AVFrame.create();
+		if (!GLESVideoRenderer.enqueueFrames)
+			frame = AVFrame.create();
 	}
 
 	public int getWidth() {
@@ -62,27 +63,45 @@ public class VideoDecoder extends MediaDecoder {
 	public int getHeight() {
 		return height;
 	}
-
 	//public void setOutputSize(int swidth, int sheight) {
 	//	scale.dispose();
 	//	this.swidth = swidth;
 	//	this.sheight = sheight;
 	//	scale = SwsContext.create(width, height, format, swidth, sheight, PixelFormat.PIX_FMT_BGR24, SwsContext.SWS_BILINEAR);
 	//}
+	VideoFrame videoFrame;
 
 	void decodePacket(AVPacket packet) throws AVDecodingError, InterruptedException {
 		//System.out.println("video decode packet()");
 		//if (true)
 		//	return;
+
+		// Experimental alternative - just queue up AVFrames and load textures in display callback
+		if (GLESVideoRenderer.enqueueFrames) {
+			if (videoFrame == null) {
+				videoFrame = dest.getVideoFrame();
+				frame = videoFrame.getFrame();
+				if (frame == null) {
+					frame = AVFrame.create();
+					videoFrame.setFrame(frame);
+				}
+			}
+		}
+
 		boolean frameFinished = cc.decodeVideo(frame, packet);
 
 		if (frameFinished) {
-			VideoFrame vf = dest.getVideoFrame();
+			if (!GLESVideoRenderer.enqueueFrames) {
+				videoFrame = dest.getVideoFrame();
+				videoFrame.setFrame(frame);
+			}
 
-			vf.pts = convertPTS(packet.getDTS());
+			videoFrame.pts = convertPTS(packet.getDTS());
+			videoFrame.enqueue();
 
-			vf.setFrame(frame);
-			vf.enqueue();
+			if (GLESVideoRenderer.enqueueFrames) {
+				videoFrame = null;
+			}
 		}
 	}
 }

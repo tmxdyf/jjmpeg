@@ -46,6 +46,8 @@ abstract public class VideoFrame extends MediaFrame {
 	 */
 	abstract public void setFrame(AVFrame frame);
 
+	abstract public AVFrame getFrame();
+
 	/**
 	 * Copy the AVFrame to an image.
 	 *
