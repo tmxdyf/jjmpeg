@@ -57,6 +57,10 @@ import javax.microedition.khronos.opengles.GL10;
  */
 public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 
+	// enqueue frames rather than synchronously loading them
+	static final boolean enqueueFrames = true;
+	// how many buffers to use, must be > 1 if enqueueFrames used
+	static final int NBUFFERS = 3;
 	boolean bindTexture = false;
 	boolean dataChanged = false;
 	int vwidth, vheight;
@@ -66,7 +70,6 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 	long thread;
 	long threadLast;
 	GLVideoView surface;
-	static final int NBUFFERS = 3;
 	GLTextureFrame[] bufferArray;
 	JJQueue<GLTextureFrame> buffers = new JJQueue<GLTextureFrame>(NBUFFERS);
 	JJQueue<GLTextureFrame> ready = new JJQueue<GLTextureFrame>(NBUFFERS);
@@ -130,7 +133,10 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 
 		@Override
 		public void setFrame(AVFrame frame) {
-			if (GLVideoView.useShared) {
+			this.frame = frame;
+			if (enqueueFrames) {
+				// do nothing
+			} else if (GLVideoView.useShared) {
 				if (surface.bindSharedcontext()) {
 					PixelFormat fmt = PixelFormat.PIX_FMT_YUV420P;
 
@@ -146,7 +152,6 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 					System.out.println("no surface (yet?)");
 				}
 			} else {
-				this.frame = frame;
 				load();
 			}
 		}
@@ -176,6 +181,16 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 			if (n > 8000)
 				System.out.printf("SLOW tex load took: %d.%06ds\n", n / 1000000, n % 1000000);
 			sync();
+		}
+
+		@Override
+		public AVFrame getFrame() {
+			return frame;
+		}
+
+		void loadTexture() {
+			PixelFormat fmt = PixelFormat.PIX_FMT_YUV420P;
+			frame.loadTexture2D(fmt, vwidth, vheight, create, textures[0], textures[1], textures[2]);
 		}
 	}
 
@@ -220,6 +235,7 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 	public void onDrawFrame(GL10 glUnused) {
 		if (thread == 0)
 			thread = Debug.threadCpuTimeNanos();
+		GLTextureFrame displayNew = null;
 
 		// Find a frame that's ready for display
 		// TODO: mess ...
@@ -253,9 +269,9 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 					if (delay <= 0) {
 						// dump head
 						ready.poll();
-						if (display != null)
-							display.recycle();
-						display = peek;
+						if (displayNew != null)
+							displayNew.recycle();
+						displayNew = peek;
 					}
 				} else {
 					delay = 1;
@@ -271,14 +287,23 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 			Matrix.scaleM(stMatrix, 0, (float) vwidth / twidth, (float) vheight / theight, 1);
 		}
 
+		if (displayNew != null)
+			display = displayNew;
+
 		if (display == null)
 			return;
+
+		// note that we can recycle the buffer as soon as we've loaded the texture
+		if (enqueueFrames && displayNew != null) {
+			displayNew.loadTexture();
+			displayNew.recycle();
+		}
 
 		lastpts = display.getPTS();
 
 		// Ignore the passed-in GL10 interface, and use the GLES20
 		// class's static methods instead.
-		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+		glClear(GL_COLOR_BUFFER_BIT);
 		glUseProgram(paintTexture);
 		checkGlError("glUseProgram");
 
