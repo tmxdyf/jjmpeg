@@ -23,6 +23,7 @@ import au.notzed.jjmpeg.AVCodecContext;
 import au.notzed.jjmpeg.AVFormatContext;
 import au.notzed.jjmpeg.AVPacket;
 import au.notzed.jjmpeg.AVStream;
+import au.notzed.jjmpeg.io.JJQueue;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map.Entry;
@@ -40,12 +41,13 @@ import java.util.logging.Logger;
  */
 public class MediaReader extends CancellableThread {
 
+	static final int packetLimit = 31;
 	AVFormatContext format;
 	HashMap<Integer, MediaDecoder> streamMap = new HashMap<Integer, MediaDecoder>();
 	final String file;
 	MediaSink dest;
 	// for recycling packets
-	LinkedBlockingQueue<AVPacket> packetQueue = new LinkedBlockingQueue<AVPacket>();
+	JJQueue<AVPacket> packetQueue = new JJQueue<AVPacket>(packetLimit);
 	// for commands to the player thread
 	LinkedBlockingQueue<PlayerCMD> cmdQueue = new LinkedBlockingQueue<PlayerCMD>();
 	long duration;
@@ -165,7 +167,7 @@ public class MediaReader extends CancellableThread {
 	int created;
 
 	AVPacket createPacket() throws InterruptedException {
-		if (created >= 30) {
+		if (created >= packetLimit) {
 			return packetQueue.take();
 		}
 
@@ -181,7 +183,7 @@ public class MediaReader extends CancellableThread {
 
 	public void recyclePacket(AVPacket packet) {
 		packet.freePacket();
-		packetQueue.add(packet);
+		packetQueue.offer(packet);
 	}
 
 	void postSeek() {

@@ -321,9 +321,9 @@ public class JJMediaReader {
 			tb_Den = tb.getDen();
 
 			startpts = stream.getStartTime();
-			startms = AVRational.starSlash(startpts * 1000, tb_Num, tb_Den);
+			startms = AVRational.rescale(startpts * 1000, tb_Num, tb_Den);
 			duration = stream.getDuration();
-			durationms = AVRational.starSlash(duration * 1000, tb_Num, tb_Den);
+			durationms = AVRational.rescale(duration * 1000, tb_Num, tb_Den);
 		}
 
 		public void open() throws AVInvalidCodecException, AVIOException {
@@ -354,7 +354,7 @@ public class JJMediaReader {
 		}
 
 		public long getDurationCalc() {
-			return AVRational.starSlash(stream.getDuration() * 1000, tb_Num, tb_Den);
+			return AVRational.rescale(stream.getDuration() * 1000, tb_Num, tb_Den);
 		}
 
 		/**

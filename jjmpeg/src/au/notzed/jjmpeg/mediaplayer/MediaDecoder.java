@@ -26,8 +26,8 @@ import au.notzed.jjmpeg.AVRational;
 import au.notzed.jjmpeg.AVStream;
 import au.notzed.jjmpeg.exception.AVDecodingError;
 import au.notzed.jjmpeg.exception.AVIOException;
+import au.notzed.jjmpeg.io.JJQueue;
 import java.io.IOException;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -51,10 +51,10 @@ public abstract class MediaDecoder extends CancellableThread {
 	final long startpts;
 	final long duration;
 	// packet input queue
-	LinkedBlockingQueue<AVPacket> queue = new LinkedBlockingQueue<AVPacket>(20);
+	JJQueue<AVPacket> queue;
 	//
-	static AVPacket flush = AVPacket.create();
-	static AVPacket cancel = AVPacket.create();
+	final static AVPacket flush = AVPacket.create();
+	final static AVPacket cancel = AVPacket.create();
 
 	/**
 	 * Initialise a media decoder.
@@ -67,8 +67,10 @@ public abstract class MediaDecoder extends CancellableThread {
 	 * @param streamid
 	 * @throws IOException
 	 */
-	MediaDecoder(MediaReader src, MediaSink dest, AVStream stream, int streamid) throws IOException {
-		super("Media Decoder");
+	MediaDecoder(String name, MediaReader src, MediaSink dest, AVStream stream, int streamid) throws IOException {
+		super(name);
+
+		queue = new JJQueue<AVPacket>(MediaReader.packetLimit);
 		try {
 			this.src = src;
 			this.dest = dest;
@@ -90,8 +92,8 @@ public abstract class MediaDecoder extends CancellableThread {
 			tb_Den = tb.getDen();
 
 			startpts = stream.getStartTime();
-			startms = AVRational.starSlash(startpts * 1000, tb_Num, tb_Den);
-			duration = AVRational.starSlash(stream.getDuration() * 1000, tb_Num, tb_Den);
+			startms = AVRational.rescale(startpts * 1000, tb_Num, tb_Den);
+			duration = AVRational.rescale(stream.getDuration() * 1000, tb_Num, tb_Den);
 
 			System.out.println("stream start " + startms + " length " + duration);
 		} catch (AVIOException ex) {
@@ -169,7 +171,7 @@ public abstract class MediaDecoder extends CancellableThread {
 	 * @return
 	 */
 	public long convertPTS(long pts) {
-		return AVRational.starSlash(pts * 1000, tb_Num, tb_Den) - startms;
+		return AVRational.rescale(pts * 1000, tb_Num, tb_Den) - startms;
 	}
 
 	/**

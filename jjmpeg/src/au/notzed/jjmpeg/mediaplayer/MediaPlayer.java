@@ -93,6 +93,7 @@ public class MediaPlayer extends Activity implements MediaSink {
 				filename = it.getDataString();
 		} else {
 			filename = "/sdcard/trailer.mp4";
+			filename = "http://192.168.1.5:50500/content/media/object_id/91819/res_id/0/ext/file.mp4";
 		}
 
 		seek = new SeekBar(this);

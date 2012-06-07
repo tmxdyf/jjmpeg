@@ -21,6 +21,9 @@ package au.notzed.jjmpeg.io;
 /**
  * This is a simpler blocking queue which seems to run faster on android
  *
+ * Note that this queue will never block on offer, so one must ensure
+ * there are never more items offered than the queue can hold.
+ *
  * @author notzed
  */
 public class JJQueue<T> {
@@ -38,7 +41,7 @@ public class JJQueue<T> {
 	}
 
 	public JJQueue(int size) {
-		size = roundUp(Math.max(2, size));
+		size = roundUp(Math.max(2, size + 1));
 		data = new Object[size];
 		mask = size - 1;
 	}
@@ -69,6 +72,10 @@ public class JJQueue<T> {
 
 		data[tail] = o;
 		tail = (tail + 1) & mask;
+
+		if (head == tail)
+			throw new RuntimeException("Queue offer: overflow");
+
 		if (notify)
 			notify();
 	}
@@ -77,7 +84,11 @@ public class JJQueue<T> {
 		head = tail = 0;
 	}
 
-	synchronized public T poll() {
+	public T poll() {
+		return remove();
+	}
+
+	synchronized public T peek() {
 		if (head == tail)
 			return null;
 		return (T) data[head];

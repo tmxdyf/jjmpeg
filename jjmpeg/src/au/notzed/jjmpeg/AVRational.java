@@ -67,37 +67,7 @@ public class AVRational extends AVRationalAbstract {
 	 * @return
 	 */
 	public long scale(long v, int s) {
-		return starSlash(v, (long) getNum() * (long) s, getDen());
-	}
-
-	/**
-	 * Performs A * B / C, where A * B is treated as 128 bit
-	 *
-	 * @deprecated Use rescale() instead
-	 * @param a
-	 * @param b
-	 * @param c
-	 * @return
-	 */
-	@Deprecated
-	static public long starSlash(long a, long b, long c) {
-		// lazy today .. just use BigInteger, even if it's SAF
-		byte[] longBytes = new byte[8];
-		LongBuffer lb = ByteBuffer.wrap(longBytes).asLongBuffer();
-
-		lb.put(0, a);
-		BigInteger A = new BigInteger(longBytes);
-		lb.put(0, b);
-		BigInteger B = new BigInteger(longBytes);
-		lb.put(0, c);
-		BigInteger C = new BigInteger(longBytes);
-
-		long res = A.multiply(B).divide(C).longValue();
-
-		//System.out.printf("%d * %d / %d = %d  ? %d  ? %d\n", a, b, c, res, a * b / c, a * b);
-		//System.out.printf("%d * %d / %d = %d\n", A.longValue(), B.longValue(), C.longValue(), res);
-
-		return res;
+		return rescale(v, (long) getNum() * (long) s, getDen());
 	}
 }
 

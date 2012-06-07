@@ -37,7 +37,7 @@ public class AudioDecoder extends MediaDecoder {
 	SampleFormat dstFormat;
 
 	AudioDecoder(MediaReader src, MediaSink dest, AVStream stream, int streamid) throws IOException {
-		super(src, dest, stream, streamid);
+		super("Audio Decoder", src, dest, stream, streamid);
 
 		apacket = AVPacket.create();
 		frame = AVFrame.create();

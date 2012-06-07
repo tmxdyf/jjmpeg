@@ -66,6 +66,9 @@ static jmethodID byteio_seek;
 #define CALLDL(x) x
 
 /* ********************************************************************** */
+static void log_cb(void *x, int level, const char *fmt, va_list ap) {
+	__android_log_vprint(ANDROID_LOG_INFO, "ffmpeg", fmt, ap);
+}
 
 static int init_local(JNIEnv *env) {
 	jclass byteioclass = (*env)->FindClass(env, "au/notzed/jjmpeg/AVIOContext");
@@ -88,6 +91,11 @@ static int init_local(JNIEnv *env) {
 	if (class != NULL) {
 		IntHolder_value = (*env)->GetFieldID(env, class, "value", "I");
 	}
+
+	// init log callbacks to redirect to android log
+	LOGI("Setting log level");
+	av_log_set_callback(log_cb);
+	av_log_set_level(99);
 
 	return 1;
 }
