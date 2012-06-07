@@ -46,7 +46,7 @@ public class VideoDecoder extends MediaDecoder {
 	 * @throws IOException
 	 */
 	VideoDecoder(MediaReader src, MediaSink dest, AVStream stream, int streamid) throws IOException {
-		super(src, dest, stream, streamid);
+		super("VideoDecoder", src, dest, stream, streamid);
 
 		// init some local stuff like picture frames
 		height = cc.getHeight();

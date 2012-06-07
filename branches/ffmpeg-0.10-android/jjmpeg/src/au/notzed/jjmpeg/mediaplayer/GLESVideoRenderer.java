@@ -42,12 +42,10 @@ import android.os.Debug;
 import android.util.Log;
 import au.notzed.jjmpeg.AVFrame;
 import au.notzed.jjmpeg.PixelFormat;
+import au.notzed.jjmpeg.io.JJQueue;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
-import java.util.Collection;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.microedition.khronos.egl.*;
@@ -68,7 +66,10 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 	long thread;
 	long threadLast;
 	GLVideoView surface;
-	static final int NBUFFERS = 2;
+	static final int NBUFFERS = 3;
+	GLTextureFrame[] bufferArray;
+	JJQueue<GLTextureFrame> buffers = new JJQueue<GLTextureFrame>(NBUFFERS);
+	JJQueue<GLTextureFrame> ready = new JJQueue<GLTextureFrame>(NBUFFERS);
 
 	public GLESVideoRenderer(Context context, GLVideoView view) {
 		this.context = context;
@@ -154,7 +155,7 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 		void enqueue() throws InterruptedException {
 			//System.out.println("enqueue: " + this);
 			if (NBUFFERS > 1)
-				ready.add(this);
+				ready.offer(this);
 			// this wont work with the throttle mechanism used
 			//surface.requestRender();
 		}
@@ -163,7 +164,7 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 		void recycle() {
 			//System.out.println("recycle: " + this);
 			if (NBUFFERS > 1)
-				buffers.add(this);
+				buffers.offer(this);
 		}
 
 		public void run() {
@@ -183,20 +184,13 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 			//VideoFrame vf = buffers.take();
 			VideoFrame vf;
 
-			vf = buffers.poll(25, TimeUnit.MILLISECONDS);
-			if (vf == null) {
-				//System.out.println("timeout getting frame, ready = " + ready.size());
-				vf = buffers.take();
-			}
+			vf = buffers.take();
 			return vf;
 		} else {
 			// just use the same texture over and over
 			return buffers.peek();
 		}
 	}
-	GLTextureFrame[] bufferArray;
-	LinkedBlockingQueue<GLTextureFrame> buffers = new LinkedBlockingQueue<GLTextureFrame>();
-	LinkedBlockingQueue<GLTextureFrame> ready = new LinkedBlockingQueue<GLTextureFrame>();
 
 	int roundUp(int v) {
 		int n = 256;
@@ -374,15 +368,12 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 			for (int i = 0; i < NBUFFERS; i++) {
 				GLTextureFrame tf = new GLTextureFrame();
 				bufferArray[i] = tf;
-				if (!buffers.offer(tf)) {
-					System.err.println("Unable to offer buffers?");
-				}
+				buffers.offer(tf);
 			}
 		}
 		for (int i = 0; i < NBUFFERS; i++) {
 			bufferArray[i].genTextures();
 		}
-		System.err.println(" textures created = " + buffers.size());
 		checkGlError("glTexParameteri mTextureID");
 
 		//Matrix.setLookAtM(mVMatrix, 0, 0, 0, 5f, 0f, 0f, 0f, 0f, 1.0f, 0.0f);

@@ -22,7 +22,7 @@ import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioTrack;
 import au.notzed.jjmpeg.SampleFormat;
-import java.util.concurrent.LinkedBlockingQueue;
+import au.notzed.jjmpeg.io.JJQueue;
 
 /**
  *
@@ -33,8 +33,8 @@ public class AndroidAudioRenderer {
 	final static int NBUFFERS = 30;
 	AudioTrack track;
 	AnAudioFrame[] bufferArray;
-	LinkedBlockingQueue<AnAudioFrame> buffers = new LinkedBlockingQueue<AnAudioFrame>();
-	LinkedBlockingQueue<AnAudioFrame> ready = new LinkedBlockingQueue<AnAudioFrame>();
+	JJQueue<AnAudioFrame> buffers = new JJQueue<AnAudioFrame>(NBUFFERS);
+	JJQueue<AnAudioFrame> ready = new JJQueue<AnAudioFrame>(NBUFFERS);
 
 	void setAudioFormat(int sampleRate, int channels, SampleFormat fmt) {
 		if (track != null) {
