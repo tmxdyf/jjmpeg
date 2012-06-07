@@ -45,6 +45,18 @@ public class AVPacket extends AVPacketAbstract {
 	}
 	AVPacket src;
 
+	@Override
+	public int dupPacket() {
+		int res = super.dupPacket();
+
+		if (res != 0) {
+			n.setNull();
+			throw new OutOfMemoryError();
+		}
+
+		return res;
+	}
+
 	/**
 	 * Create a shallow copy of 'src' into 'this'.
 	 * Used for audio packet re-use, where the packet is consumed incrementally.
@@ -68,7 +80,7 @@ public class AVPacket extends AVPacketAbstract {
 	}
 }
 
-class AVPacketNative extends AVPacketNativeAbstract {
+abstract class AVPacketNative extends AVPacketNativeAbstract {
 
 	public AVPacketNative(AVObject o) {
 		super(o);
@@ -89,7 +101,13 @@ class AVPacketNative extends AVPacketNativeAbstract {
 	 * @param src
 	 */
 	public native void copyPacket(AVPacketNative src);
+
+	/**
+	 * Set the packet pointer to null - e.g. if dup packet failed
+	 */
+	abstract void setNull();
 }
+
 
 class AVPacketNative32 extends AVPacketNative {
 
@@ -106,6 +124,11 @@ class AVPacketNative32 extends AVPacketNative {
 			freePacket();
 		}
 		super.dispose();
+	}
+
+	@Override
+	void setNull() {
+		p = 0;
 	}
 }
 
@@ -124,5 +147,10 @@ class AVPacketNative64 extends AVPacketNative {
 			freePacket();
 		}
 		super.dispose();
+	}
+
+	@Override
+	void setNull() {
+		p = 0;
 	}
 }
