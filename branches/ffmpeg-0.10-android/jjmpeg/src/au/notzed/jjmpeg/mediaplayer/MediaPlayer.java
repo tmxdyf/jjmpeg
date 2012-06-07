@@ -121,14 +121,46 @@ public class MediaPlayer extends Activity implements MediaSink {
 	protected void onStart() {
 		super.onStart();
 
-		try {
-			open(filename);
-			reader.start();
-			aRenderer.play();
-			seek.postDelayed(updatePosition, 100);
-		} catch (IOException ex) {
-			Logger.getLogger(MediaPlayer.class.getName()).log(Level.SEVERE, null, ex);
+		if (!isStarted) {
+			try {
+				open(filename);
+				reader.start();
+				aRenderer.play();
+				seek.postDelayed(updatePosition, 100);
+				isStarted = true;
+			} catch (IOException ex) {
+				Logger.getLogger(MediaPlayer.class.getName()).log(Level.SEVERE, null, ex);
+			}
 		}
+	}
+	/**
+	 * Tracks if we've been through the pause state.
+	 */
+	boolean isPaused = false;
+	boolean isStarted = false;
+
+	@Override
+	protected void onPause() {
+		super.onPause();
+
+		reader.pause();
+		isPaused = true;
+	}
+
+	@Override
+	protected void onResume() {
+		super.onResume();
+
+		if (isPaused) {
+			isPaused = false;
+			reader.unpause();
+		}
+	}
+
+	@Override
+	protected void onStop() {
+		super.onStop();
+		// Should this close down the threads/etc?
 	}
 
 	@Override
@@ -139,15 +171,16 @@ public class MediaPlayer extends Activity implements MediaSink {
 		aRenderer.release();
 		reader = null;
 	}
-
 	// Polls the play position and updates the scrollbar
 	Runnable updatePosition = new Runnable() {
 
 		public void run() {
 			if (reader != null) {
-				updateSeek = true;
-				seek.setProgress((int)vRenderer.getPosition());
-				updateSeek = false;
+				if (!fingerDown) {
+					updateSeek = true;
+					seek.setProgress((int) vRenderer.getPosition());
+					updateSeek = false;
+				}
 				seek.postDelayed(updatePosition, 100);
 			}
 		}
@@ -178,7 +211,7 @@ public class MediaPlayer extends Activity implements MediaSink {
 
 		initRenderers();
 
-		seek.setMax((int)reader.getDuration());
+		seek.setMax((int) reader.getDuration());
 	}
 
 	public void initRenderers() {
@@ -231,13 +264,12 @@ public class MediaPlayer extends Activity implements MediaSink {
 
 		runOnUiThread(doUpdateSeek);
 	}
-
 	Runnable doUpdateSeek = new Runnable() {
 
 		public void run() {
 			System.out.println("post seek gui thread seek to " + seekoffset);
 			updateSeek = true;
-			seek.setProgress((int)seekoffset);
+			seek.setProgress((int) seekoffset);
 			updateSeek = false;
 		}
 	};
