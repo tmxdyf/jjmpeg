@@ -545,6 +545,7 @@ abstract class AVPacketNativeAbstract extends AVNative {
 	// Native Methods
 	 native void free_packet();
 	 native void init_packet();
+	 native int dup_packet();
 }
 
 abstract class AVPacketAbstract extends AVObject {
@@ -592,6 +593,9 @@ abstract class AVPacketAbstract extends AVObject {
 	}
 	public void initPacket() {
 		n.init_packet();
+	}
+	public int dupPacket() {
+		return n.dup_packet();
 	}
 }
 abstract class AVFrameNativeAbstract extends AVNative {

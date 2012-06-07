@@ -220,6 +220,7 @@ public class MediaReader extends CancellableThread {
 					MediaDecoder md = streamMap.get(packet.getStreamIndex());
 					if (md != null) {
 						//System.out.println("sending packet to decoder " + packet.getStreamIndex() + " + " + packet.getSize());
+						packet.dupPacket();
 						md.enqueuePacket(packet);
 						packet = null;
 					}
