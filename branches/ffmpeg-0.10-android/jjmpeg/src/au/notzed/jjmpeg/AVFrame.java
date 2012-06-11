@@ -125,7 +125,7 @@ public class AVFrame extends AVFrameAbstract {
 	 *
 	 * Only need to provide texture channels for each plane of the given format.
 	 *
-	 * This allows textures to be loaded without createing temporary AVPlane objects.
+	 * This allows textures to be loaded without creating temporary AVPlane objects.
 	 *
 	 * @param fmt must match format for picture. Only YUV420P is supported.
 	 * @param width size of picture

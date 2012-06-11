@@ -65,6 +65,8 @@ public class MediaPlayer extends Activity implements MediaSink {
 	//
 	boolean fingerDown;
 	boolean updateSeek;
+	boolean haveVideo;
+	boolean haveAudio;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -96,6 +98,7 @@ public class MediaPlayer extends Activity implements MediaSink {
 			filename = "http://192.168.1.5:50500/content/media/object_id/91819/res_id/0/ext/file.mp4";
 			filename = "http://192.168.1.5:50500/content/media/object_id/7853/res_id/0/ext/file.mkv";
 			//filename = "http://192.168.1.5:6544/Myth/GetRecording?ChanId=3099&StartTime=2012-06-06T23:35:00";
+			filename = "http://radio1.internode.on.net:8000/126";
 		}
 
 		seek = new SeekBar(this);
@@ -128,7 +131,10 @@ public class MediaPlayer extends Activity implements MediaSink {
 			try {
 				open(filename);
 				reader.start();
-				aRenderer.play();
+				if (haveAudio)
+					aRenderer.play();
+				if (!haveVideo)
+					view.stop();
 				seek.postDelayed(updatePosition, 100);
 				isStarted = true;
 			} catch (IOException ex) {
@@ -225,6 +231,7 @@ public class MediaPlayer extends Activity implements MediaSink {
 				videoStart = vd.stream.getStartTime();
 
 				vRenderer.setVideoSize(vd.width, vd.height);
+				haveVideo = true;
 			} else if (md instanceof AudioDecoder) {
 				ad = (AudioDecoder) md;
 
@@ -233,6 +240,7 @@ public class MediaPlayer extends Activity implements MediaSink {
 
 				ad.setOutputFormat(3, cc, SampleFormat.SAMPLE_FMT_S16, ad.cc.getSampleRate());
 				aRenderer.setAudioFormat(ad.cc.getSampleRate(), cc, ad.cc.getSampleFmt());
+				haveAudio = true;
 			}
 		}
 	}
