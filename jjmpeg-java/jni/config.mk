@@ -1,2 +1,4 @@
 
 LIBVERSION=010
+
+CROSS_TARGETS=mswin-amd64

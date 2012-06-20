@@ -1,8 +1,8 @@
 
-TARGETS=gnu-amd64 gnu-i386
+include ./config.mk
 
+TARGETS=gnu-amd64 gnu-i386 $(CROSS_TARGETS)
 CORE=../../jjmpeg-core/jni
-
 VPATH=.:$(CORE)
 
 all: ffmpeg.built jjmpeg.built
@@ -11,8 +11,8 @@ all: ffmpeg.built jjmpeg.built
 	done
 
 # If we want local build (e.g. mswin)
-ffmpeg.built: #build-ffmpeg
-#	./build-ffmpeg
+ffmpeg.built: build-ffmpeg
+	./build-ffmpeg
 	touch ffmpeg.built
 
 # generates platform-specific sources

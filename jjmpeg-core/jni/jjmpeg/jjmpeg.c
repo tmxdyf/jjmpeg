@@ -25,8 +25,9 @@
 #define d(x)
 
 #include "jjmpeg-jni.h"
-#include "jjmpeg-platform.c"
 #include "jjmpeg-jni.c"
+
+#include "jjmpeg-platform.c"
 
 static jmethodID byteio_readPacket;
 static jmethodID byteio_writePacket;
@@ -298,7 +299,7 @@ JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_AVFrameNative_getSamples
 	AVFrame *frame = PTR(jptr, AVFrame);
 	int jlen = (*env)->GetArrayLength(env, jsamples);
 	int planesize;
-	int clen = av_samples_get_buffer_size(&planesize, channels, frame->nb_samples, fmt, 1) / 2;
+	int clen = CALLDL(av_samples_get_buffer_size)(&planesize, channels, frame->nb_samples, fmt, 1) / 2;
 
 	// TODO: format must be S16
 
@@ -436,7 +437,7 @@ JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_SwrContextNative_alloc
 
 	swr = CALLDL(swr_alloc_set_opts)(NULL, dstLayout, dstFormat, dstRate, srcLayout, srcFormat, srcRate, 0, NULL);
 	if (swr)
-		swr_init(swr);
+		CALLDL(swr_init)(swr);
 
 	return NEWOBJ(swr, SwrContext);
 }
@@ -445,7 +446,7 @@ JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_SwrContextNative_free
 (JNIEnv *env, jobject jptr) {
 	struct SwrContext *swr = PTR(jptr, SwrContext);
 
-	swr_free(&swr);
+	CALLDL(swr_free)(&swr);
 
 	SET_PTR(jptr, SwrContext, swr);
 }
@@ -459,7 +460,7 @@ JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_SwrContextNative_convert
 	// if null ...
 	//LOGI("converting src %p len %d dst %p len %d\n", src->data[0], src->nb_samples, dst->data[0], dst->nb_samples);
 
-	return swr_convert(swr, dst->data, dst->nb_samples, (const uint8_t **)src->data, src->nb_samples);
+	return CALLDL(swr_convert)(swr, dst->data, dst->nb_samples, (const uint8_t **)src->data, src->nb_samples);
 }
 
 /* ********************************************************************** */

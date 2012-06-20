@@ -34,12 +34,12 @@ $jimpl = "Native";
 
 if ($size == 64) {
     $resolveObject ="\t:class: *cptr = (:class: *)(*env)->GetLongField(env, jo, :class:_p);\n";
-    $createObject = "(*env)->NewObject(env, :class:_class, :class:_init_p, (long):res:)";
+    $createObject = "(*env)->NewObject(env, :class:_class, :class:_init_p, (jlong):res:)";
     $jptrsig = "J";
     $jnative = "Native64";
 } else {
     $resolveObject ="\t:class: *cptr = (:class: *)(*env)->GetIntField(env, jo, :class:_p);\n";
-    $createObject = "(*env)->NewObject(env, :class:_class, :class:_init_p, (int):res:)";
+    $createObject = "(*env)->NewObject(env, :class:_class, :class:_init_p, (jint):res:)";
     $jptrsig = "I";
     $jnative = "Native32";
 }
