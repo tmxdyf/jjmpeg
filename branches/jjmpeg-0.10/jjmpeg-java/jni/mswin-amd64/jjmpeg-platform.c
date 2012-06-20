@@ -2,7 +2,7 @@
  * Defines platform specific interfaces and platform-specific init.
  */
 
-#include "lock-pthread.c"
+#include "lock-mswin.c"
 
 static void log_cb(void *x, int level, const char *fmt, va_list ap) {
 	vfprintf(stderr, fmt, ap);
