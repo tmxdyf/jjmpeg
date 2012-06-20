@@ -21,56 +21,28 @@
  * Contains hand-rolled interfaces
  */
 
-#include "jjmpeg-jni.h"
-
 //#define d(x) x; fflush(stdout)
 #define d(x)
 
-// 32-bit versions
-#define PTR(jo, type) (jo ? (void *)(*env)->GetIntField(env, jo, type ## _p) : NULL)
-#define SET_PTR(jo, type, co) do { if (jo) (*env)->SetIntField(env, jo, type ## _p, (int)(co)); } while (0);
-#define NEWOBJ(cp, type) (cp ? (*env)->NewObject(env, type ## _class, type ## _init_p, (int)cp) : NULL)
-
-#include <android/log.h>
-#define  LOG_TAG    "jjmpegjni"
-#define  LOGI(...)  __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
-
-static void checkPacket(AVPacket *p) {
-	int i;
-	int logged = 0;
-	if (p->data) {
-		int *d = (int *)p->data;
-		int size = d[-1] - 4;
-
-		if (size < p->size + FF_INPUT_BUFFER_PADDING_SIZE) {
-			LOGI("packet not big enough?  want %d got %d",  p->size + FF_INPUT_BUFFER_PADDING_SIZE, size);
-		}
-		
-		for (i=0;i< FF_INPUT_BUFFER_PADDING_SIZE;i++) {
-			if (p->data[i+p->size]) {
-				if (!logged) {
-					LOGI("packet not padded properly: %d", i);
-					logged = 1;
-				}
-			}
-		}
-	}
-}
-
+#include "jjmpeg-jni.h"
+#include "jjmpeg-platform.c"
 #include "jjmpeg-jni.c"
 
 static jmethodID byteio_readPacket;
 static jmethodID byteio_writePacket;
 static jmethodID byteio_seek;
 
-#define CALLDL(x) x
-
 /* ********************************************************************** */
-static void log_cb(void *x, int level, const char *fmt, va_list ap) {
-	__android_log_vprint(ANDROID_LOG_INFO, "ffmpeg", fmt, ap);
-}
-
+// Returns 0 on success
 static int init_local(JNIEnv *env) {
+#ifdef ENABLE_DL
+	DLOPEN(avutil_lib, "avutil", LIBAVUTIL_VERSION_MAJOR);
+	DLOPEN(avcodec_lib, "avcodec", LIBAVCODEC_VERSION_MAJOR);
+	DLOPEN(avformat_lib, "avformat", LIBAVFORMAT_VERSION_MAJOR);
+	DLOPEN(swscale_lib, "swscale", LIBSWSCALE_VERSION_MAJOR);
+	DLOPEN(swresample_lib, "swresample", LIBSWRESAMPLE_VERSION_MAJOR);
+#endif
+
 	jclass byteioclass = (*env)->FindClass(env, "au/notzed/jjmpeg/AVIOContext");
 	if (byteioclass == NULL)
 		;
@@ -92,12 +64,7 @@ static int init_local(JNIEnv *env) {
 		IntHolder_value = (*env)->GetFieldID(env, class, "value", "I");
 	}
 
-	// init log callbacks to redirect to android log
-	LOGI("Setting log level");
-	av_log_set_callback(log_cb);
-	av_log_set_level(99);
-
-	return 1;
+	return init_platform(env);
 }
 
 /* ********************************************************************** */
@@ -150,17 +117,17 @@ JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_AVCodecContextNative_free
 
 static int jjmpeg_get_buffer(struct AVCodecContext *c, AVFrame *pic) {
 	//LOGI("get buffer: %p", pic);
-	return avcodec_default_get_buffer(c, pic);
+	return CALLDL(avcodec_default_get_buffer)(c, pic);
 }
 
 static void jjmpeg_release_buffer(struct AVCodecContext *c, AVFrame *pic) {
 	//LOGI("release buffer: %p", pic);
-	avcodec_default_release_buffer(c, pic);
+	CALLDL(avcodec_default_release_buffer)(c, pic);
 }
 
 static int jjmpeg_reget_buffer(struct AVCodecContext *c, AVFrame *pic) {
 	//LOGI("reget buffer: %p", pic);
-	return avcodec_default_reget_buffer(c, pic);
+	return CALLDL(avcodec_default_reget_buffer)(c, pic);
 }
 
 /*
@@ -224,7 +191,7 @@ JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_AVFormatContextNative_open_1input
 	AVInputFormat * fmt = PTR(jfmt, AVInputFormat);
 	AVDictionary * options = PTR(joptions, AVDictionary);
 
-	jint res = avformat_open_input(&ps, filename, fmt, &options);
+	jint res = CALLDL(avformat_open_input)(&ps, filename, fmt, &options);
 
 	SET_PTR(jps, AVFormatContext, ps);
 	RSTR(jfilename, filename);
@@ -238,7 +205,7 @@ JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_AVFormatContextNative_close_1input
 	AVFormatContext * s = PTR(js, AVFormatContext);
 
 	if (s)
-		avformat_close_input(&s);
+		CALLDL(avformat_close_input)(&s);
 	// else throw nullpointerexception
 	SET_PTR(js, AVFormatContext, s);
 }
@@ -248,7 +215,7 @@ JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_AVFormatContextNative_write_1header
 	AVFormatContext *cptr = PTR(jo, AVFormatContext);
 	AVDictionary * options = PTR(joptions, AVDictionary);
 
-	jint res = avformat_write_header(cptr, &options);
+	jint res = CALLDL(avformat_write_header)(cptr, &options);
 
 	SET_PTR(joptions, AVDictionary, options);
 
@@ -279,10 +246,11 @@ JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_AVFrameNative_freeFrame
 	AVFrame *cptr = PTR(jptr, AVFrame);
 
 	if (cptr)
-		av_free(cptr);
+		CALLDL(av_free)(cptr);
 	// else throw nullpointer exception
 }
 
+#ifdef ENABLE_GLES2
 #include <GLES2/gl2.h>
 
 static int texture_size(int v) {
@@ -320,6 +288,7 @@ JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_AVFrameNative_loadTexture2D
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, twidth/2, theight/2, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, NULL);
 	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, cptr->linesize[2], height/2, GL_LUMINANCE, GL_UNSIGNED_BYTE, cptr->data[2]);
 }
+#endif
 
 // Audio stuff for AVFrame
 

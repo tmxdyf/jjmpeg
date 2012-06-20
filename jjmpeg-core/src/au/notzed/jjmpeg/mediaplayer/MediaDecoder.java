@@ -18,7 +18,6 @@
  */
 package au.notzed.jjmpeg.mediaplayer;
 
-import android.os.Debug;
 import au.notzed.jjmpeg.AVCodec;
 import au.notzed.jjmpeg.AVCodecContext;
 import au.notzed.jjmpeg.AVPacket;
@@ -131,9 +130,6 @@ public abstract class MediaDecoder extends CancellableThread {
 
 	@Override
 	public void run() {
-		long start = Debug.threadCpuTimeNanos();
-		long time = System.currentTimeMillis();
-
 		while (!cancelled) {
 			AVPacket packet = null;
 			try {
@@ -158,10 +154,6 @@ public abstract class MediaDecoder extends CancellableThread {
 					src.recyclePacket(packet);
 			}
 		}
-
-		start = (Debug.threadCpuTimeNanos() - start) / 1000;
-		time = System.currentTimeMillis() - time;
-		System.err.printf(getName() + " thread finished cpu time = %d.%06ds   real time = %d.%03ds\n", start / 1000000L, start % 1000000L, time / 1000, time % 1000);
 	}
 
 	/**

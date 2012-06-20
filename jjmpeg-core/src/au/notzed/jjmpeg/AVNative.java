@@ -18,7 +18,6 @@
  */
 package au.notzed.jjmpeg;
 
-import android.util.Log;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
@@ -52,7 +51,7 @@ abstract public class AVNative extends WeakReference<AVObject> {
 
 		System.err.println("load jjmpeg");
 
-		System.loadLibrary("jjmpeg");
+		System.loadLibrary("jjmpeg010");
 		bits = initNative();
 
 		if (bits == 0) {
@@ -117,7 +116,7 @@ abstract public class AVNative extends WeakReference<AVObject> {
 	 * must be called.
 	 */
 	public void dispose() {
-		Log.d("jjmpeg", "dispose native: " + this);
+		System.out.println("jjmpeg: dispose native: " + this);
 		reflist.remove(this);
 	}
 }

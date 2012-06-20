@@ -35,7 +35,8 @@ public class VideoDecoder extends MediaDecoder {
 	int height;
 	PixelFormat format;
 	AVFrame frame;
-
+	// FIXME: depends on impelementation
+	final static boolean enqueueFrames = false;
 	/**
 	 * Create a new video decoder for a given stream.
 	 *
@@ -52,7 +53,7 @@ public class VideoDecoder extends MediaDecoder {
 		height = cc.getHeight();
 		width = cc.getWidth();
 		format = cc.getPixFmt();
-		if (!GLESVideoRenderer.enqueueFrames)
+		if (!enqueueFrames)
 			frame = AVFrame.create();
 	}
 
@@ -77,7 +78,7 @@ public class VideoDecoder extends MediaDecoder {
 		//	return;
 
 		// Experimental alternative - just queue up AVFrames and load textures in display callback
-		if (GLESVideoRenderer.enqueueFrames) {
+		if (enqueueFrames) {
 			if (videoFrame == null) {
 				videoFrame = dest.getVideoFrame();
 				frame = videoFrame.getFrame();
@@ -91,7 +92,7 @@ public class VideoDecoder extends MediaDecoder {
 		boolean frameFinished = cc.decodeVideo(frame, packet);
 
 		if (frameFinished) {
-			if (!GLESVideoRenderer.enqueueFrames) {
+			if (!enqueueFrames) {
 				videoFrame = dest.getVideoFrame();
 				videoFrame.setFrame(frame);
 			}
@@ -99,7 +100,7 @@ public class VideoDecoder extends MediaDecoder {
 			videoFrame.pts = convertPTS(packet.getDTS());
 			videoFrame.enqueue();
 
-			if (GLESVideoRenderer.enqueueFrames) {
+			if (enqueueFrames) {
 				videoFrame = null;
 			}
 		}

@@ -18,7 +18,6 @@
  */
 package au.notzed.jjmpeg.mediaplayer;
 
-import android.os.Debug;
 import au.notzed.jjmpeg.AVCodecContext;
 import au.notzed.jjmpeg.AVFormatContext;
 import au.notzed.jjmpeg.AVPacket;
@@ -194,9 +193,6 @@ public class MediaReader extends CancellableThread {
 
 	@Override
 	public void run() {
-		long start = Debug.threadCpuTimeNanos();
-		long time = System.currentTimeMillis();
-
 		AVPacket packet = null;
 
 		// init all decoders
@@ -276,10 +272,6 @@ public class MediaReader extends CancellableThread {
 			x.printStackTrace();
 		} finally {
 			System.out.println("File finished: " + file);
-
-			start = (Debug.threadCpuTimeNanos() - start) / 1000;
-			time = System.currentTimeMillis() - time;
-			System.err.printf(getName() + " thread finished cpu time = %d.%06ds   real time = %d.%03ds\n", start / 1000000L, start % 1000000L, time / 1000, time % 1000);
 
 			// FIXME: handle shutdown somehow easier than this (e.g. 'finished'?)
 			for (MediaDecoder dec : streamMap.values()) {
