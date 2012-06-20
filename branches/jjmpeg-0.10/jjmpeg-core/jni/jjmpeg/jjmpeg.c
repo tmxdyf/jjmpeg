@@ -25,6 +25,9 @@
 #define d(x)
 
 #include "jjmpeg-jni.h"
+
+static int init_platform(JNIEnv *env);
+
 #include "jjmpeg-jni.c"
 
 #include "jjmpeg-platform.c"
@@ -43,7 +46,6 @@ static int init_local(JNIEnv *env) {
 	DLOPEN(swscale_lib, "swscale", LIBSWSCALE_VERSION_MAJOR);
 	DLOPEN(swresample_lib, "swresample", LIBSWRESAMPLE_VERSION_MAJOR);
 #endif
-
 	jclass byteioclass = (*env)->FindClass(env, "au/notzed/jjmpeg/AVIOContext");
 	if (byteioclass == NULL)
 		;
@@ -65,7 +67,7 @@ static int init_local(JNIEnv *env) {
 		IntHolder_value = (*env)->GetFieldID(env, class, "value", "I");
 	}
 
-	return init_platform(env);
+	return 0;
 }
 
 /* ********************************************************************** */
@@ -398,19 +400,22 @@ static int scaleArray(JNIEnv *env, SwsContext *sws, AVFrame *src, jint srcSliceY
 
 	cdst = (*env)->GetPrimitiveArrayCritical(env, jdst, NULL);
 
-	if (!cdst)
+	if (!cdst) {
 		// FIXME: exception
 		return res;
+	}
 
-	CALLDL(avpicture_fill)(&dst, cdst, fmt, width, height);
-
-	res = CALLDL(sws_scale)(sws, (const uint8_t * const *)src->data, src->linesize,
-				srcSliceY, srcSliceH,
-				dst.data, dst.linesize);
+	res = CALLDL(avpicture_fill)(&dst, cdst, fmt, width, height);
+	if (res >= 0) {
+		res = CALLDL(sws_scale)(sws, (const uint8_t * const *)src->data, src->linesize,
+					srcSliceY, srcSliceH,
+					dst.data, dst.linesize);
+	}
 
 	(*env)->ReleasePrimitiveArrayCritical(env, jdst, cdst, 0);
 
-	return res;}
+	return res;
+}
 
 
 JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_SwsContextNative_scaleIntArray

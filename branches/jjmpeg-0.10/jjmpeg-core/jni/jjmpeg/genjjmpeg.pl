@@ -457,13 +457,12 @@ foreach $classinfo (@classes) {
     print "static jfieldID ${class}_p;\n";
     print "static jmethodID ${class}_init_p;\n";
 }
-    print <<END;
-JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_AVNative_initNative
-(JNIEnv *env, jclass jc) {
-\tint res = init_local(env);
-\tif (res < 0) return res;
-END
-    print "\tjclass lc;\n";
+print "JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_AVNative_initNative\n";
+print "(JNIEnv *env, jclass jc) {\n";
+print "\tint res = init_local(env);\n";
+print "\tif (res < 0) return res;\n";
+print "\n";
+print "\tjclass lc;\n";
 foreach $classinfo (@classes) {
     %ci = %{$classinfo};
 
@@ -498,6 +497,9 @@ if ($dodl) {
     }
 }
 
+print "\tres = init_platform(env);\n";
+print "\tif (res < 0) return res;\n";
+print "\n";
 print "\treturn sizeof(void *)*8;\n";
 print "}\n";
 
