@@ -36,7 +36,7 @@ public class VideoDecoder extends MediaDecoder {
 	PixelFormat format;
 	AVFrame frame;
 	// FIXME: depends on impelementation
-	final static boolean enqueueFrames = false;
+	final static boolean enqueueFrames = true;
 	/**
 	 * Create a new video decoder for a given stream.
 	 *
