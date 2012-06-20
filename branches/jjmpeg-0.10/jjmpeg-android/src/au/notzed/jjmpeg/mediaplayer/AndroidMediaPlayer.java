@@ -42,7 +42,7 @@ import java.util.logging.Logger;
  *
  * @author notzed
  */
-public class MediaPlayer extends Activity implements MediaSink {
+public class AndroidMediaPlayer extends Activity implements MediaSink, MediaPlayer {
 
 	GLVideoView view;
 	SeekBar seek;

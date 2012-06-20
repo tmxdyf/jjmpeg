@@ -36,7 +36,6 @@ import au.notzed.jjmpeg.exception.AVInvalidStreamException;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 

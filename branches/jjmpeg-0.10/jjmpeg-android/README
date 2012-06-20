@@ -1,16 +1,11 @@
 
-README android
+WORK IN PROGRESS  WORK IN PROGRESS  WORK IN PROGRESS
+
+README-android
 --------------
 
-This is work in progress for an android port.
-
-README FFmpeg-0.10
-------------------
-
-This is from the development branch for FFmpeg 0.10 compatability with
-deprecated functions removed.
-
-It is still work in progress, do not use this version.
+This includes the android-specific classes and the android
+native target build.
 
 README 1st
 ----------

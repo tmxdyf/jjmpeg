@@ -16,21 +16,21 @@ TARGETS_OPTS=( '' '' )
 TARGETS_CFLAGS=( '' '-mfloat-abi=softfp -mfpu=neon -marm -march=armv7-a' )
 
 export SYSROOT=$PLATFORM
-
+src="`pwd`/../../jjmpeg-core/jni"
 this=`pwd`
 i=0
 for TARGET in ${TARGETS_LIST[@]} ; do
     if [[ "$TARGETS" == *"$TARGET"* ]]; then
+	mkdir -p $this/build-$FF/$TARGET
 	mkdir -p $this/build/$TARGET
-	mkdir -p $this/$TARGET
-	cd $this/build/$TARGET
+	cd $this/build-$FF/$TARGET || exit 1
 
 	opts=${TARGETS_OPTS[$i]}
 	cflags="${TARGETS_CFLAGS[$i]} $DEBUG_CFLAGS"
 
-	$this/$FF/configure \
+	$src/$FF/configure \
 	    $opts \
-	    --prefix=$this/$TARGET \
+	    --prefix=$this/build/$TARGET \
 	    --cross-prefix=$PREBUILT/bin/arm-linux-androideabi- \
 	    --enable-cross-compile \
 	    --target-os=linux \
@@ -48,7 +48,7 @@ for TARGET in ${TARGETS_LIST[@]} ; do
 	    --disable-avdevice --disable-avfilter --disable-postproc || exit 1
 	
 	i=`expr $i + 1`
-	make V=1 -j8 || exit 1
+	make V=1 -j12 || exit 1
 	make V=1 install || (echo "Error" ; exit 1)
     fi
 done
