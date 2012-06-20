@@ -161,6 +161,10 @@ public class AVCodecContext extends AVCodecContextAbstract {
 		setNative(new AVCodecContextNative32(this, p));
 	}
 
+	protected AVCodecContext(long p) {
+		setNative(new AVCodecContextNative64(this, p));
+	}
+
 	public static AVCodecContext create() {
 		AVCodecContext cc = allocContext();
 

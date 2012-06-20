@@ -470,13 +470,14 @@ foreach $classinfo (@classes) {
     my $class = $ci{name};
 
     print "\tlc = (*env)->FindClass(env, \"au/notzed/jjmpeg/$class\");\n";
-    print "\tif (!lc) return 0;\n";
+    print "\tif (!lc) return -1;\n";
     print "\t${class}_class = (*env)->NewGlobalRef(env, lc);\n";
     print "\t(*env)->DeleteLocalRef(env, lc);\n";
     print "\t${class}_init_p = (*env)->GetMethodID(env, ${class}_class, \"<init>\", \"($jptrsig)V\");\n";
+    print "\tif (!${class}_init_p) { printf(\"No init: ${class} \\\"($jptrsig)V\\\" \\n\"); fflush(stdout); return -1; }\n";
 
     print "\tlc = (*env)->FindClass(env, \"au/notzed/jjmpeg/${class}${jnative}\");\n";
-    print "\tif (!lc) return 0;\n";
+    print "\tif (!lc) return -1;\n";
     print "\t${class}_native = (*env)->NewGlobalRef(env, lc);\n";
     print "\t(*env)->DeleteLocalRef(env, lc);\n";
     print "\t${class}_p = (*env)->GetFieldID(env, ${class}_native, \"p\", \"$jptrsig\");\n";
