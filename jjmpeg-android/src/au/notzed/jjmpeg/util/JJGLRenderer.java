@@ -31,7 +31,7 @@
  * You should have received a copy of the GNU General Public License
  * along with jjmpeg.  If not, see <http://www.gnu.org/licenses/>.
  */
-package au.notzed.jjmpeg.mediaplayer;
+package au.notzed.jjmpeg.util;
 
 import android.content.Context;
 import android.opengl.GLES20;
@@ -40,14 +40,10 @@ import android.opengl.GLSurfaceView;
 import android.opengl.Matrix;
 import android.os.Debug;
 import android.util.Log;
-import au.notzed.jjmpeg.AVFrame;
-import au.notzed.jjmpeg.PixelFormat;
-import au.notzed.jjmpeg.io.JJQueue;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.util.concurrent.locks.Condition;
 import javax.microedition.khronos.egl.*;
 import javax.microedition.khronos.opengles.GL10;
 
@@ -55,162 +51,28 @@ import javax.microedition.khronos.opengles.GL10;
  *
  * @author notzed
  */
-public class GLESVideoRenderer implements GLSurfaceView.Renderer {
+public class JJGLRenderer implements GLSurfaceView.Renderer {
 
-	// enqueue frames rather than synchronously loading them
-	static final boolean enqueueFrames = true;
-	// how many buffers to use, must be > 1 if enqueueFrames used
-	static final int NBUFFERS = 3;
+	JJGLSurfaceView view;
 	boolean bindTexture = false;
 	boolean dataChanged = false;
-	boolean stopped = false;
 	int vwidth, vheight;
 	int twidth, theight;
 	int pwidth, pheight;
-	long lastpts;
+	JJFrame pixelData;
 	long thread;
 	long threadLast;
-	GLVideoView surface;
-	GLTextureFrame[] bufferArray;
-	JJQueue<GLTextureFrame> buffers = new JJQueue<GLTextureFrame>(NBUFFERS);
-	JJQueue<GLTextureFrame> ready = new JJQueue<GLTextureFrame>(NBUFFERS);
 
-	public GLESVideoRenderer(Context context, GLVideoView view) {
+	public JJGLRenderer(Context context, JJGLSurfaceView view) {
 		this.context = context;
-		this.surface = view;
+		this.view = view;
 
-		triangleVertices = ByteBuffer.allocateDirect(mTriangleVerticesData.length * FLOAT_SIZE_BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
+		triangleVertices = ByteBuffer.allocateDirect(mTriangleVerticesData.length
+				* FLOAT_SIZE_BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
 		triangleVertices.put(mTriangleVerticesData).position(0);
 
 		Matrix.setIdentityM(stMatrix, 0);
 		Matrix.setIdentityM(matrix, 0);
-	}
-
-	public long getPosition() {
-		return lastpts;
-	}
-
-	public void postSeek(long position) {
-		lastpts = position;
-		startms = -1;
-	}
-
-	// When finishing off, indicates no more work to be done
-	public void stop() {
-		stopped = true;
-	}
-
-	/**
-	 * Video frame for pseudo "direct rendering" of AVFrames
-	 */
-	class GLTextureFrame extends VideoFrame implements Runnable {
-
-		int[] textures = new int[3];
-		boolean create = true;
-		// current frame for run callback
-		AVFrame frame;
-
-		void genTextures() {
-			GLES20.glGenTextures(3, textures, 0);
-
-			for (int i = 0; i < 3; i++) {
-				GLES20.glBindTexture(GL_TEXTURE_2D, textures[i]);
-				glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-				glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-			}
-			create = true;
-		}
-
-		synchronized void sync() {
-			create = false;
-			notify();
-		}
-
-		synchronized void load() {
-			surface.queueEvent(this);
-			try {
-				this.wait();
-			} catch (InterruptedException ex) {
-				Logger.getLogger(GLESVideoRenderer.class.getName()).log(Level.SEVERE, null, ex);
-			}
-		}
-
-		@Override
-		public void setFrame(AVFrame frame) {
-			this.frame = frame;
-			if (enqueueFrames) {
-				// do nothing
-			} else if (GLVideoView.useShared) {
-				if (surface.bindSharedcontext()) {
-					PixelFormat fmt = PixelFormat.PIX_FMT_YUV420P;
-
-					//System.out.println("load texture " + this);
-
-					long n = System.nanoTime();
-					frame.loadTexture2D(fmt, vwidth, vheight, create, textures[0], textures[1], textures[2]);
-
-					n = (System.nanoTime() - n) / 1000;
-					if (n > 8000)
-						System.out.printf("SLOW tex load: %d.%06ds\n", n / 1000000, n % 1000000);
-				} else {
-					System.out.println("no surface (yet?)");
-				}
-			} else {
-				load();
-			}
-		}
-
-		@Override
-		void enqueue() throws InterruptedException {
-			//System.out.println("enqueue: " + this);
-			if (NBUFFERS > 1)
-				ready.offer(this);
-			// this wont work with the throttle mechanism used
-			//surface.requestRender();
-		}
-
-		@Override
-		void recycle() {
-			//System.out.println("recycle: " + this);
-			if (NBUFFERS > 1)
-				buffers.offer(this);
-		}
-
-		public void run() {
-			PixelFormat fmt = PixelFormat.PIX_FMT_YUV420P;
-
-			long n = System.nanoTime();
-			frame.loadTexture2D(fmt, vwidth, vheight, create, textures[0], textures[1], textures[2]);
-			n = (System.nanoTime() - n) / 1000;
-			if (n > 8000)
-				System.out.printf("SLOW tex load took: %d.%06ds\n", n / 1000000, n % 1000000);
-			sync();
-		}
-
-		@Override
-		public AVFrame getFrame() {
-			return frame;
-		}
-
-		void loadTexture() {
-			PixelFormat fmt = PixelFormat.PIX_FMT_YUV420P;
-			frame.loadTexture2D(fmt, vwidth, vheight, create, textures[0], textures[1], textures[2]);
-		}
-	}
-
-	public VideoFrame getFrame() throws InterruptedException {
-		if (NBUFFERS > 1) {
-			//VideoFrame vf = buffers.take();
-			VideoFrame vf;
-
-			vf = buffers.take();
-			return vf;
-		} else {
-			// just use the same texture over and over
-			return buffers.peek();
-		}
 	}
 
 	int roundUp(int v) {
@@ -234,94 +96,165 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 		this.vwidth = w;
 		this.vheight = h;
 	}
+
+	public synchronized void setFrame(JJFrame data) {
+		if (pixelData != null) {
+			//System.out.println("frame still here, recycling: " + pixelData);
+			pixelData.recycle();
+		}
+		pixelData = data;
+		view.requestRender();
+	}
+
+	public synchronized JJFrame getFrame() {
+		JJFrame f = pixelData;
+		pixelData = null;
+
+		return f;
+	}
+	ByteBuffer[] buffers = new ByteBuffer[3];
+
+	ByteBuffer copyBuffer(int i, ByteBuffer bb, int w, int h) {
+		ByteBuffer bs = buffers[i];
+		if (bs == null
+				|| bs.capacity() != bb.capacity()) {
+			bs = ByteBuffer.allocateDirect(bb.capacity()).order(ByteOrder.nativeOrder());
+			buffers[i] = bs;
+		}
+		bb.position(0);
+		bs.put(bb).rewind();
+		bb.rewind();
+
+		if (bs.capacity() < w * h) {
+			throw new ArrayIndexOutOfBoundsException(" index " + i + " size is " + bs.capacity() + " wanted " + (w * h));
+		}
+
+		return bs;
+	}
+
+	// sets a frame on the texture directly, straight away
+	// must only be called from rendering thread!
+	public void setFrameDirect(JJFrame data) {
+		if (thread == 0)
+			thread = Debug.threadCpuTimeNanos();
+
+		view.requestRender();
+		data.getFrame().loadTexture2D(data.getFormat(), vwidth, vheight, bindTexture, textureYID, textureUID, textureVID);
+		//checkGlError("textsubimage2d");
+		direct = true;
+		threadLast = Debug.threadCpuTimeNanos();
+	}
 	boolean direct = false;
-	long startms = -1;
-	GLTextureFrame display;
+	long nativeHeap = Debug.getNativeHeapAllocatedSize();
 
 	public void onDrawFrame(GL10 glUnused) {
-		if (stopped)
-			return;
+		long nativeHeap = Debug.getNativeHeapAllocatedSize();
+
+		if (nativeHeap > this.nativeHeap + 1024 * 16) {
+			this.nativeHeap = nativeHeap;
+			System.out.println("Native heap grown to (kb): " + (this.nativeHeap / 1024));
+		}
 
 		if (thread == 0)
 			thread = Debug.threadCpuTimeNanos();
-		GLTextureFrame displayNew = null;
 
-		// Find a frame that's ready for display
-		// TODO: mess ...
-		if (NBUFFERS > 1) {
-			GLTextureFrame peek;
-			long delay;
-			do {
-				peek = ready.peek();
-
-				if (peek != null) {
-					long pts = peek.pts;
-					long targetms = pts + startms;
-					long now = System.currentTimeMillis();
-
-					if (startms == -1) {
-						startms = now - pts;
-						//startms = now - seekoffset;
-						delay = 0;
-					} else {
-						delay = targetms - now;
-					}
-
-					// max speed
-					//delay = -1;
-
-					if (delay > 50) {
-						System.out.println("weird delay " + delay + " pts " + peek.pts + " now = " + (now - startms));
-						startms = -1;
-					}
-
-					if (delay <= 0) {
-						// dump head
-						ready.poll();
-						if (displayNew != null)
-							displayNew.recycle();
-						displayNew = peek;
-					}
-				} else {
-					delay = 1;
-				}
-			} while (delay <= 0);
+		//synchronized (this) {
+		// Load texture if changed.  Create texture if necessary.
+		if (direct) {
+			if (bindTexture) {
+				Matrix.setIdentityM(stMatrix, 0);
+				Matrix.scaleM(stMatrix, 0, (float) vwidth / twidth, (float) vheight / theight, 1);
+			}
+			bindTexture = false;
 		} else {
-			display = buffers.peek();
+			JJFrame pixelData = getFrame();
+
+			Condition d;
+			if (pixelData != null) {
+				if (true) {
+					if (true) {
+						//try {
+						pixelData.getFrame().loadTexture2D(pixelData.getFormat(), vwidth, vheight, bindTexture, textureYID, textureUID, textureVID);
+						//Thread.sleep(8);
+						//} catch (InterruptedException ex) {
+						//	Logger.getLogger(JJGLRenderer.class.getName()).log(Level.SEVERE, null, ex);
+						//}
+					} else if (true) {
+						boolean create = bindTexture;
+						int ls;
+						ByteBuffer bb;
+						glBindTexture(GL_TEXTURE_2D, textureYID);
+						if (create)
+							glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, twidth, theight, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, null);
+						ls = pixelData.getFrame().getLineSizeAt(0);
+						//System.err.println("linesize = " + ls + " pix format = " + pixelData.getFormat());
+						bb = pixelData.getFrame().getPlaneAt(0, pixelData.getFormat(), vwidth, vheight).data;
+						bb = copyBuffer(0, bb, ls, vheight);
+						glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, ls, vheight, GL_LUMINANCE, GL_UNSIGNED_BYTE, bb);
+
+						glBindTexture(GL_TEXTURE_2D, textureUID);
+						if (create)
+							glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, twidth / 2, theight / 2, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, null);
+						ls = pixelData.getFrame().getLineSizeAt(1);
+						//System.err.println("linesize = " + ls);
+						bb = pixelData.getFrame().getPlaneAt(1, pixelData.getFormat(), vwidth, vheight).data;
+						bb = copyBuffer(1, bb, ls, vheight / 2);
+						glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, ls, vheight / 2, GL_LUMINANCE, GL_UNSIGNED_BYTE, bb);
+
+						glBindTexture(GL_TEXTURE_2D, textureVID);
+						if (create)
+							glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, twidth / 2, theight / 2, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, null);
+						ls = pixelData.getFrame().getLineSizeAt(2);
+						//System.err.println("linesize = " + ls);
+						bb = pixelData.getFrame().getPlaneAt(2, pixelData.getFormat(), vwidth, vheight).data;
+						bb = copyBuffer(2, bb, ls, vheight / 2);
+						glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, ls, vheight / 2, GL_LUMINANCE, GL_UNSIGNED_BYTE, bb);
+					} else {
+						boolean create = bindTexture;
+						int ls;
+						glBindTexture(GL_TEXTURE_2D, textureYID);
+						if (create)
+							glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, twidth, theight, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, null);
+						ls = pixelData.getFrame().getLineSizeAt(0);
+						glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, ls, vheight, GL_LUMINANCE, GL_UNSIGNED_BYTE, pixelData.getFrame().getPlaneAt(0, pixelData.getFormat(), vwidth, vheight).data);
+
+						glBindTexture(GL_TEXTURE_2D, textureUID);
+						if (create)
+							glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, twidth / 2, theight / 2, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, null);
+						ls = pixelData.getFrame().getLineSizeAt(1);
+						glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, ls, vheight / 2, GL_LUMINANCE, GL_UNSIGNED_BYTE, pixelData.getFrame().getPlaneAt(1, pixelData.getFormat(), vwidth, vheight).data);
+
+						glBindTexture(GL_TEXTURE_2D, textureVID);
+						if (create)
+							glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, twidth / 2, theight / 2, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, null);
+						ls = pixelData.getFrame().getLineSizeAt(2);
+						glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, ls, vheight / 2, GL_LUMINANCE, GL_UNSIGNED_BYTE, pixelData.getFrame().getPlaneAt(2, pixelData.getFormat(), vwidth, vheight).data);
+					}
+				}
+				if (bindTexture) {
+					Matrix.setIdentityM(stMatrix, 0);
+					Matrix.scaleM(stMatrix, 0, (float) vwidth / twidth, (float) vheight / theight, 1);
+				}
+				bindTexture = false;
+				pixelData.recycle();
+				//pixelData = null;
+				checkGlError("textsubimage2d");
+			}
 		}
-		//System.out.println("display: " + display);
-
-		if (bindTexture) {
-			Matrix.setIdentityM(stMatrix, 0);
-			Matrix.scaleM(stMatrix, 0, (float) vwidth / twidth, (float) vheight / theight, 1);
-		}
-
-		if (displayNew != null)
-			display = displayNew;
-
-		if (display == null)
-			return;
-
-		// note that we can recycle the buffer as soon as we've loaded the texture
-		if (enqueueFrames && displayNew != null) {
-			displayNew.loadTexture();
-			displayNew.recycle();
-		}
-
-		lastpts = display.getPTS();
+		//}
 
 		// Ignore the passed-in GL10 interface, and use the GLES20
 		// class's static methods instead.
-		glClear(GL_COLOR_BUFFER_BIT);
+		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 		glUseProgram(paintTexture);
 		checkGlError("glUseProgram");
 
 		glActiveTexture(GLES20.GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, display.textures[0]);
+		glBindTexture(GL_TEXTURE_2D, textureYID);
 		glActiveTexture(GLES20.GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, display.textures[1]);
+		glBindTexture(GL_TEXTURE_2D, textureUID);
 		glActiveTexture(GLES20.GL_TEXTURE2);
-		glBindTexture(GL_TEXTURE_2D, display.textures[2]);
+		glBindTexture(GL_TEXTURE_2D, textureVID);
 
 		glUniform1i(texY, 0);
 		glUniform1i(texU, 1);
@@ -396,18 +329,23 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 		texU = getUniform(paintTexture, "uTexture");
 		texV = getUniform(paintTexture, "vTexture");
 
-		System.err.println("create textures");
-		if (bufferArray == null) {
-			bufferArray = new GLTextureFrame[NBUFFERS];
-			for (int i = 0; i < NBUFFERS; i++) {
-				GLTextureFrame tf = new GLTextureFrame();
-				bufferArray[i] = tf;
-				buffers.offer(tf);
-			}
+		// Create textures for YUV input
+		int[] textures = new int[3];
+		GLES20.glGenTextures(3, textures, 0);
+
+		textureYID = textures[0];
+		textureUID = textures[1];
+		textureVID = textures[2];
+		for (int i = 0; i < 3; i++) {
+			GLES20.glBindTexture(GL_TEXTURE_2D, textures[i]);
+			checkGlError("glBindTexture mTextureID");
+
+			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		}
-		for (int i = 0; i < NBUFFERS; i++) {
-			bufferArray[i].genTextures();
-		}
+
 		checkGlError("glTexParameteri mTextureID");
 
 		//Matrix.setLookAtM(mVMatrix, 0, 0, 0, 5f, 0f, 0f, 0f, 0f, 1.0f, 0.0f);
@@ -527,6 +465,9 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 	private float[] vMatrix = new float[16];
 	private float[] stMatrix = new float[16];
 	private int paintTexture;
+	private int textureYID;
+	private int textureUID;
+	private int textureVID;
 	private int texY, texU, texV;
 	private int vpMatrixHandle;
 	private int stMatrixHandle;

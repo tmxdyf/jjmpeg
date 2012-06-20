@@ -1,6 +1,6 @@
 LOCAL_PATH := $(call my-dir)
 
-FF=$(TARGET_ARCH_ABI)
+FF=build/$(TARGET_ARCH_ABI)
 
 include $(CLEAR_VARS)
 LOCAL_MODULE := avcodec
@@ -34,12 +34,14 @@ include $(PREBUILT_STATIC_LIBRARY)
 
 include $(CLEAR_VARS)
 #APP_OPTIM=debug
-LOCAL_MODULE := jjmpeg
-LOCAL_SRC_FILES := jjmpeg/jjmpeg.c
+CORE=../../jjmpeg-core/jni
+LIBVERSION=010
+LOCAL_MODULE := jjmpeg$(LIBVERSION)
+LOCAL_SRC_FILES := ../../jjmpeg-core/jni/jjmpeg/jjmpeg.c
 LOCAL_STATIC_LIBRARIES := avformat avcodec swscale avutil swresample
-LOCAL_CFLAGS := -I$(FF) -Ijjmpeg
+LOCAL_CFLAGS := -I$(FF) -I$(CORE)/jjmpeg -Iandroid-$(TARGET_ARCH_ABI) -I$(CORE)/platform
 LOCAL_LDLIBS := -lz -llog -lGLESv2
 
-jjmpeg: $(FF)/jjmpeg-jni.c
+jjmpeg$(LIBVERSION): $(FF)/jjmpeg-jni.c
 
 include $(BUILD_SHARED_LIBRARY)
