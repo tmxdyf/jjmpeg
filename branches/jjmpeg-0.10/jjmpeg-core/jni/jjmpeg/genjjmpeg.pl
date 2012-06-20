@@ -1,12 +1,27 @@
 #!/usr/bin/perl
 # generate ffmpeg bindings
 
-$conf = $ARGV[0];
-$abstract = $ARGV[1];
-$jni = $ARGV[2];
+$target = $ARGV[0];
+$conf = $ARGV[1];
+$abstract = $ARGV[2];
+$jni = $ARGV[3];
+
+# hard-code a few supported systems
+%targetinfo = (
+    "armeabi-v7a" => { "size" => 32, "dodl" => 0 },
+    "gnu-amd64" => { "size" => 64, "dodl" => 1 },
+    "gnu-i386" => { "size" => 32, "dodl" => 1 },
+    "mswin-amd64" => { "size" => 64, "dodl" => 1 },
+    "mswin-i386" => { "size" => 32, "dodl" => 1 },
+    );
+
+%ti = %{$targetinfo{$target}};
+if (not %ti) { die "Unknown target $target specified" };
 
 # size of a pointer
-$size = 32;
+$size = $ti{size};
+$dlsymprefix = "d";
+$dodl = $ti{dodl};
 
 print "Building $jni and $abstract from $conf\n";
 
@@ -230,7 +245,7 @@ while (<IN>) {
 		    next;
 		}
 
-		($type, $name, $args) = m/^(.*[ \*])(\w*)\((.*)\)/;
+		($type, $name, $args) = m/^([\w ]*[ \*])(\w*)\((.*)\)/;
 		$pname = $name;
 		$pname =~ s/$funcprefix//;
 		$jname = gen_jname($pname);
@@ -393,9 +408,6 @@ while (<IN>) {
 # create jni code
 open STDOUT, ">$jni";
 
-$dlsymprefix = "d";
-$dodl = 0;
-
 print <<END;
 /*
  * Copyright (c) 2011, 2012 Michael Zucchi
@@ -432,15 +444,45 @@ if ($dodl) {
 	    print "static $mi{type} (*${dlsymprefix}$mi{name})($mi{rawargs});\n";
 	}
     }
+}
 
-    # output constructor (dlopen stuff)
+# generate method tags
+foreach $classinfo (@classes) {
+    %ci = %{$classinfo};
+
+    my $class = $ci{name};
+
+    print "static jclass ${class}_class;\n";
+    print "static jclass ${class}_native;\n";
+    print "static jfieldID ${class}_p;\n";
+    print "static jmethodID ${class}_init_p;\n";
+}
     print <<END;
-
 JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_AVNative_initNative
 (JNIEnv *env, jclass jc) {
-\tif (init_local(env) == 0) return 0;
-
+\tint res = init_local(env);
+\tif (res < 0) return res;
 END
+    print "\tjclass lc;\n";
+foreach $classinfo (@classes) {
+    %ci = %{$classinfo};
+
+    my $class = $ci{name};
+
+    print "\tlc = (*env)->FindClass(env, \"au/notzed/jjmpeg/$class\");\n";
+    print "\tif (!lc) return 0;\n";
+    print "\t${class}_class = (*env)->NewGlobalRef(env, lc);\n";
+    print "\t(*env)->DeleteLocalRef(env, lc);\n";
+    print "\t${class}_init_p = (*env)->GetMethodID(env, ${class}_class, \"<init>\", \"($jptrsig)V\");\n";
+
+    print "\tlc = (*env)->FindClass(env, \"au/notzed/jjmpeg/${class}${jnative}\");\n";
+    print "\tif (!lc) return 0;\n";
+    print "\t${class}_native = (*env)->NewGlobalRef(env, lc);\n";
+    print "\t(*env)->DeleteLocalRef(env, lc);\n";
+    print "\t${class}_p = (*env)->GetFieldID(env, ${class}_native, \"p\", \"$jptrsig\");\n";
+}
+
+if ($dodl) {
     foreach $classinfo (@classes) {
 	%ci = %{$classinfo};
 
@@ -450,60 +492,13 @@ END
 	    my %mi = %{$methodinfo};
 
 	    # man dlopen says to do this hacked up shit because of c99, but gcc whines rightly about it
-	    #print "\t*(void **)(&${dlsymprefix}$mi{name}) = dlsym($mi{library}_lib, \"$mi{name}\");\n";
-	    #print "\t${dlsymprefix}$mi{name} = dlsym($mi{library}_lib, \"$mi{name}\");\n";
-	    #print "\tif (${dlsymprefix}$mi{name} == NULL) return 0;\n";
-	    #printf "\tMAPDL($mi{name}, $mi{library}_lib);\n";
+	    printf "\tMAPDL($mi{name}, $mi{library}_lib);\n";
 	}
     }
-
-#print "\n";
-#    print "\tfield_p = (*env)->GetFieldID(env, jc, \"p\", \"Ljava/nio/ByteBuffer;\");\n";
-#print "\tif (field_p == NULL) return 0;\n";
-#print "\n";
-
-    print "\treturn sizeof(void *)*8;\n";
-    print "}\n";
 }
 
-# generate method tags
-if (1) {
-    foreach $classinfo (@classes) {
-	%ci = %{$classinfo};
-
-	my $class = $ci{name};
-
-	print "static jclass ${class}_class;\n";
-	print "static jclass ${class}_native;\n";
-	print "static jfieldID ${class}_p;\n";
-	print "static jmethodID ${class}_init_p;\n";
-    }
-    print <<END;
-JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_AVNative_initNative
-(JNIEnv *env, jclass jc) {
-\tif (init_local(env) == 0) return 0;
-END
-    print "\tjclass lc;\n";
-    foreach $classinfo (@classes) {
-	%ci = %{$classinfo};
-
-	my $class = $ci{name};
-
-	print "\tlc = (*env)->FindClass(env, \"au/notzed/jjmpeg/$class\");\n";
-	print "\tif (!lc) return 0;\n";
-	print "\t${class}_class = (*env)->NewGlobalRef(env, lc);\n";
-	print "\t(*env)->DeleteLocalRef(env, lc);\n";
-	print "\t${class}_init_p = (*env)->GetMethodID(env, ${class}_class, \"<init>\", \"($jptrsig)V\");\n";
-
-	print "\tlc = (*env)->FindClass(env, \"au/notzed/jjmpeg/${class}${jnative}\");\n";
-	print "\tif (!lc) return 0;\n";
-	print "\t${class}_native = (*env)->NewGlobalRef(env, lc);\n";
-	print "\t(*env)->DeleteLocalRef(env, lc);\n";
-	print "\t${class}_p = (*env)->GetFieldID(env, ${class}_native, \"p\", \"$jptrsig\");\n";
-    }
-    print "\treturn sizeof(void *)*8;\n";
-    print "}\n";
-}
+print "\treturn sizeof(void *)*8;\n";
+print "}\n";
 
 foreach $classinfo (@classes) {
     my %ci = %{$classinfo};

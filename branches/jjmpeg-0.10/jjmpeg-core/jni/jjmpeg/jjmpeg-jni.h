@@ -22,6 +22,8 @@
 
 #include <jni.h>
 
+#include "jjmpeg-platform.h"
+
 #define ADDR(jp) (jp != NULL ? (*env)->GetDirectBufferAddress(env, jp) : NULL)
 #define SIZE(jp) (jp != NULL ? (*env)->GetDirectBufferCapacity(env, jp) : 0)
 #define STR(jp) (jp != NULL ? (*env)->GetStringUTFChars(env, jp, NULL) : NULL)
@@ -29,6 +31,16 @@
 
 #define WRAP(cp, clen) ((*env)->NewDirectByteBuffer(env, cp, clen))
 #define WRAPSTR(js) ((*env)->NewStringUTF(env, js))
+
+#if PLATFORM_BITS == 32
+#define PTR(jo, type) (jo ? (void *)(*env)->GetIntField(env, jo, type ## _p) : NULL)
+#define SET_PTR(jo, type, co) do { if (jo) (*env)->SetIntField(env, jo, type ## _p, (int)(co)); } while (0);
+#define NEWOBJ(cp, type) (cp ? (*env)->NewObject(env, type ## _class, type ## _init_p, (int)cp) : NULL)
+#else
+#define PTR(jo, type) (jo ? (void *)(*env)->GetLongField(env, jo, type ## _p) : NULL)
+#define SET_PTR(jo, type, co) do { if (jo) (*env)->SetLongField(env, jo, type ## _p, (jlong)(co)); } while (0);
+#define NEWOBJ(cp, type) (cp ? (*env)->NewObject(env, type ## _class, type ## _init_p, (jlong)cp) : NULL)
+#endif
 
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
@@ -63,3 +75,11 @@ struct AVDictionary {
 static jfieldID ObjectHolder_value;
 static jfieldID LongHolder_value;
 static jfieldID IntHolder_value;
+
+#ifdef ENABLE_DL
+static void *avutil_lib;
+static void *avcodec_lib;
+static void *avformat_lib;
+static void *swscale_lib;
+static void *swresample_lib;
+#endif
