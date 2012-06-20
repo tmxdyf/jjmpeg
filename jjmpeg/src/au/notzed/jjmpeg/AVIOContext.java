@@ -5,16 +5,16 @@
  * This file is part of jjmpeg, a java binding to ffmpeg's libraries.
  *
  * jjmpeg is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
+ * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
  * jjmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU Lesser General Public License
+ * You should have received a copy of the GNU General Public License
  * along with jjmpeg.  If not, see <http://www.gnu.org/licenses/>.
  */
 package au.notzed.jjmpeg;
@@ -26,7 +26,7 @@ import java.nio.ByteOrder;
 /**
  * Wrapper for AVIOContext - allows custom streams to
  * be implemented from java.
- * 
+ *
  * @author notzed
  */
 public abstract class AVIOContext extends AVIOContextAbstract {
@@ -60,118 +60,136 @@ public abstract class AVIOContext extends AVIOContextAbstract {
 		}
 	}
 
-	protected AVIOContext(ByteBuffer p) {
-		setNative(new AVIOContextNative(this, p, 0));
+	protected AVIOContext(int p) {
+		setNative(new AVIOContextNative32(this, p, 0));
 	}
 
-	static AVIOContext create(ByteBuffer p) {
-		// These could call back to the C versions
-		return new AVIOContext(p) {
-
-			@Override
-			public int readPacket(ByteBuffer dst) {
-				throw new UnsupportedOperationException("Not supported yet.");
-			}
-
-			@Override
-			public int writePacket(ByteBuffer src) {
-				throw new UnsupportedOperationException("Not supported yet.");
-			}
-
-			@Override
-			public long seek(long offset, int whence) {
-				throw new UnsupportedOperationException("Not supported yet.");
-			}
-		};
+	protected AVIOContext(long p) {
+		setNative(new AVIOContextNative64(this, p, 0));
 	}
 
+	//static AVIOContext create(ByteBuffer p) {
+	// These could call back to the C versions
+	//	return new AVIOContext(p) {
+	//		@Override
+	//		public int readPacket(ByteBuffer dst) {
+	//			throw new UnsupportedOperationException("Not supported yet.");
+	//		}
+	//		@Override
+	//		public int writePacket(ByteBuffer src) {
+	//			throw new UnsupportedOperationException("Not supported yet.");
+	//		}
+	//		@Override
+	//		public long seek(long offset, int whence) {
+	//			throw new UnsupportedOperationException("Not supported yet.");
+	//		}
+	//	};
+	//}
 	public static AVIOContext open(String url, int flags) throws AVIOException {
-		ByteBuffer res = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder());
-		ByteBuffer context;
-
-		System.out.println("open url " + url + " flags " + flags);
-		context = AVIOContextNative.open(url, flags, res);
-
-		if (context == null) {
-			throw new AVIOException(res.asIntBuffer().get(0), "Failed to open " + url);
-		}
-
-		return create(context);
+		return AVIOContextNative.open(url, flags);
 	}
 
 	/**
 	 * Initialise the aviocontext.
+	 *
 	 * @param size
 	 * @param flags Taken from ALLOC_* flags
 	 */
-	protected AVIOContext(int size, int flags) {
-		this(AVIOContextNative.allocContext(size, flags));
-		AVIOContextNative.bind(this, n.p);
+	protected static AVIOContext allocContext(int size, int flags) {
+		//AVIOContext ac = AVIOContextNative.allocContext(size, flags);
+		//AVIOContextNative.bind(ac, ac);
+
+		return AVIOContextNative.allocContext(size, flags);
 	}
 
 	/**
 	 * Call av_probe_input_buffer() on this stream
+	 *
 	 * @param filename
 	 * @param offset
 	 * @param max_probe_size
-	 * @return 
+	 * @return
 	 */
 	public AVInputFormat probeInput(String filename, int offset, int max_probe_size) {
-		ByteBuffer b = AVIOContextNative.probeInput(n.p, filename, offset, max_probe_size);
-
-		if (b != null) {
-			return AVInputFormat.create(b);
-		}
-
-		return null;
+		return n.probeInput(filename, offset, max_probe_size);
 	}
 
-	/**
-	 * Release resources.  This must be called otherwise the object
-	 * will not be garbage collected.
-	 *
-	 * TODO: still thinking of how to implement the lifecycle.
-	 */
-	public abstract int readPacket(ByteBuffer dst);
+	public int readPacket(ByteBuffer dst) {
+		throw new UnsupportedOperationException("Not supported yet.");
+	}
 
-	public abstract int writePacket(ByteBuffer src);
+	public int writePacket(ByteBuffer src) {
+		throw new UnsupportedOperationException("Not supported yet.");
+	}
 
-	public abstract long seek(long offset, int whence);
+	public long seek(long offset, int whence) {
+		throw new UnsupportedOperationException("Not supported yet.");
+	}
 }
 
 class AVIOContextNative extends AVIOContextNativeAbstract {
 
-	private final int type;
+	final int type;
 
-	AVIOContextNative(AVObject o, ByteBuffer p, int type) {
-		super(o, p);
+	AVIOContextNative(AVObject o, int type) {
+		super(o);
 
 		this.type = type;
 	}
 
-	@Override
-	public void dispose() {
-		if (p != null) {
-			if (type == 1) {
-				AVIOContextNative.unbind((AVIOContext) this.get(), p);
-			}
-			super.dispose();
-		}
-	}
+	static native AVIOContext allocContext(int size, int flags);
 
-	static native ByteBuffer allocContext(int size, int flags);
+	native AVInputFormat probeInput(String filename, int offset, int max_probe_size);
 
-	static native ByteBuffer probeInput(ByteBuffer p, String filename, int offset, int max_probe_size);
-
-	static native ByteBuffer open(String url, int flags, ByteBuffer error_ptr);
+	static native AVIOContext open(String url, int flags);
 
 	/**
 	 * Bind AVIOContext to java instance
 	 */
-	static native void bind(AVIOContext self, ByteBuffer p);
+	static native void bind(AVIOContext self, AVIOContextNative p);
 
 	/**
 	 * Unbind AVIOContext from java instance, and free memory too.
 	 */
-	static native void unbind(AVIOContext self, ByteBuffer p);
+	static native void unbind(AVIOContext self, AVIOContextNative p);
+}
+
+class AVIOContextNative32 extends AVIOContextNative {
+
+	int p;
+
+	AVIOContextNative32(AVObject o, int p, int type) {
+		super(o, type);
+		this.p = p;
+	}
+
+	@Override
+	public void dispose() {
+		if (p != 0) {
+			if (type == 1) {
+				AVIOContextNative.unbind((AVIOContext) this.get(), this);
+			}
+		}
+		super.dispose();
+	}
+}
+
+class AVIOContextNative64 extends AVIOContextNative {
+
+	long p;
+
+	AVIOContextNative64(AVObject o, long p, int type) {
+		super(o, type);
+		this.p = p;
+	}
+
+	@Override
+	public void dispose() {
+		if (p != 0) {
+			if (type == 1) {
+				AVIOContextNative.unbind((AVIOContext) this.get(), this);
+			}
+		}
+		super.dispose();
+	}
 }

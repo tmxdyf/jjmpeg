@@ -4,16 +4,16 @@
  * This file is part of jjmpeg, a java binding to ffmpeg's libraries.
  *
  * jjmpeg is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
+ * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
  * jjmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU Lesser General Public License
+ * You should have received a copy of the GNU General Public License
  * along with jjmpeg.  If not, see <http://www.gnu.org/licenses/>.
  */
 package au.notzed.jjmpeg.io;
@@ -32,14 +32,16 @@ public class JJFileInputStream extends AVIOContext {
 
 	FileInputStream fis;
 
+	// FIXME: this is broken
 	protected JJFileInputStream(FileInputStream is) {
-		super(4096, 0);
+		super(0);
+		//super(4096, 0);
 		this.fis = is;
 	}
 
 	public static JJFileInputStream create(FileInputStream is) {
 		JJFileInputStream jjfis = new JJFileInputStream(is);
-		
+
 		return jjfis;
 	}
 
@@ -47,9 +49,9 @@ public class JJFileInputStream extends AVIOContext {
 		//System.out.println("jjfilestream readpacket");
 		try {
 			int ret = fis.getChannel().read(dst);
-			
+
 			//System.out.println("jjfilestream.readpacket read " + ret);
-			
+
 			return ret;
 		} catch (IOException ex) {
 			//System.out.println("jjfilestream readpacket ioexception");
@@ -70,7 +72,7 @@ public class JJFileInputStream extends AVIOContext {
 		long res = -1;
 
 		//System.out.println("jjfilestream seek " + offset + ", " + whence);
-		
+
 		try {
 			switch (whence) {
 				case AVSEEK_SIZE:

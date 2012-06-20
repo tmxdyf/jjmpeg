@@ -1,0 +1,2 @@
+set solib-search-path /home/notzed/svn/a/ffmpeg-0.10-android/jjmpeg/obj/local/armeabi-v7a
+directory /usr/local/android-ndk-r7c/platforms/android-14/arch-arm/usr/include /home/notzed/svn/a/ffmpeg-0.10-android/jjmpeg/jni armeabi-v7a/include /usr/local/android-ndk-r7c/sources/cxx-stl/system

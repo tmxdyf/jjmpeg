@@ -4,16 +4,16 @@
  * This file is part of jjmpeg, a java binding to ffmpeg's libraries.
  *
  * jjmpeg is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
+ * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
  * jjmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU Lesser General Public License
+ * You should have received a copy of the GNU General Public License
  * along with jjmpeg.  If not, see <http://www.gnu.org/licenses/>.
  */
 package au.notzed.jjmpeg;
@@ -32,7 +32,6 @@ import java.nio.ShortBuffer;
  */
 public class AVCodecContext extends AVCodecContextAbstract {
 
-	// TODO: move these to an interface
 	public static final int AVMEDIA_TYPE_UNKNOWN = -1;
 	public static final int AVMEDIA_TYPE_VIDEO = 0;
 	public static final int AVMEDIA_TYPE_AUDIO = 1;
@@ -151,11 +150,6 @@ public class AVCodecContext extends AVCodecContextAbstract {
 	///< Use periodic insertion of intra blocks instead of keyframes.
 	public static final int CODEC_FLAG2_INTRA_REFRESH = 0x00200000;
 	//
-	public static final int FF_LAMBDA_SHIFT = 7;
-	public static final int FF_LAMBDA_SCALE = (1 << FF_LAMBDA_SHIFT);
-	public static final int FF_QP2LAMBDA = 118; ///< factor to convert from H.263 QP to lambda
-	public static final int FF_LAMBDA_MAX = (256 * 128 - 1);
-	//
 	public static final long AV_TIME_BASE = 1000000;
 	public static final long AV_NOPTS_VALUE = (0x8000000000000000L);
 	public static final int AVCODEC_MAX_AUDIO_FRAME_SIZE = 192000; // 1 second of 48khz 32bit audio
@@ -163,12 +157,8 @@ public class AVCodecContext extends AVCodecContextAbstract {
 	//
 	private IntBuffer fin = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder()).asIntBuffer();
 
-	protected AVCodecContext(ByteBuffer p) {
-		setNative(new AVCodecContextNative(this, p));
-	}
-
-	static AVCodecContext create(ByteBuffer p) {
-		return new AVCodecContext(p);
+	protected AVCodecContext(int p) {
+		setNative(new AVCodecContextNative32(this, p));
 	}
 
 	public static AVCodecContext create() {
@@ -182,7 +172,7 @@ public class AVCodecContext extends AVCodecContextAbstract {
 	}
 
 	public void open(AVCodec codec) throws AVIOException {
-		int res = AVCodecContextNative.open(n.p, codec.n.p);
+		int res = n.open(codec.n);
 
 		if (res < 0) {
 			throw new AVIOException(res);
@@ -239,7 +229,7 @@ public class AVCodecContext extends AVCodecContextAbstract {
 	 * @return number of bytes written to samples
 	 * @throws AVDecodingError
 	 */
-	public int decodeAudio(AVSamples samples, AVAudioPacket packet) throws AVDecodingError {
+	public int decodeAudio(AVSamples samples, AVPacket packet) throws AVDecodingError {
 		int data = 0;
 		ByteBuffer buf = samples.getBuffer();
 
@@ -267,6 +257,37 @@ public class AVCodecContext extends AVCodecContextAbstract {
 		return data;
 	}
 
+	/**
+	 * New interface to decodeAudio that goes through AVFrame.
+	 *
+	 * @param frame
+	 * @param packet
+	 * @return number of samples decoded into frame
+	 * @throws AVDecodingError
+	 */
+	public int decodeAudio(AVFrame frame, AVPacket packet) throws AVDecodingError {
+		int len;
+		int gotframe;
+
+		frame.getFrameDefaults();
+		while (packet.getSize() > 0) {
+			fin.put(0, 0);
+			len = decodeAudio4(frame, fin, packet);
+			if (len < 0) {
+				// error, skip packet
+				System.err.println("decodeAudio4() error (ignored): " + len);
+				packet.consume(packet.getSize());
+				return 0;
+			}
+			packet.consume(len);
+			gotframe = fin.get(0);
+			if (gotframe != 0)
+				return frame.getNbSamples();
+		}
+
+		return 0;
+	}
+
 	public int encodeAudio(ByteBuffer buf, AVSamples samples) throws AVEncodingError {
 		int buf_size = buf.capacity();
 		int len = encodeAudio(buf, buf_size, (ShortBuffer) samples.getSamples());
@@ -281,24 +302,50 @@ public class AVCodecContext extends AVCodecContextAbstract {
 			throw new AVEncodingError(-len);
 		}
 	}
+
+	public void debug() {
+		n.debug();
+	}
 }
 
 class AVCodecContextNative extends AVCodecContextNativeAbstract {
 
 	boolean allocated = false;
 
-	AVCodecContextNative(AVObject o, ByteBuffer p) {
-		super(o, p);
+	AVCodecContextNative(AVObject o) {
+		super(o);
 	}
+
+	native void free();
+
+	native void debug();
 
 	@Override
 	public void dispose() {
-		if (p != null) {
-			// close?
-			if (allocated) {
-				_free(p);
-			}
+		if (allocated) {
+			free();
+			allocated = false;
 		}
 		super.dispose();
+	}
+}
+
+class AVCodecContextNative32 extends AVCodecContextNative {
+
+	int p;
+
+	AVCodecContextNative32(AVObject o, int p) {
+		super(o);
+		this.p = p;
+	}
+}
+
+class AVCodecContextNative64 extends AVCodecContextNative {
+
+	long p;
+
+	AVCodecContextNative64(AVObject o, long p) {
+		super(o);
+		this.p = p;
 	}
 }
