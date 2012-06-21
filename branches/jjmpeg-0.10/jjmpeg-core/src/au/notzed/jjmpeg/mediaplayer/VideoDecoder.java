@@ -37,6 +37,7 @@ public class VideoDecoder extends MediaDecoder {
 	AVFrame frame;
 	// FIXME: depends on impelementation
 	final static boolean enqueueFrames = true;
+
 	/**
 	 * Create a new video decoder for a given stream.
 	 *
@@ -71,6 +72,22 @@ public class VideoDecoder extends MediaDecoder {
 	//	scale = SwsContext.create(width, height, format, swidth, sheight, PixelFormat.PIX_FMT_BGR24, SwsContext.SWS_BILINEAR);
 	//}
 	VideoFrame videoFrame;
+
+	@Override
+	public synchronized void postSeek() {
+		super.postSeek();
+	}
+
+	@Override
+	protected void flushCodec() {
+		super.flushCodec();
+		if (enqueueFrames) {
+			if (videoFrame != null) {
+				videoFrame.recycle();
+				videoFrame = null;
+			}
+		}
+	}
 
 	void decodePacket(AVPacket packet) throws AVDecodingError, InterruptedException {
 		//System.out.println("video decode packet()");

@@ -19,9 +19,71 @@
 package au.notzed.jjmpeg.mediaplayer;
 
 /**
- *
+ * High level player implementation API.
  * @author notzed
  */
 public interface MediaPlayer {
 
+	public enum State {
+
+		/**
+		 * Initial/initialising state
+		 */
+		Init,
+		/**
+		 * Ready to start playing
+		 */
+		Ready,
+		/**
+		 * Playing
+		 */
+		Playing,
+		/**
+		 * Paused
+		 */
+		Paused
+	};
+
+	public interface Listener {
+		void positionChanged(MediaPlayer player, long newpos);
+	};
+
+	/**
+	 * Start playing moved to playing state
+	 */
+	public void play();
+
+	/**
+	 * Pause if playing, move to paused state.
+	 */
+	public void pause();
+
+	/**
+	 * Stop playing, move to Ready state
+	 */
+	public void stop();
+
+	/**
+	 * Seek to position in milliseconds
+	 * @param ms
+	 */
+	public void seek(long ms);
+
+	/**
+	 * Get current play position in milliseconds
+	 * @return
+	 */
+	public long getPosition();
+
+	/**
+	 * Get duration in milliseconds
+	 * @return
+	 */
+	public long getDuration();
+
+	/**
+	 * Get current player state
+	 * @return
+	 */
+	public State getState();
 }

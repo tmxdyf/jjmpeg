@@ -33,7 +33,6 @@ import android.widget.SeekBar.OnSeekBarChangeListener;
 import au.notzed.jjmpeg.AVRational;
 import au.notzed.jjmpeg.SampleFormat;
 import java.io.IOException;
-import java.util.LinkedList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -42,7 +41,7 @@ import java.util.logging.Logger;
  *
  * @author notzed
  */
-public class AndroidMediaPlayer extends Activity implements MediaSink, MediaPlayer {
+public class AndroidMediaPlayer extends Activity implements MediaSink {
 
 	GLVideoView view;
 	SeekBar seek;
@@ -143,7 +142,7 @@ public class AndroidMediaPlayer extends Activity implements MediaSink, MediaPlay
 		}
 	}
 	/**
-	 * Tracks if we've been through the pause state.
+	 * Tracks if we've been through the postPause state.
 	 */
 	boolean isPaused = false;
 	boolean isStarted = false;
@@ -175,6 +174,8 @@ public class AndroidMediaPlayer extends Activity implements MediaSink, MediaPlay
 	@Override
 	protected void onDestroy() {
 		super.onDestroy();
+
+		System.out.println("Destroy jjplayer");
 
 		reader.cancel();
 		aRenderer.release();
@@ -248,22 +249,13 @@ public class AndroidMediaPlayer extends Activity implements MediaSink, MediaPlay
 	public long getDisplayTime() {
 		return Math.max(0, clock);
 	}
-	// MediaSink api
-	LinkedList<MediaSinkListener> listeners = new LinkedList<MediaSinkListener>();
-
-	public void addMediaSinkListener(MediaSinkListener listener) {
-		listeners.add(listener);
-	}
-
-	void firePositionChanged() {
-		for (MediaSinkListener l : listeners) {
-			l.positionChanged(this);
-		}
-	}
 	Integer dummy = Integer.valueOf(0);
 	long clock;
 	long startms = -1;
 	long seekoffset = 0;
+
+	public void postPlay() {
+	}
 
 	public void postSeek(long stamp) {
 		// TODO: none of this is used yet
@@ -285,18 +277,18 @@ public class AndroidMediaPlayer extends Activity implements MediaSink, MediaPlay
 		}
 	};
 
-	public void pause() {
+	public void postPause() {
 		// could do something so it pauses immediately?
 		aRenderer.pause();
 	}
 
-	public void unpause() {
+	public void postUnpause() {
 		// ensure we re-sync delay
 		startms = -1;
 		aRenderer.play();
 	}
 
-	public void finished() {
+	public void postFinished() {
 		if (vRenderer != null) {
 			vRenderer.stop();
 			view.stop();

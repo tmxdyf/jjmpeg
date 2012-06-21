@@ -42,7 +42,7 @@ import android.os.Debug;
 import android.util.Log;
 import au.notzed.jjmpeg.AVFrame;
 import au.notzed.jjmpeg.PixelFormat;
-import au.notzed.jjmpeg.io.JJQueue;
+import au.notzed.jjmpeg.util.JJQueue;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;

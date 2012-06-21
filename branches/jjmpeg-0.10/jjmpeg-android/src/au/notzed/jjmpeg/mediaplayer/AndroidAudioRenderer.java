@@ -22,7 +22,7 @@ import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioTrack;
 import au.notzed.jjmpeg.SampleFormat;
-import au.notzed.jjmpeg.io.JJQueue;
+import au.notzed.jjmpeg.util.JJQueue;
 
 /**
  *

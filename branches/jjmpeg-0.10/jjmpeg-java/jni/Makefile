@@ -1,7 +1,6 @@
 
 include ./config.mk
 
-TARGETS=gnu-amd64 gnu-i386 $(CROSS_TARGETS)
 CORE=../../jjmpeg-core/jni
 VPATH=.:$(CORE)
 

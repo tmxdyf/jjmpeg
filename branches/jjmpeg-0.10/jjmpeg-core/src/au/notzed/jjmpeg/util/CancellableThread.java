@@ -16,26 +16,39 @@
  * You should have received a copy of the GNU General Public License
  * along with jjmpeg.  If not, see <http://www.gnu.org/licenses/>.
  */
-package au.notzed.jjmpeg.mediaplayer;
+package au.notzed.jjmpeg.util;
+
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
- * Interface to a player that takes the audio/video frames and synchronises them.
+ * Simple helper class which adds a safe 'cancel' operation for a thread.
  *
+ * Implementing classes must poll this.cancelled and exit run() when it
+ * is true.
  * @author notzed
  */
-public interface MediaSink {
+public class CancellableThread extends Thread {
 
-	public AudioFrame getAudioFrame() throws InterruptedException;
+	protected boolean cancelled = false;
 
-	public VideoFrame getVideoFrame() throws InterruptedException;
+	public CancellableThread(String name) {
+		super(name);
+	}
 
-	public void postSeek(long stampms);
-
-	public void postPlay();
-
-	public void postPause();
-
-	public void postUnpause();
-
-	public void postFinished();
+	/**
+	 * Cancel this thread, it will wait until
+	 * the thread has exited.
+	 */
+	public void cancel() {
+		if (isAlive() && !cancelled) {
+			try {
+				cancelled = true;
+				interrupt();
+				join();
+			} catch (InterruptedException ex) {
+				Logger.getLogger(CancellableThread.class.getName()).log(Level.SEVERE, null, ex);
+			}
+		}
+	}
 }

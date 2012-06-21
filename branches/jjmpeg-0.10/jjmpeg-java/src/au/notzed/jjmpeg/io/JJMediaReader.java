@@ -18,6 +18,7 @@
  */
 package au.notzed.jjmpeg.io;
 
+import au.notzed.jjmpeg.util.JJQueue;
 import au.notzed.jjmpeg.AVCodec;
 import au.notzed.jjmpeg.AVCodecContext;
 import au.notzed.jjmpeg.AVFormatContext;
