@@ -28,7 +28,7 @@ import java.util.logging.Logger;
 
 /**
  * This tries to read from a Java file and feed it into ffmpeg.
- * 
+ *
  * @author notzed
  */
 public class VideoJavaReaderExample {
@@ -71,12 +71,10 @@ public class VideoJavaReaderExample {
 			System.exit(1);
 		}
 
-		AVFormatContext format = AVFormatContext.openInputStream(jjfis, name, ifmt);
+		AVFormatContext format = AVFormatContext.allocContext();
+		format.openInput(name, ifmt);
 
-		if (format.findStreamInfo() < 0) {
-			System.err.println("Could not find stream information");
-			System.exit(1);
-		}
+		format.findStreamInfo();
 
 		// find first video stream
 		AVStream stream = null;
@@ -147,7 +145,7 @@ public class VideoJavaReaderExample {
 			}
 		}
 
-		format.closeInputStream();
+		format.closeInput();
 
 		System.out.printf("Read %d frames\n", count);
 	}

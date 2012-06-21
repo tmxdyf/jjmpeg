@@ -20,15 +20,18 @@ package au.notzed.jjdvb;
 
 import au.notzed.jjdvb.util.DVBChannel;
 import au.notzed.jjdvb.util.DVBChannels;
+import au.notzed.jjmpeg.PixelFormat;
+import au.notzed.jjmpeg.exception.AVException;
 import au.notzed.jjmpeg.exception.AVIOException;
 import au.notzed.jjmpeg.io.JJMediaReader;
-import au.notzed.jjmpeg.mediaplayer.MediaPlayer;
+import java.awt.BorderLayout;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.ImageIcon;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.SwingUtilities;
@@ -39,12 +42,9 @@ import javax.swing.SwingUtilities;
  * It takes a long time to start the video output as libavformat
  * is scanning a lot of signal for stream information.
  * 
- * If the kernel buffer overflows, read() returns EOVERFLOW
- * and libavformat just gives up.  This version attempts
- * to buffer frames instead of images: it still doesn't keep up.
- * 
- * Note that this just takes the first audio and video streams
- * it finds, so they wont align!
+ * Some stream errors cause it to hang, but i haven't had it
+ * happen when running the debugger so i'm not sure who's
+ * to blame.
  * 
  * The timing isn't very good, but it works ok for a demo.
  * 
@@ -68,57 +68,52 @@ public class TVWindow {
 	public void start() {
 		try {
 			channels = new DVBChannels("../jjmpeg/channels.list");
-			DVBChannel c = channels.getChannels().get(1);
+
 			// open frontend
 			FE fe = FE.create("/dev/dvb/adapter0/frontend0");
 
-			setChannel(fe, c);
+			setChannel(fe, channels.getChannels().get(0));
 
 			// Open demux
 			DMX dmx = DMX.create("/dev/dvb/adapter0/demux0");
 
 			// set filter to take whole stream
 			DMXPESFilterParams filter = DMXPESFilterParams.create();
-			filter.setPid((short) c.vpid);
+			filter.setPid((short) 0x2000);
 			//filter.setPid((short) 0x90a);
 			filter.setInput(DMXInput.DMX_IN_FRONTEND);
 			filter.setOutput(DMXOutput.DMX_OUT_TS_TAP);
-			filter.setPesType(DMXPESType.DMX_PES_OTHER);
-			//filter.setPesType(DMXPESType.DMX_PES_VIDEO0);
+			//filter.setPesType(DMXPESType.DMX_PES_OTHER);
+			filter.setPesType(DMXPESType.DMX_PES_VIDEO0);
 			filter.setFlags(DMXPESFilterParams.DMX_IMMEDIATE_START);
 			dmx.setPESFilter(filter);
-			dmx.addPID((short) c.apid);
-			dmx.setBufferSize(1024 * 1024);
 
-			MediaPlayer mp = new MediaPlayer("/dev/dvb/adapter0/dvr0");
-
-			mp.start();
-			/*			
 			mr = new JJMediaReader("/dev/dvb/adapter0/dvr0");
-			
+
 			for (JJMediaReader.JJReaderStream rs : mr.getStreams()) {
-			System.out.printf("Stream  %s\n", rs);
+				System.out.printf("Stream  %s\n", rs);
+
 			}
-			
+
 			vs = mr.openFirstVideoStream();
-			
+
 			if (vs == null) {
-			System.exit(1);
+				System.exit(1);
 			}
-			
+
 			vs.setOutputFormat(PixelFormat.PIX_FMT_BGR24, vs.getWidth(), vs.getHeight());
-			
+
 			image = vs.createImage();
 			iconImage = vs.createImage();
-			
+
 			for (int i = 0; i < 100; i++) {
-			buffer.add(new VideoFrame(-1, vs.createImage()));
+				buffer.add(new VideoFrame(-1, vs.createImage()));
 			}
-			
+
 			viewer = new ViewerThread();
 			viewer.start();
-			
-			
+
+
 			frame = new JFrame("TV");
 			frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 			label = new JLabel(new ImageIcon(iconImage));
@@ -126,10 +121,12 @@ public class TVWindow {
 			frame.getContentPane().add(label, BorderLayout.CENTER);
 			frame.pack();
 			frame.setVisible(true);
-			
+
 			reader = new ReaderThread();
 			reader.start();
-			 */
+
+		} catch (AVException ex) {
+			Logger.getLogger(TVWindow.class.getName()).log(Level.SEVERE, null, ex);
 		} catch (AVIOException ex) {
 			Logger.getLogger(TVWindow.class.getName()).log(Level.SEVERE, null, ex);
 		} catch (InterruptedException ex) {
