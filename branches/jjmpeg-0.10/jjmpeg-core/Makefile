@@ -29,9 +29,9 @@ java: native-java
 	( cd ../jjmpeg-java && ant jar )
 
 dist: java native-android
-	./makedist
+	@echo "don't use password first time"
 	( cd ../jjmpeg-android && ant release )
-	( cp ../jjmpeg-android/bin/JJPlayer-release.apk bin/JJPlayer-$(VERSION).apk
+	./makedist
 
 webstart:
 	( cd webstart ; make )

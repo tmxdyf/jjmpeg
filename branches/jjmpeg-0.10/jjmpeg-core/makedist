@@ -4,6 +4,7 @@
 
 CORE=`pwd`
 JAVA=${CORE}/../jjmpeg-java
+ANDROID=${CORE}/../jjmpeg-android
 
 tmp=/tmp/$$
 bin=bin
@@ -61,5 +62,9 @@ for target in $TARGETS ; do
     rm -rf ${dst}
 done
 
-
-
+# do the android stuff
+echo "Signing release package for android"
+cd ${ANDROID}
+${JAVA_SDK}/bin/jarsigner -sigalg MD5withRSA -digestalg SHA1 -keystore ${KEYSTORE} -signedjar bin/JJPlayer-release-unaligned.apk bin/JJPlayer-release-unsigned.apk jjmpeg
+${ANDROID_SDK}/tools/zipalign -v -f 4 bin/JJPlayer-release-unaligned.apk bin/JJPlayer-release.apk
+cp ${ANDROID}/bin/JJPlayer-release.apk ${CORE}/bin/JJPlayer-${VERSION}.apk
