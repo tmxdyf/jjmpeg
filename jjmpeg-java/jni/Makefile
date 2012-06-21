@@ -1,6 +1,8 @@
 
 include ./config.mk
 
+TARGETS=$(HOST_TARGETS) $(CROSS_TARGETS)
+
 CORE=../../jjmpeg-core/jni
 VPATH=.:$(CORE)
 
