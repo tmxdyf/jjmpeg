@@ -48,7 +48,7 @@ for TARGET in ${TARGETS_LIST[@]} ; do
 	    --disable-avdevice --disable-avfilter --disable-postproc || exit 1
 	
 	i=`expr $i + 1`
-	make V=1 -j12 || exit 1
+	make V=1 -j20 || exit 1
 	make V=1 install || (echo "Error" ; exit 1)
     fi
 done

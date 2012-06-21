@@ -2,7 +2,7 @@
 Code Generation
 ---------------
 
-The generator is defined by the 'jjmpeg-native.conf' file, and
+The generator is defined by the 'native-jjmpeg.conf' file, and
 processed by the very ugly write-only perl script 'genjjmpeg.pl'.
 
 This creates:
@@ -14,66 +14,10 @@ This creates:
 jjmpeg-jni.c is in turn included in jjmpeg.c, which defines the hand-rolled
 native calls.
 
-The jjdvb binding currently works in a similar way, although uses the
-gendvb.pl script and native-dvb.conf file.  It generates jjdvb-jni.c
-and DVBAbstract.java.  It's configuration isn't identical to the
-one described here.
-
 Compiling
 ---------
 
- make all
-or
- make TARGETS=linux-amd64 all
-
-etc.
-
-This is still work in progress - there is a sub-directory for each architecture
-and the same code is re-compiled for each.  It assumes cross-compilers are
-available and in the path for the given platform, and if not they are simply
-ignored with an ugly error during the build.
-
-For linux, it should compile for the native-sized architecture, and if the appropriate
-development libraries are included for the other size, they should also build.
-
-For example on Fedora AMD-64, installing glibc-devel.i686 and libgcc.i686 should
-suffice.
-
-Perl must be installed, naturally.
-
-Build Configuration
--------------------
-
-The build configuration is based on a few makefiles and fragments,
-some of which contain configuration information and others which
-should not.
-
-Nothing is ever created automatically in the source directories,
-and all generated sources, object files and jar files are created
-only in the target-specific directories.
-
-Makefile
- Just runs the targets in the architecture-specific directories.
-
-conf.make
- Contains some global defaults.  Some of these are overridden in
- the arch-specific directories.
-
-Makefile.libs
- This is the makefile which actually does all the work, it takes
- the configuration from config.make and target/Makefile and
- builds the targets specified there.
-
-*target*/Makefile
- This is the makefile which builds the code.
-
- It first defines SRC, TARGET and then includes $(SRC)/config.make.
- Then it overrides anything from config.make it needs to, and
- defines the TARGET_* flags.
-
- It then includes $(SRC)/Makefile.libs
-
- And finally it defines all:
+This code is compiled by scripts in jjmpeg-java/jni or jjmpeg-android/jni.
 
 Generator Configuration
 -----------------------
@@ -94,6 +38,8 @@ prefix <prefix> <libraryname>
 <classname> is the name of the C structure and the Java class
 which accesses it.
 
+Fields
+------
 <fields> are a list of fields:
 c type,name,flags[,java name[,offset]]
 
@@ -117,6 +63,8 @@ c type,name,flags[,java name[,offset]]
  offset is required for enum types, and indicates how far from
  '0' the first enum is.  enum types only support contigous ranges. 
 
+Methods
+-------
 methods then follow, and are indicated by the optional keyword 'methods'.
 
 prefix defines the common prefix of method names to strip from the function
@@ -127,7 +75,7 @@ Plain C prototypes then follow, with the following limitations and alterations:
  - struct types are not allowed, only typedef'd types.
  - optional method keywords which must appear in this order
    - `internal' no auto-generated binding at all, but a dlsym internal binding
-      for custom C code is generated.
+      for custom C code is generated (where dynamic linking is used)
    - `native' indicates no auto-generated binding in the public object
    - `protected' indicates the public object binding is protected
    - `static' indicates package scope, and that the method must not take the ByteBuffer

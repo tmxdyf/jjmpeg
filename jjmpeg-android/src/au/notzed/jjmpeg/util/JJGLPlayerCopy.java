@@ -28,7 +28,6 @@ import au.notzed.jjmpeg.io.JJMediaReader;
 import au.notzed.jjmpeg.io.JJMediaReader.JJReaderAudio;
 import au.notzed.jjmpeg.io.JJMediaReader.JJReaderStream;
 import au.notzed.jjmpeg.io.JJMediaReader.JJReaderVideo;
-import au.notzed.jjmpeg.io.JJQueue;
 import java.nio.ShortBuffer;
 import java.util.Queue;
 import java.util.concurrent.LinkedBlockingQueue;

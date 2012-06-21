@@ -480,6 +480,8 @@ foreach $classinfo (@classes) {
     print "\t${class}_native = (*env)->NewGlobalRef(env, lc);\n";
     print "\t(*env)->DeleteLocalRef(env, lc);\n";
     print "\t${class}_p = (*env)->GetFieldID(env, ${class}_native, \"p\", \"$jptrsig\");\n";
+    print "\tif (!${class}_p) { printf(\"No field p: ${class} \\\"($jptrsig)V\\\" \\n\"); fflush(stdout); return -1; }\n";
+    #print "\tprintf(\"${class}${jnative}.p = %p\\n\", ${class}_p);\n";
 }
 
 if ($dodl) {

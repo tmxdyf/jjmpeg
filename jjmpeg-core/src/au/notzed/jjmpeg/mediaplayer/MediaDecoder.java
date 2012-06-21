@@ -18,6 +18,7 @@
  */
 package au.notzed.jjmpeg.mediaplayer;
 
+import au.notzed.jjmpeg.util.CancellableThread;
 import au.notzed.jjmpeg.AVCodec;
 import au.notzed.jjmpeg.AVCodecContext;
 import au.notzed.jjmpeg.AVPacket;
@@ -25,7 +26,7 @@ import au.notzed.jjmpeg.AVRational;
 import au.notzed.jjmpeg.AVStream;
 import au.notzed.jjmpeg.exception.AVDecodingError;
 import au.notzed.jjmpeg.exception.AVIOException;
-import au.notzed.jjmpeg.io.JJQueue;
+import au.notzed.jjmpeg.util.JJQueue;
 import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -51,6 +52,8 @@ public abstract class MediaDecoder extends CancellableThread {
 	final long duration;
 	// packet input queue
 	JJQueue<AVPacket> queue;
+	//ArrayBlockingQueue<AVPacket> queue;
+	JJQueue<AVPacket> syncQueue = new JJQueue<AVPacket>(1);
 	//
 	final static AVPacket flush = AVPacket.create();
 	final static AVPacket cancel = AVPacket.create();
@@ -69,7 +72,8 @@ public abstract class MediaDecoder extends CancellableThread {
 	MediaDecoder(String name, MediaReader src, MediaSink dest, AVStream stream, int streamid) throws IOException {
 		super(name);
 
-		queue = new JJQueue<AVPacket>(MediaReader.packetLimit);
+		queue = new JJQueue<AVPacket>(MediaReader.packetLimit + 1);
+		//queue = new ArrayBlockingQueue<AVPacket>(MediaReader.packetLimit + 1);
 		try {
 			this.src = src;
 			this.dest = dest;
@@ -103,7 +107,7 @@ public abstract class MediaDecoder extends CancellableThread {
 	/**
 	 * Called after the reader has seeked to a new position.
 	 *
-	 * Tells the codec to flush.
+	 * Tells the codec to flush, waits for it to flush.
 	 */
 	public void postSeek() {
 		clearQueue();
@@ -114,7 +118,11 @@ public abstract class MediaDecoder extends CancellableThread {
 		AVPacket p;
 
 		while ((p = queue.poll()) != null) {
-			src.recyclePacket(p);
+			if (p != flush) {
+				src.recyclePacket(p);
+			} else {
+				System.out.println("** discarding flush");
+			}
 		}
 	}
 
@@ -128,6 +136,14 @@ public abstract class MediaDecoder extends CancellableThread {
 		queue.offer(packet);
 	}
 
+	/**
+	 * Invoked to flush the codec, sub-classes that need to reset processing
+	 * should hook into this.  Runs on decoder thread.
+	 */
+	protected void flushCodec() {
+		cc.flushBuffers();
+	}
+
 	@Override
 	public void run() {
 		while (!cancelled) {
@@ -137,7 +153,7 @@ public abstract class MediaDecoder extends CancellableThread {
 
 				if (packet == flush) {
 					packet = null;
-					cc.flushBuffers();
+					flushCodec();
 				} else if (packet == cancel) {
 					packet = null;
 					cancelled = true;

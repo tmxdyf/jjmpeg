@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU General Public License
  * along with jjmpeg.  If not, see <http://www.gnu.org/licenses/>.
  */
-package au.notzed.jjmpeg.io;
+package au.notzed.jjmpeg.util;
 
 /**
  * This is a simpler blocking queue which seems to run faster on android

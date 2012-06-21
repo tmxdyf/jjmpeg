@@ -18,11 +18,12 @@
  */
 package au.notzed.jjmpeg.mediaplayer;
 
+import au.notzed.jjmpeg.util.CancellableThread;
 import au.notzed.jjmpeg.AVCodecContext;
 import au.notzed.jjmpeg.AVFormatContext;
 import au.notzed.jjmpeg.AVPacket;
 import au.notzed.jjmpeg.AVStream;
-import au.notzed.jjmpeg.io.JJQueue;
+import au.notzed.jjmpeg.util.JJQueue;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map.Entry;
@@ -34,7 +35,7 @@ import java.util.logging.Logger;
 /**
  * Reads AV packets and doles them out to appropriate decoding queues.
  *
- * Also provides player functions such as seek, pause and so on.
+ * Also provides player functions such as seek, postPause and so on.
  *
  * @author notzed
  */
@@ -46,7 +47,7 @@ public class MediaReader extends CancellableThread {
 	final String file;
 	MediaSink dest;
 	// for recycling packets
-	JJQueue<AVPacket> packetQueue = new JJQueue<AVPacket>(packetLimit);
+	JJQueue<AVPacket> packetQueue = new JJQueue<AVPacket>(packetLimit + 5);
 	// for commands to the player thread
 	LinkedBlockingQueue<PlayerCMD> cmdQueue = new LinkedBlockingQueue<PlayerCMD>();
 	long duration;
@@ -157,6 +158,7 @@ public class MediaReader extends CancellableThread {
 
 	@Override
 	public void cancel() {
+		System.out.println("Cancel: " + this);
 		super.cancel();
 		for (MediaDecoder dec : streamMap.values()) {
 			dec.cancel();
@@ -194,6 +196,7 @@ public class MediaReader extends CancellableThread {
 	@Override
 	public void run() {
 		AVPacket packet = null;
+		boolean paused = false;
 
 		// init all decoders
 		for (MediaDecoder dec : streamMap.values()) {
@@ -205,7 +208,6 @@ public class MediaReader extends CancellableThread {
 		} catch (InterruptedException ex) {
 			Logger.getLogger(MediaReader.class.getName()).log(Level.SEVERE, null, ex);
 		}
-
 
 		try {
 			// ... if we get to the end of file this quits, but we don't want it to?
@@ -223,42 +225,105 @@ public class MediaReader extends CancellableThread {
 						packet = null;
 					}
 
-					// check for control commands
+					// check for control commands, collapse into a fixed set of commands.
+					PlayerCMD seekcmd = null;
+					PlayerCMD playcmd = null;
+					PlayerCMD pausecmd = null;
 					PlayerCMD cmd;
-					boolean paused = false;
-					do {
-						if (paused) {
-							cmd = cmdQueue.take();
-						} else {
-							cmd = cmdQueue.poll();
-						}
-						if (cmd != null) {
-							switch (cmd.type) {
-								case PlayerCMD.QUIT:
-									break out;
-								case PlayerCMD.SEEK:
-									format.seekFile(-1, 0, cmd.stamp * 1000, cmd.stamp * 1000, 0);
-									postSeek();
-									dest.postSeek(cmd.stamp);
-									System.out.println("post seek: " + cmd.stamp);
-									break;
-								case PlayerCMD.PAUSE:
-									// just wait for another command, until it is resume/play/quit
-									paused = true;
-									dest.pause();
-									System.out.println("paused " + cmd.stamp);
-									break;
-								case PlayerCMD.PLAY: // TODO: seek/re-open for play?
-								case PlayerCMD.RESUME:
-									if (paused) {
-										System.out.println("resume play");
+
+					if (true) {
+						// Keep waiting whilst paused
+						do {
+							// Collapse commands to fixed sequence
+							do {
+								if (paused)
+									cmd = cmdQueue.take();
+								else
+									cmd = cmdQueue.poll();
+								if (cmd != null) {
+									switch (cmd.type) {
+										case PlayerCMD.QUIT:
+											System.out.println("quit command");
+											break out;
+										case PlayerCMD.SEEK:
+											seekcmd = cmd;
+											break;
+										case PlayerCMD.PAUSE:
+											playcmd = null;
+											pausecmd = cmd;
+											break;
+										case PlayerCMD.PLAY: // TODO: seek/re-open for play?
+											playcmd = cmd;
+											pausecmd = null;
+											break;
+										case PlayerCMD.RESUME:
+											playcmd = cmd;
+											pausecmd = null;
 									}
-									paused = false;
-									dest.unpause();
-									break;
+								}
+							} while (cmd != null);
+
+							if (seekcmd != null) {
+								format.seekFile(-1, 0, seekcmd.stamp * 1000, seekcmd.stamp * 1000, 0);
+								postSeek();
+								dest.postSeek(seekcmd.stamp);
 							}
-						}
-					} while (cmd != null || paused);
+							if (pausecmd != null) {
+								if (!paused) {
+									dest.postPause();
+									paused = true;
+								}
+							} else if (playcmd != null) {
+								if (paused) {
+									paused = false;
+									dest.postUnpause();
+								} else {
+									dest.postPlay();
+								}
+							}
+						} while (!cancelled && paused);
+					} else {
+						do {
+							if (paused) {
+								cmd = cmdQueue.take();
+							} else {
+								cmd = cmdQueue.poll();
+							}
+							if (cmd != null) {
+								switch (cmd.type) {
+									case PlayerCMD.QUIT:
+										break out;
+									case PlayerCMD.SEEK:
+										format.seekFile(-1, 0, cmd.stamp * 1000, cmd.stamp * 1000, 0);
+										postSeek();
+										dest.postSeek(cmd.stamp);
+										System.out.println("post seek: " + cmd.stamp);
+										break;
+									case PlayerCMD.PAUSE:
+										// just wait for another command, until it is resume/play/quit
+										paused = true;
+										dest.postPause();
+										System.out.println("paused " + cmd.stamp);
+										break;
+									case PlayerCMD.PLAY: // TODO: seek/re-open for play?
+										if (paused) {
+											paused = false;
+											dest.postUnpause();
+										} else {
+											dest.postPlay();
+										}
+										break;
+									case PlayerCMD.RESUME:
+										if (paused) {
+											System.out.println("resume play");
+										}
+										paused = false;
+										dest.postUnpause();
+										break;
+								}
+							}
+						} while (cmd != null || paused);
+					}
 				} catch (InterruptedException x) {
 				} finally {
 					if (packet == null) {
@@ -273,12 +338,12 @@ public class MediaReader extends CancellableThread {
 		} finally {
 			System.out.println("File finished: " + file);
 
-			// FIXME: handle shutdown somehow easier than this (e.g. 'finished'?)
+			// FIXME: handle shutdown somehow easier than this (e.g. 'postFinished'?)
 			for (MediaDecoder dec : streamMap.values()) {
 				dec.cancel();
 			}
 
-			dest.finished();
+			dest.postFinished();
 		}
 	}
 }

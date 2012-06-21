@@ -149,7 +149,7 @@ class AVFormatContextNative extends AVFormatContextNativeAbstract {
 
 	native int findStreamInfo(Object[] options);
 
-	static native int open_input(AVFormatContextNative ps, String filename, AVInputFormatNative fmt, AVDictionary options);
+	static native int open_input(AVFormatContextNative ps, String filename, AVInputFormatNative fmt, AVDictionaryNative options);
 
 	static native void close_input(AVFormatContextNative s);
 

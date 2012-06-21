@@ -18,37 +18,38 @@
  */
 package au.notzed.jjmpeg.mediaplayer;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.awt.Component;
+import java.awt.Graphics;
+import java.awt.image.BufferedImage;
+import javax.swing.Icon;
 
 /**
- * Simple helper class which adds a safe 'cancel' operation for a thread.
+ * Video surface rendered as an icon via a BufferedImage.
  *
- * Implementing classes must poll this.cancelled and exit run() when it
- * is true.
+ * This just renders an icon the same size as it's container.
+ * (probably should use swscale to do the scaling)
  * @author notzed
  */
-public class CancellableThread extends Thread {
+public class IconSurface implements Icon {
 
-	protected boolean cancelled = false;
+	private final BufferedImage image;
 
-	public CancellableThread(String name) {
-		super(name);
+	public IconSurface(BufferedImage image) {
+		this.image = image;
 	}
 
-	/**
-	 * Cancel this thread, it will wait until
-	 * the thread has exited.
-	 */
-	public void cancel() {
-		if (isAlive() && !cancelled) {
-			try {
-				cancelled = true;
-				interrupt();
-				join();
-			} catch (InterruptedException ex) {
-				Logger.getLogger(CancellableThread.class.getName()).log(Level.SEVERE, null, ex);
-			}
-		}
+	@Override
+	public void paintIcon(Component c, Graphics g, int x, int y) {
+		g.drawImage(image, x, y, c.getWidth(), c.getHeight(), null);
+	}
+
+	@Override
+	public int getIconWidth() {
+		return image.getWidth();
+	}
+
+	@Override
+	public int getIconHeight() {
+		return image.getHeight();
 	}
 }
