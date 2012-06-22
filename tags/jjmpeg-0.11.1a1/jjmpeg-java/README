@@ -1,0 +1,64 @@
+
+REAMDE-java
+-----------
+
+This has the java/swing jjmpeg library components.
+
+Please see jjmpeg-core/README for further information about
+jjmpeg in general.
+
+STATUS
+------
+
+This builds the native code for all supported platforms using
+cross compilation on GNU/linux operating systems only.
+
+Currently supported targets are:
+
+gnu-amd64 - 64 bit GNU/linux using system ffmpeg
+gnu-i386 - 32 bit GNU/linux using system ffmpeg
+mswin-amd64 - 64 bit mingwin32 using bundled ffmpeg
+
+SWING COMPONENTS
+----------------
+
+JJMediaReader includes functionality for easily creating
+BufferedImages from video frames.
+
+JJFileChooser is a JFileChooser extended to show a live
+preview of any video plus some simple meta-data.
+
+SwingMediaPlayer is a very rough video-only video player
+using the multi-threaded frame-work in jjmpeg-core.
+
+BUILDING
+--------
+
+See the jjmpeg-core/README file.
+
+LINKS
+-----
+
+jjmpeg is hosted on google code at the following url:
+ http://code.google.com/p/jjmpeg
+
+A log of development activity and thoughts:
+ http://a-hackers-craic.blogspot.com/search/label/jjmpeg
+
+A (very quiet) mailing list is available:
+ http://groups.google.com/group/jjmpeg-discuss
+
+LICENSE
+-------
+
+jjmpeg is free software: you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published
+by the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+jjmpeg is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
+License for more details.
+
+See the file COPYING for terms of use.

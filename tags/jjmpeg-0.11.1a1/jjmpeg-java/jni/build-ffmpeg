@@ -1,0 +1,67 @@
+#!/bin/sh
+
+# Note that you cannot change the license options if you intend to distribute.
+
+. ./config.sh
+
+TARGETS=${CROSS_TARGETS}
+
+declare -a TARGETS_OPTS TARGETS_CFLAGS
+
+FF=ffmpeg-0.11
+
+DEBUG_CFLAGS=""
+#DEBUG_CFLAGS="-g -O0"
+
+TARGETS_LIST=('mswin-amd64')
+TARGETS_OPTS=( '' '' )
+TARGETS_CFLAGS=( '' '' )
+TARGETS_CROSS=( 'x86_64-w64-mingw32-' '' )
+TARGETS_ARCH=( 'x86_64' '' )
+TARGETS_OS=( 'mingw32' '' )
+
+export SYSROOT=$PLATFORM
+src="`pwd`/../../jjmpeg-core/jni"
+this=`pwd`
+i=0
+for TARGET in ${TARGETS_LIST[@]} ; do
+    if [[ "$TARGETS" == *"$TARGET"* ]]; then
+	mkdir -p $this/build-$FF/$TARGET
+	mkdir -p $this/build/$TARGET
+	cd $this/build-$FF/$TARGET || exit 1
+
+	opts=${TARGETS_OPTS[$i]}
+	cross=${TARGETS_CROSS[$i]}
+	arch=${TARGETS_ARCH[$i]}
+	os=${TARGETS_OS[$i]}
+	cflags="${TARGETS_CFLAGS[$i]} $DEBUG_CFLAGS"
+
+	echo "Configure for $TARGET"
+
+	$src/$FF/configure \
+	    $opts \
+	    --prefix=$this/build/$TARGET \
+	    --cross-prefix=${cross} \
+	    --enable-cross-compile \
+	    --target-os=${os} \
+	    --extra-cflags="$cflags" \
+	    --arch=${arch} \
+	    --enable-shared \
+	    --disable-static \
+	    --disable-symver \
+	    --disable-debug \
+	    --enable-gpl --enable-version3 \
+	    --disable-doc \
+	    --disable-ffplay --disable-ffprobe --disable-ffserver \
+	    --disable-avdevice --disable-postproc || exit 1
+	
+	make V=1 -j12 || exit 1
+	# -k is required since it fails on un-created/static .lib files
+	make V=1 -k install #|| (echo "Error" ; exit 1)
+	# always return ok
+	echo "Ignore installation errors"
+    fi
+    i=`expr $i + 1`
+done
+
+
