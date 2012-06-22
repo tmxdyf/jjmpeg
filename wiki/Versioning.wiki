@@ -1,0 +1,26 @@
+#summary Version matching with FFmpeg
+#labels Featured
+
+= Version Tracking =
+
+I haven't really come up with a good mechanism for tracking versions of FFmpeg that wont require too much work.
+
+Each version increment reserves the right to make api and binary incompatible changes, which means trying to hide these changes within the JNI code is impractical and dangerous.
+
+As such the JNI library must be compiled against the specific FFmpeg library set against which it will also execute.
+
+= New android port =
+
+The android port builds the library statically, so version tracking is not so important.  I have used this as the basis of the latest iterations of the desktop Java library now, and for the windows builds it also builds it's own basic FFmpeg.
+
+For the GNU/Linux version, it must still be compiled against a specific system library which has to match the specific api.  I may change this to build against the bundled FFmpeg as well since otherwise the same needs to be done manually.  The benefit of using the system library is that it allows additional features to be compiled in.
+
+= Branches? =
+
+The only practical way I can see to implement this is to have a separate branch which tracks each major FFmpeg version.  This is still a pain in the arse (not the least because subversion is shit at merging) but there doesn't seem to be any other way.
+
+I have done this for the 0.10.x release and the 0.11.x release of FFmpeg.  There is probably little point in maintaining the older branch for that matter, but I guess I will see how things progress ('now' is mid-2012).
+
+= libx264/libvorbis/etc =
+
+At the moment i'm not interested in including additional libraries within the basic FFmpeg builds bundled.
