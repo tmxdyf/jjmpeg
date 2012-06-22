@@ -2,7 +2,7 @@
  * Copyright (c) 2011 Michael Zucchi
  *
  * This file is part of jjmpegdemos.
- *
+ * 
  * jjmpegdemos is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -22,8 +22,8 @@ import au.notzed.jjmpeg.exception.AVDecodingError;
 import au.notzed.jjmpeg.exception.AVIOException;
 import au.notzed.jjmpeg.exception.AVInvalidCodecException;
 import au.notzed.jjmpeg.exception.AVInvalidStreamException;
-import au.notzed.jjmpeg.io.JJMediaReader;
 import au.notzed.jjmpeg.util.JJFileChooser;
+import au.notzed.jjmpeg.io.JJVideoScanner;
 import java.awt.BorderLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -39,7 +39,6 @@ import javax.swing.Timer;
 
 /**
  * Demo of JJVideoScanner class
- *
  * @author notzed
  */
 public class Main implements ActionListener {
@@ -52,8 +51,7 @@ public class Main implements ActionListener {
 	JFrame frame;
 	BufferedImage image;
 	JLabel label;
-	JJMediaReader reader;
-	JJMediaReader.JJReaderVideo vs;
+	JJVideoScanner vs;
 	Timer timer;
 
 	public Main(String name) {
@@ -71,8 +69,7 @@ public class Main implements ActionListener {
 
 	void start() {
 		try {
-			reader = new JJMediaReader(name);
-			vs = reader.openFirstVideoStream();
+			vs = new JJVideoScanner(name);
 
 			image = vs.createImage();
 			label.setIcon(new ImageIcon(image));
@@ -131,25 +128,24 @@ public class Main implements ActionListener {
 			long pts;
 
 			try {
-				while (true) {
-					JJMediaReader.JJReaderStream rs;
+				do {
+					//ByteBuffer raw = vs.readFrame();
+					//pts = vs.getPTS();
+					pts = vs.readFrame(image);
+					label.repaint();
 
-					rs = reader.readFrame();
-					if (rs != null) {
-						vs.getOutputFrame(image);
-						label.repaint();
-					} else {
-						System.out.println("end of file, restart");
-						reader.dispose();
-						reader = null;
+					//System.out.println("pts = " + pts);
+					if (pts == -1) {
+						//if (raw == null) {
+						System.out.println("end of file, restart " + pts);
+						vs.dispose();
 						vs = null;
-						reader = new JJMediaReader(name);
-						vs = reader.openFirstVideoStream();
+						vs = new JJVideoScanner(name);
 						pts = 0;
 					}
 
 					Thread.sleep(20);
-				}
+				} while (pts != -1);
 			} catch (AVInvalidStreamException ex) {
 				Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
 			} catch (InterruptedException ex) {
@@ -167,21 +163,16 @@ public class Main implements ActionListener {
 	// calling from the event loop
 	public void actionPerformed(ActionEvent e) {
 		try {
-			JJMediaReader.JJReaderStream rs;
+			long pts = vs.readFrame(image);
 
-			rs = reader.readFrame();
-
-			if (rs != null) {
-				vs.getOutputFrame(image);
-				label.repaint();
-			} else {
-				System.out.println("end of file, restart");
-				reader.dispose();
-				reader = null;
+			if (pts == -1) {
+				System.out.println("eof?? " + pts);
+				System.out.println("end of file, restart " + pts);
+				vs.dispose();
 				vs = null;
-				reader = new JJMediaReader(name);
-				vs = reader.openFirstVideoStream();
+				vs = new JJVideoScanner(name);
 			}
+			label.repaint();
 		} catch (AVInvalidCodecException ex) {
 			Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
 		} catch (AVInvalidStreamException ex) {

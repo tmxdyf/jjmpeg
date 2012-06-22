@@ -1,0 +1,62 @@
+#!/bin/sh
+
+# Note that you cannot change the license options if you intend to distribute.
+
+. ./config.mk
+
+declare -a TARGETS_OPTS TARGETS_CFLAGS
+
+FF=ffmpeg-0.11
+
+DEBUG_CFLAGS="-g -O0"
+DEBUG_ARGS="--disable-stripping --enable-debug --assert-level=2"
+#DEBUG_CFLAGS=""
+#DEBUG_ARGS="--disable-debug"
+
+TARGETS_LIST=( 'armeabi' 'armeabi-v7a')
+TARGETS_OPTS=( '' '' )
+TARGETS_CONFIG=( '' '')
+TARGETS_CFLAGS=( '' '-mfloat-abi=softfp -mfpu=neon -marm -march=armv7-a')
+
+# so i have something reliable to match against
+targets=`echo $TARGETS | sed -e 's/^/@/' -e 's/$/@/' -e 's/ /@/g'`
+
+export SYSROOT=$PLATFORM
+src="`pwd`/../../jjmpeg-core/jni"
+this=`pwd`
+i=0
+for TARGET in ${TARGETS_LIST[@]} ; do
+    if [ x`echo $targets | grep -e "@${TARGET}@"` != x ]; then
+	mkdir -p $this/build-$FF/$TARGET
+	mkdir -p $this/build/$TARGET
+	cd $this/build-$FF/$TARGET || exit 1
+
+	opts=${TARGETS_OPTS[$i]}
+	config=${TARGETS_CONFIG[$i]}
+	cflags="${TARGETS_CFLAGS[$i]} $DEBUG_CFLAGS"
+
+	$src/$FF/configure \
+	    $opts \
+	    --prefix=$this/build/$TARGET \
+	    --cross-prefix=$PREBUILT/bin/arm-linux-androideabi- \
+	    --enable-cross-compile \
+	    --target-os=linux \
+	    --extra-cflags="-I$PLATFORM/usr/include $cflags --sysroot=$SYSROOT" \
+	    --extra-ldflags="-L$PLATFORM/usr/lib --sysroot=$SYSROOT" \
+	    --arch=arm \
+	    $config \
+	    $DEBUG_ARGS \
+	    --disable-shared \
+	    --enable-static \
+	    --disable-symver \
+	    --enable-pthreads \
+	    --enable-gpl --enable-version3 \
+	    --disable-doc \
+	    --disable-ffmpeg --disable-ffplay --disable-ffprobe --disable-ffserver \
+	    --disable-avdevice --disable-avfilter --disable-postproc || exit 1
+	
+	make -j20 || exit 1
+	make V=1 install || (echo "Error" ; exit 1)
+    fi
+    i=`expr $i + 1`
+done

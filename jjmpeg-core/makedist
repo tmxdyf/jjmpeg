@@ -1,0 +1,71 @@
+#!/bin/sh
+
+. ./config.mk
+
+CORE=`pwd`
+JAVA=${CORE}/../jjmpeg-java
+ANDROID=${CORE}/../jjmpeg-android
+
+tmp=/tmp/$$
+bin=bin
+
+mkdir -p ${bin}
+
+#
+# This builds the distribution files in my build environment.
+#
+
+# First do the java - core classes
+#ant jar || exit 1
+
+#cd ${CORE}/../jjmpeg-java/jni && make || exit 1
+#cd ${CORE}/../jjmpeg-java/ && ant jar || exit 1
+
+# Merge the jar files
+dst=$tmp/jjmpeg-${VERSION}
+mkdir -p $dst
+cd $dst || exit 1
+jar xvf ${CORE}/dist/jjmpeg-core.jar au
+jar xvf ${JAVA}/dist/jjmpeg-java.jar au
+cp ${CORE}/COPYING COPYING
+cp ${CORE}/README README
+cp ${JAVA}/README README.jjmpeg-java
+cd ${CORE}
+jar cf ${bin}/jjmpeg-${VERSION}.jar -C ${dst} .
+
+cd ${CORE}
+
+# create shared library archives
+TARGETS="gnu-amd64 gnu-i386 mswin-amd64 mswin-amd64-ffmpeg"
+for target in $TARGETS ; do
+    dst=$tmp/jjmpeg-${target}
+    t=`echo $target | sed s/-ffmpeg//`
+    mkdir -p $dst/lib
+    case $target in
+	gnu-*)
+	    cp ${JAVA}/jni/build/${t}/libjjmpeg*.so $dst/lib/
+	    ;;
+	mswin-*)
+	    cp ${JAVA}/jni/build/${t}/jjmpeg*.dll $dst/lib/
+	    ;;
+    esac
+    case $target in
+	*-ffmpeg)
+	    cp ${JAVA}/jni/build/${t}/bin/*.dll $dst/lib/
+	    cp ${JAVA}/jni/build-ffmpeg-0.11/${t}/ffmpeg.exe $dst/lib/
+	    ;;
+    esac
+    # TODO: readme, copying, etc
+    cp ${JAVA}/README $dst/
+    cp ${JAVA}/COPYING $dst/
+    echo jar cf ${bin}/jjmpeg-${VERSION}-natives-${target}.jar -C ${dst}
+    jar cf ${bin}/jjmpeg-${VERSION}-natives-${target}.jar -C ${dst} .
+    rm -rf ${dst}
+done
+
+# do the android stuff
+echo "Signing release package for android"
+cd ${ANDROID}
+${JAVA_SDK}/bin/jarsigner -sigalg MD5withRSA -digestalg SHA1 -keystore ${KEYSTORE} -signedjar bin/JJPlayer-release-unaligned.apk bin/JJPlayer-release-unsigned.apk jjmpeg
+${ANDROID_SDK}/tools/zipalign -v -f 4 bin/JJPlayer-release-unaligned.apk bin/JJPlayer-release.apk
+cp ${ANDROID}/bin/JJPlayer-release.apk ${CORE}/bin/JJPlayer-${VERSION}.apk
