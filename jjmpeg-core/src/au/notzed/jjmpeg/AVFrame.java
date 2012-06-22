@@ -60,8 +60,8 @@ public class AVFrame extends AVFrameAbstract {
 	 * @param samples
 	 * @return
 	 */
-	static public AVFrame create(SampleFormat fmt, int channels, int samples) throws AVIOException {
-		if (fmt != SampleFormat.SAMPLE_FMT_S16)
+	static public AVFrame create(AVSampleFormat fmt, int channels, int samples) throws AVIOException {
+		if (fmt != AVSampleFormat.SAMPLE_FMT_S16)
 			throw new UnsupportedOperationException("Only S16 sample format implemented");
 
 		AVFrame f = create();
@@ -85,8 +85,8 @@ public class AVFrame extends AVFrameAbstract {
 	 * @param samples
 	 * @throws AVIOException
 	 */
-	public void fillAudioFrame(int channels, SampleFormat fmt, int samples) throws AVIOException {
-		if (fmt != SampleFormat.SAMPLE_FMT_S16)
+	public void fillAudioFrame(int channels, AVSampleFormat fmt, int samples) throws AVIOException {
+		if (fmt != AVSampleFormat.SAMPLE_FMT_S16)
 			throw new UnsupportedOperationException("Only S16 sample format implemented");
 
 		int size = channels * samples * 2;
@@ -148,7 +148,7 @@ public class AVFrame extends AVFrameAbstract {
 	 * (todo: should probably throw exception)
 	 * @return number of (short) samples copied
 	 */
-	public int getSamples(SampleFormat fmt, int channels, short[] samples) {
+	public int getSamples(AVSampleFormat fmt, int channels, short[] samples) {
 		// TODO: Use back buffer if set?
 		return n.getSamples(fmt.toC(), channels, samples);
 	}

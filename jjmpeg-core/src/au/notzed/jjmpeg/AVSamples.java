@@ -29,17 +29,17 @@ import java.nio.ByteOrder;
  */
 public class AVSamples {
 
-	final SampleFormat format;
+	final AVSampleFormat format;
 	ByteBuffer buffer;
 	Buffer samples;
 
-	public AVSamples(SampleFormat format) {
+	public AVSamples(AVSampleFormat format) {
 		buffer = ByteBuffer.allocateDirect(AVCodecContext.AVCODEC_MAX_AUDIO_FRAME_SIZE * 2).order(ByteOrder.nativeOrder());
 		this.format = format;
 		samples = format.getBuffer(buffer);
 	}
 
-	public AVSamples(SampleFormat format, int channels, int frameSize) {
+	public AVSamples(AVSampleFormat format, int channels, int frameSize) {
 		buffer = ByteBuffer.allocateDirect(format.getByteSize() * channels * frameSize).order(ByteOrder.nativeOrder());
 		this.format = format;
 		samples = format.getBuffer(buffer);
@@ -53,7 +53,7 @@ public class AVSamples {
 		return samples;
 	}
 
-	public SampleFormat getFormat() {
+	public AVSampleFormat getFormat() {
 		return format;
 	}
 

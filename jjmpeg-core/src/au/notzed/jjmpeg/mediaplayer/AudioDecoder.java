@@ -34,7 +34,7 @@ public class AudioDecoder extends MediaDecoder {
 	SwrContext resample;
 	AVFrame resampledFrame;
 	int dstChannels;
-	SampleFormat dstFormat;
+	AVSampleFormat dstFormat;
 
 	AudioDecoder(MediaReader src, MediaSink dest, AVStream stream, int streamid) throws IOException {
 		super("Audio Decoder", src, dest, stream, streamid);
@@ -51,7 +51,7 @@ public class AudioDecoder extends MediaDecoder {
 	 * @param channels
 	 * @param fmt
 	 */
-	public void setOutputFormat(long layout, int channels, SampleFormat fmt, int rate) {
+	public void setOutputFormat(long layout, int channels, AVSampleFormat fmt, int rate) {
 		if (cc.getSampleFmt() == fmt
 				&& cc.getChannels() == channels) {
 			resample = null;

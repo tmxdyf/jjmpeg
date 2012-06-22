@@ -33,8 +33,8 @@ public class SwrContext extends SwrContextAbstract {
 		setNative(new SwrContextNative64(this, p));
 	}
 
-	static public SwrContext create(long dstLayout, SampleFormat dstFormat, int dstRate,
-			long srcLayout, SampleFormat srcFormat, int srcRate) {
+	static public SwrContext create(long dstLayout, AVSampleFormat dstFormat, int dstRate,
+			long srcLayout, AVSampleFormat srcFormat, int srcRate) {
 
 		return SwrContextNative.alloc(dstLayout, dstFormat.toC(), dstRate, srcLayout, srcFormat.toC(), srcRate);
 	}

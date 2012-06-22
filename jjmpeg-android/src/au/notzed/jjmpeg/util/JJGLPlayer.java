@@ -325,7 +325,7 @@ public class JJGLPlayer extends Activity {
 		int size;
 
 		public void setData(AVFrame aframe, int channels, int nsamples) {
-			aframe.getSamples(SampleFormat.SAMPLE_FMT_S16, channels, data);
+			aframe.getSamples(AVSampleFormat.SAMPLE_FMT_S16, channels, data);
 			size = nsamples * channels;
 		}
 
@@ -565,7 +565,7 @@ public class JJGLPlayer extends Activity {
 				audioFrame = AVFrame.create();
 				audioChannels = cc.getChannels();
 				if (cc.getChannels() > 2) {
-					resample = SwrContext.create(3, SampleFormat.SAMPLE_FMT_S16, cc.getSampleRate(), cc.getChannelLayout(), cc.getSampleFmt(), cc.getSampleRate());
+					resample = SwrContext.create(3, AVSampleFormat.SAMPLE_FMT_S16, cc.getSampleRate(), cc.getChannelLayout(), cc.getSampleFmt(), cc.getSampleRate());
 					resampledFrame = AVFrame.create();
 					audioChannels = 2;
 				}
@@ -681,7 +681,7 @@ public class JJGLPlayer extends Activity {
 									AVFrame data = audioFrame;
 
 									if (resample != null) {
-										resampledFrame.fillAudioFrame(2, SampleFormat.SAMPLE_FMT_S16, len);
+										resampledFrame.fillAudioFrame(2, AVSampleFormat.SAMPLE_FMT_S16, len);
 										len = resample.convert(resampledFrame, audioFrame);
 										data = resampledFrame;
 									}

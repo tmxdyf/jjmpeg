@@ -134,10 +134,10 @@ abstract class AVCodecContextAbstract extends AVObject {
 	public  void setChannelLayout(long val) {
 		n.setChannelLayout(val);
 	}
-	public  SampleFormat getSampleFmt() {
-		return SampleFormat.values()[n.getSampleFmt()+1];
+	public  AVSampleFormat getSampleFmt() {
+		return AVSampleFormat.values()[n.getSampleFmt()+1];
 	}
-	public  void setSampleFmt(SampleFormat val) {
+	public  void setSampleFmt(AVSampleFormat val) {
 		n.setSampleFmt(val.toC());
 	}
 	public  int getFrameSize() {
@@ -657,7 +657,7 @@ abstract class AVFrameAbstract extends AVObject {
 	public void getFrameDefaults() {
 		n.get_frame_defaults();
 	}
-	public int fillAudioFrame(int nb_channels, SampleFormat sample_fmt, ByteBuffer buf, int buf_size, int align) {
+	public int fillAudioFrame(int nb_channels, AVSampleFormat sample_fmt, ByteBuffer buf, int buf_size, int align) {
 		return n.fill_audio_frame(nb_channels, sample_fmt.toC(), buf, buf_size, align);
 	}
 	public int alloc(int pix_fmt, int width, int height) {
@@ -847,37 +847,6 @@ abstract class SwrContextAbstract extends AVObject {
 	// Public Methods
 	public int setCompensation(int sample_delta, int compensation_distance) {
 		return n.set_compensation(sample_delta, compensation_distance);
-	}
-}
-abstract class ReSampleContextNativeAbstract extends AVNative {
-	protected ReSampleContextNativeAbstract(AVObject o) {
-		super(o);
-	}
-	// Fields
-	// Native Methods
-	static  native ReSampleContext resample_init(int output_channels, int input_channels, int output_rate, int input_rate, int sample_fmt_out, int sample_fmt_in, int filter_length, int log2_phase_count, int linear, double cutoff);
-	 native int resample(ShortBuffer output, ShortBuffer input, int nb_samples);
-	 native void resample_close();
-}
-
-abstract class ReSampleContextAbstract extends AVObject {
-	ReSampleContextNative n;
-	final protected void setNative(ReSampleContextNative n) {
-		this.n = n;
-	}
-	public void dispose() {
-		n.dispose();
-	}
-	// Fields
-	// Public Methods
-	static public ReSampleContext resampleInit(int output_channels, int input_channels, int output_rate, int input_rate, SampleFormat sample_fmt_out, SampleFormat sample_fmt_in, int filter_length, int log2_phase_count, int linear, double cutoff) {
-		return ReSampleContextNativeAbstract.resample_init(output_channels, input_channels, output_rate, input_rate, sample_fmt_out.toC(), sample_fmt_in.toC(), filter_length, log2_phase_count, linear, cutoff);
-	}
-	 int resample(ShortBuffer output, ShortBuffer input, int nb_samples) {
-		return n.resample(output, input, nb_samples);
-	}
-	public void resampleClose() {
-		n.resample_close();
 	}
 }
 abstract class AVDictionaryNativeAbstract extends AVNative {

@@ -21,7 +21,7 @@ package au.notzed.jjmpeg.mediaplayer;
 import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioTrack;
-import au.notzed.jjmpeg.SampleFormat;
+import au.notzed.jjmpeg.AVSampleFormat;
 import au.notzed.jjmpeg.util.JJQueue;
 
 /**
@@ -36,7 +36,7 @@ public class AndroidAudioRenderer {
 	JJQueue<AnAudioFrame> buffers = new JJQueue<AnAudioFrame>(NBUFFERS);
 	JJQueue<AnAudioFrame> ready = new JJQueue<AnAudioFrame>(NBUFFERS);
 
-	void setAudioFormat(int sampleRate, int channels, SampleFormat fmt) {
+	void setAudioFormat(int sampleRate, int channels, AVSampleFormat fmt) {
 		if (track != null) {
 			track.stop();
 			track.release();
@@ -45,7 +45,7 @@ public class AndroidAudioRenderer {
 		// TODO: add resample shit or something
 
 		// only support fmt.SAMPLE_FMT_S16
-		if (fmt != SampleFormat.SAMPLE_FMT_S16) {
+		if (fmt != AVSampleFormat.SAMPLE_FMT_S16) {
 		}
 
 		track = new AudioTrack(AudioManager.STREAM_MUSIC, sampleRate,
