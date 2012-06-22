@@ -31,7 +31,7 @@ import android.widget.FrameLayout.LayoutParams;
 import android.widget.SeekBar;
 import android.widget.SeekBar.OnSeekBarChangeListener;
 import au.notzed.jjmpeg.AVRational;
-import au.notzed.jjmpeg.SampleFormat;
+import au.notzed.jjmpeg.AVSampleFormat;
 import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -237,7 +237,7 @@ public class AndroidMediaPlayer extends Activity implements MediaSink {
 				// Force stereo output for multi-channel data
 				int cc = Math.min(2, ad.cc.getChannels());
 
-				ad.setOutputFormat(3, cc, SampleFormat.SAMPLE_FMT_S16, ad.cc.getSampleRate());
+				ad.setOutputFormat(3, cc, AVSampleFormat.SAMPLE_FMT_S16, ad.cc.getSampleRate());
 				aRenderer.setAudioFormat(ad.cc.getSampleRate(), cc, ad.cc.getSampleFmt());
 				haveAudio = true;
 			}

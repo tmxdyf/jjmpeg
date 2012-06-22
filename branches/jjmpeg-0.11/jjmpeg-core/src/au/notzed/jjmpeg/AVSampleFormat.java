@@ -25,7 +25,7 @@ import java.nio.ByteBuffer;
  *
  * @author notzed
  */
-public enum SampleFormat {
+public enum AVSampleFormat {
 
 	SAMPLE_FMT_NONE {
 
@@ -120,11 +120,11 @@ public enum SampleFormat {
 
 	public abstract Buffer getBuffer(ByteBuffer src);
 
-	public static SampleFormat fromC(int fmtid) {
+	public static AVSampleFormat fromC(int fmtid) {
 		return values()[fmtid + 1];
 	}
 
-	public static int toC(SampleFormat p) {
+	public static int toC(AVSampleFormat p) {
 		return p.ordinal() - 1;
 	}
 

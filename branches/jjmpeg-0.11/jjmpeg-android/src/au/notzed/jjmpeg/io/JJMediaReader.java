@@ -28,7 +28,7 @@ import au.notzed.jjmpeg.AVRational;
 import au.notzed.jjmpeg.AVSamples;
 import au.notzed.jjmpeg.AVStream;
 import au.notzed.jjmpeg.PixelFormat;
-import au.notzed.jjmpeg.SampleFormat;
+import au.notzed.jjmpeg.AVSampleFormat;
 import au.notzed.jjmpeg.SwsContext;
 import au.notzed.jjmpeg.exception.AVDecodingError;
 import au.notzed.jjmpeg.exception.AVIOException;
@@ -701,7 +701,7 @@ public class JJMediaReader {
 			return AVCodecContext.AVMEDIA_TYPE_AUDIO;
 		}
 
-		public SampleFormat getSampleFormat() {
+		public AVSampleFormat getSampleFormat() {
 			return c.getSampleFmt();
 		}
 

@@ -19,7 +19,7 @@
 package au.notzed.jjmpeg.mediaplayer;
 
 import au.notzed.jjmpeg.AVFrame;
-import au.notzed.jjmpeg.SampleFormat;
+import au.notzed.jjmpeg.AVSampleFormat;
 
 /**
  * Audio frame that can (possibly) dispose itself
@@ -38,7 +38,7 @@ public abstract class AudioFrame extends MediaFrame {
 		//this.frame = samples;
 	}
 
-	public void setSamples(AVFrame src, int channels, SampleFormat fmt, int nsamples) {
+	public void setSamples(AVFrame src, int channels, AVSampleFormat fmt, int nsamples) {
 		if (samples == null || samples.length < nsamples * channels) {
 			samples = new short[nsamples * channels];
 		}
