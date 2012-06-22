@@ -52,12 +52,9 @@ public class MediaReader extends CancellableThread {
 
 		this.file = fileName;
 
-		format = AVFormatContext.openInputFile(file);
-		if (format.findStreamInfo() < 0) {
-			throw new IOException("Unable to open AV file");
-		}
+		format = AVFormatContext.open(file);
+		format.findStreamInfo();
 		streamMap.entrySet();
-
 	}
 
 	public Set<Entry<Integer, MediaDecoder>> getDecoders() {
@@ -260,7 +257,7 @@ public class MediaReader extends CancellableThread {
 			x.printStackTrace();
 		} finally {
 			System.out.println("File finished: " + file);
-			format.closeInputFile();
+			format.closeInput();
 		}
 	}
 }
