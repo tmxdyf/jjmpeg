@@ -55,13 +55,13 @@ for TARGET in ${TARGETS_LIST[@]} ; do
 	    --disable-ffmpeg --disable-ffplay --disable-ffprobe --disable-ffprobe \
 	    --disable-avdevice --disable-avfilter --disable-postproc || exit 1
 	
-	i=`expr $i + 1`
 	make V=1 -j12 || exit 1
 	# -k is required since it fails on un-created/static .lib files
 	make V=1 -k install #|| (echo "Error" ; exit 1)
 	# always return ok
 	echo "Ignore installation errors"
     fi
+    i=`expr $i + 1`
 done
 
 

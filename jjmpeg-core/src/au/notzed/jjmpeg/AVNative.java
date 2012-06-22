@@ -51,7 +51,7 @@ abstract public class AVNative extends WeakReference<AVObject> {
 
 		System.err.println("load jjmpeg");
 
-		System.loadLibrary("jjmpeg010");
+		System.loadLibrary("jjmpeg011");
 		bits = initNative();
 
 		if (bits == 0) {
