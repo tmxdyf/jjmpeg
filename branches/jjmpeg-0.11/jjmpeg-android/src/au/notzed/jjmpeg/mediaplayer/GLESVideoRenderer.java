@@ -60,7 +60,7 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 	// enqueue frames rather than synchronously loading them
 	static final boolean enqueueFrames = true;
 	// how many buffers to use, must be > 1 if enqueueFrames used
-	static final int NBUFFERS = 3;
+	static final int NBUFFERS = 5;
 	boolean bindTexture = false;
 	boolean dataChanged = false;
 	boolean stopped = false;

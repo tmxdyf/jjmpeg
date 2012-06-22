@@ -94,10 +94,8 @@ public class AndroidMediaPlayer extends Activity implements MediaSink {
 				filename = it.getDataString();
 		} else {
 			filename = "/sdcard/trailer.mp4";
-			filename = "http://192.168.1.5:50500/content/media/object_id/91819/res_id/0/ext/file.mp4";
-			filename = "http://192.168.1.5:50500/content/media/object_id/7853/res_id/0/ext/file.mkv";
-			//filename = "http://192.168.1.5:6544/Myth/GetRecording?ChanId=3099&StartTime=2012-06-06T23:35:00";
 			filename = "http://radio1.internode.on.net:8000/126";
+			filename = "/sdcard/Ministry.of.Sound.The.annual.2003.avi";
 		}
 
 		seek = new SeekBar(this);

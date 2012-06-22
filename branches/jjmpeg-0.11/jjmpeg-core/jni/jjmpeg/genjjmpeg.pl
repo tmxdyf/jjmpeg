@@ -8,6 +8,7 @@ $jni = $ARGV[3];
 
 # hard-code a few supported systems
 %targetinfo = (
+    "armeabi" => { "size" => 32, "dodl" => 0 },
     "armeabi-v7a" => { "size" => 32, "dodl" => 0 },
     "gnu-amd64" => { "size" => 64, "dodl" => 1 },
     "gnu-i386" => { "size" => 32, "dodl" => 1 },

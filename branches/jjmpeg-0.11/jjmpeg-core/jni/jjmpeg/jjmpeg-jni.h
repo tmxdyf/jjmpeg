@@ -49,6 +49,7 @@
 static int init_local(JNIEnv *env);
 
 // swscale leaves SwsContext opaque.  We just need a dummy type for the binding library.
+// (actually this is left over from the bytebuffer stuff, i don't think it's needed now)
 #include <libswscale/swscale.h>
 struct SwsContext {
 	int dummy;
@@ -64,7 +65,6 @@ struct ReSampleContext {
 struct SwrContext {
 	int dummy;
 };
-typedef struct SwrContext SwrContext;
 
 // and AVDictionary
 struct AVDictionary {
