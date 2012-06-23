@@ -48,9 +48,9 @@ for TARGET in ${TARGETS_LIST[@]} ; do
 	    --cross-prefix=$PREBUILT/bin/arm-linux-androideabi- \
 	    --enable-cross-compile \
 	    --target-os=linux \
-	    --extra-cflags="-I$PLATFORM/usr/include $cflags --sysroot=$SYSROOT" \
-	    --extra-ldflags="-L$PLATFORM/usr/lib --sysroot=$SYSROOT" \
+	    --sysroot="$SYSROOT" \
 	    --arch=arm \
+	    --extra-cflags="$cflags" \
 	    $config \
 	    $DEBUG_ARGS \
 	    --disable-shared \
