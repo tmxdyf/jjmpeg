@@ -2,24 +2,28 @@
 
 # Note that you cannot change the license options if you intend to distribute.
 
-. ./config.mk
+. ../config.sh
 
 declare -a TARGETS_OPTS TARGETS_CFLAGS
 
 FF=ffmpeg-0.11
 
-DEBUG_CFLAGS="-g -O0"
-DEBUG_ARGS="--disable-stripping --enable-debug --assert-level=2"
+DEBUG_CFLAGS=""
+DEBUG_ARGS=""
 #DEBUG_CFLAGS=""
-#DEBUG_ARGS="--disable-debug"
+#DEBUG_ARGS="--disable-stripping --enable-debug"
 
 TARGETS_LIST=( 'armeabi' 'armeabi-v7a')
 TARGETS_OPTS=( '' '' )
 TARGETS_CONFIG=( '' '')
 TARGETS_CFLAGS=( '' '-mfloat-abi=softfp -mfpu=neon -marm -march=armv7-a')
 
+# TODO: This will depend on the architecture (and ndk version), this is ok for ARM
+PLATFORM=${ANDROID_NDK}/platforms/android-8/arch-arm/
+PREBUILT=${ANDROID_NDK}/toolchains/arm-linux-androideabi-4.4.3/prebuilt/linux-x86
+
 # so i have something reliable to match against
-targets=`echo $TARGETS | sed -e 's/^/@/' -e 's/$/@/' -e 's/ /@/g'`
+targets=`echo $TARGET | sed -e 's/^/@/' -e 's/$/@/' -e 's/ /@/g'`
 
 export SYSROOT=$PLATFORM
 src="`pwd`/../../jjmpeg-core/jni"
@@ -27,13 +31,16 @@ this=`pwd`
 i=0
 for TARGET in ${TARGETS_LIST[@]} ; do
     if [ x`echo $targets | grep -e "@${TARGET}@"` != x ]; then
-	mkdir -p $this/build-$FF/$TARGET
+	rm -rf $this/build/$FF/$TARGET
+	mkdir -p $this/build/$FF/$TARGET
 	mkdir -p $this/build/$TARGET
-	cd $this/build-$FF/$TARGET || exit 1
+	cd $this/build/$FF/$TARGET || exit 1
 
 	opts=${TARGETS_OPTS[$i]}
 	config=${TARGETS_CONFIG[$i]}
 	cflags="${TARGETS_CFLAGS[$i]} $DEBUG_CFLAGS"
+
+	echo "Configuring FFmpeg for $TARGET ..."
 
 	$src/$FF/configure \
 	    $opts \
@@ -54,8 +61,11 @@ for TARGET in ${TARGETS_LIST[@]} ; do
 	    --disable-doc \
 	    --disable-ffmpeg --disable-ffplay --disable-ffprobe --disable-ffserver \
 	    --disable-avdevice --disable-avfilter --disable-postproc || exit 1
-	
-	make -j20 || exit 1
+
+	# This can't be configured
+	sed -i -e 's/ HAVE_FAST_UNALIGNED 1/ HAVE_FAST_UNALIGNED 0/' $this/build/$FF/$TARGET/config.h
+
+	make V=1 -j24  || exit 1
 	make V=1 install || (echo "Error" ; exit 1)
     fi
     i=`expr $i + 1`
