@@ -8,14 +8,18 @@ declare -a TARGETS_OPTS TARGETS_CFLAGS
 
 FF=ffmpeg-0.11
 
-DEBUG_CFLAGS=""
 DEBUG_ARGS=""
-#DEBUG_CFLAGS=""
-#DEBUG_ARGS="--disable-stripping --enable-debug"
+#DEBUG_ARGS="--disable-stripping --disable-optimizations"
 
+# These arrays consitute a table of options, each column
+# defines one target.
+#  target names
 TARGETS_LIST=( 'armeabi' 'armeabi-v7a')
+#  arch for target
+TARGETS_ARCH=( 'arm' 'arm' )
+#  extra configure options for target
 TARGETS_OPTS=( '' '' )
-TARGETS_CONFIG=( '' '')
+#  extra cflags for target
 TARGETS_CFLAGS=( '' '-mfloat-abi=softfp -mfpu=neon -marm -march=armv7-a')
 
 # TODO: This will depend on the architecture (and ndk version), this is ok for ARM
@@ -37,8 +41,8 @@ for TARGET in ${TARGETS_LIST[@]} ; do
 	cd $this/build/$FF/$TARGET || exit 1
 
 	opts=${TARGETS_OPTS[$i]}
-	config=${TARGETS_CONFIG[$i]}
-	cflags="${TARGETS_CFLAGS[$i]} $DEBUG_CFLAGS"
+	arch=${TARGETS_ARCH[$i]}
+	cflags=${TARGETS_CFLAGS[$i]}
 
 	echo "Configuring FFmpeg for $TARGET ..."
 
@@ -49,14 +53,11 @@ for TARGET in ${TARGETS_LIST[@]} ; do
 	    --enable-cross-compile \
 	    --target-os=linux \
 	    --sysroot="$SYSROOT" \
-	    --arch=arm \
+	    --arch=${arch} \
 	    --extra-cflags="$cflags" \
-	    $config \
 	    $DEBUG_ARGS \
 	    --disable-shared \
 	    --enable-static \
-	    --disable-symver \
-	    --enable-pthreads \
 	    --enable-gpl --enable-version3 \
 	    --disable-doc \
 	    --disable-ffmpeg --disable-ffplay --disable-ffprobe --disable-ffserver \
