@@ -28,10 +28,12 @@ java: native-java
 	ant jar
 	( cd ../jjmpeg-java && ant jar )
 
-dist: java native-android
-	@echo "don't use password first time"
-	( cd ../jjmpeg-android && ant release )
+dist: java
 	./makedist
+
+clean:
+	-rm config.sh
+	ant clean
 
 webstart:
 	( cd webstart ; make )

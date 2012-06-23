@@ -1,10 +1,20 @@
 
+.PHONY: debug native
 
-.PHONY: webstart all
+debug: native
+	@echo "Building debug"
+	ant debug
 
-all:
-	@echo "Build using ANT"
+release: native
+	ant release
 
-webstart:
-	( cd webstart ; make )
-	( cd native ; make webstart )
+native:
+	( cd jni && make )
+
+clean:
+	( cd jni && make clean )
+	ant clean
+
+distclean:
+	( cd jni && make distclean )
+	ant clean

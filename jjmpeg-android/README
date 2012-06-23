@@ -28,8 +28,14 @@ makefiles.  Within the jni directory there is another Makefile which
 calls the android one (I don't care if this is not recommended
 practice).
 
-jni/config.mk configures the ndk location and target architecture.
-local.properties configures the sdk location.
+Run
+ ./configure --target=X
+To configure for a specific target.
+
+Other configuration options are taken from ../jjmpeg-core/config.mk or
+the various android configuration files.
+
+make or ant then compiles the normal android targets.
 
 LINKS
 -----

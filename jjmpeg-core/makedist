@@ -1,6 +1,7 @@
 #!/bin/sh
 
-. ./config.mk
+sed -e 's/=\(.*\)$/="\1"/' < config.mk > config.sh
+. ./config.sh
 
 CORE=`pwd`
 JAVA=${CORE}/../jjmpeg-java
@@ -64,8 +65,13 @@ for target in $TARGETS ; do
 done
 
 # do the android stuff
-echo "Signing release package for android"
 cd ${ANDROID}
-${JAVA_SDK}/bin/jarsigner -sigalg MD5withRSA -digestalg SHA1 -keystore ${KEYSTORE} -signedjar bin/JJPlayer-release-unaligned.apk bin/JJPlayer-release-unsigned.apk jjmpeg
-${ANDROID_SDK}/tools/zipalign -v -f 4 bin/JJPlayer-release-unaligned.apk bin/JJPlayer-release.apk
-cp ${ANDROID}/bin/JJPlayer-release.apk ${CORE}/bin/JJPlayer-${VERSION}.apk
+for target in $ANDROID_TARGETS ; do
+    ./configure --target=$target
+    ant clean
+    make release
+    echo "Signing release package for android"
+    ${JAVA_SDK}/bin/jarsigner -sigalg MD5withRSA -digestalg SHA1 -keystore ${KEYSTORE} -signedjar bin/JJPlayer-release-unaligned.apk bin/JJPlayer-release-unsigned.apk jjmpeg
+    ${ANDROID_SDK}/tools/zipalign -v -f 4 bin/JJPlayer-release-unaligned.apk bin/JJPlayer-release.apk
+    cp ${ANDROID}/bin/JJPlayer-release.apk ${CORE}/bin/JJPlayer-${VERSION}-${target}.apk
+done
