@@ -8,11 +8,11 @@ JJPlayer is the player included in the android package.  It is a fairly bare-bon
 Here are a few short notes about it.
 
  * It only uses software decoding provided by FFmpeg for all streams (which limits it's upper resolution somewhat).
- * GLESv2 is used for the YUV to RGB conversion.
- * The activity is set up to be invoked for mime types video/`*` and audio/`*`
- * The activity is set up to be invoked for http or local resources of these mime types.
+ * GLESv2 is used for the YUV to RGB conversion and scaling.
+ * The player activity is set up to be invoked for mime types video/`*` and audio/`*`
+ * The player activity is set up to be invoked for http or local resources of these mime types.
  * All networking code is using the FFmpeg i/o routines.
- * It will utilise multiple-core cpus.
+ * It will utilise multiple-core cpus.  FFmpeg is built with threading support, and separate threads are used for each of demux, audio decode, video decode, and video rendering.
  * There is and never will be any advertising, spying, or data collection of any kind.
 
 The Internet Connectivity requirement at installation time is needed for HTTP streams.
@@ -28,6 +28,7 @@ This is seriously alpha software, so far from complete.
  * For some videos the progress bar doesn't progress cleanly but jumps back and forth.
  * The video is simply scaled to the screen size - no aspect ratio calculations are performed.
  * UI is somewhat lacking, no pause/resume/etc.
+ * Changing applications causes playing to stop and not resume - this used to work so something got broken recently.
 
 = License =
 
