@@ -1,0 +1,65 @@
+
+README-android
+--------------
+
+This includes the android-specific classes and the android
+native target build.
+
+Please see jjmpeg-core/README for further information about
+jjmpeg in general.
+
+STATUS
+------
+
+This includes an activity "JJPlayer" which implements a basic
+interactive video and audio player.
+
+Currently on an arm7-v7l build is created - this is basically ARM +
+NEON.  GLES2 is also a requirement.
+
+There is a very serious bug with the video player: at least on an ASUS
+Transformer Prime this causes the video player to crash reliably.
+
+BUILDING
+--------
+
+The build is mostly using the android sdk build scripts and standard
+makefiles.  Within the jni directory there is another Makefile which
+calls the android one (I don't care if this is not recommended
+practice).
+
+Run
+ ./configure --target=X
+To configure for a specific target.
+
+Other configuration options are taken from ../jjmpeg-core/config.mk or
+the various android configuration files.
+
+make or ant then compiles the normal android targets.
+
+LINKS
+-----
+
+jjmpeg is hosted on google code at the following url:
+ http://code.google.com/p/jjmpeg
+
+A log of development activity and thoughts:
+ http://a-hackers-craic.blogspot.com/search/label/jjmpeg
+
+A (very quiet) mailing list is available:
+ http://groups.google.com/group/jjmpeg-discuss
+
+LICENSE
+-------
+
+jjmpeg is free software: you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published
+by the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+jjmpeg is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
+License for more details.
+
+See the file COPYING for terms of use.
