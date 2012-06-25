@@ -19,7 +19,7 @@ The Internet Connectivity requirement at installation time is needed for HTTP st
 
 = Known bugs =
 
-This is seriously alpha software, so far from complete.
+This is seriously alpha software, so far from complete and chock-a-block full of bugs:
 
  * In the emulator the frames are displayed in the wrong order (rapid jumping), not sure if this happens on other hardware (probably so)
  * It usually crashes at the end of playing videos (it's just closing some resources in the wrong order).
