@@ -35,7 +35,7 @@ include $(PREBUILT_STATIC_LIBRARY)
 include $(CLEAR_VARS)
 #APP_OPTIM=debug
 CORE=../../jjmpeg-core/jni
-LIBVERSION=011
+include ../config.mk
 LOCAL_MODULE := jjmpeg$(LIBVERSION)
 LOCAL_SRC_FILES := ../../jjmpeg-core/jni/jjmpeg/jjmpeg.c
 LOCAL_STATIC_LIBRARIES := avformat avcodec swscale avutil swresample
