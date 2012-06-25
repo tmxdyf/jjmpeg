@@ -1,5 +1,5 @@
 
-include $(TOP)/config.mk
+include $(TOP)/../config.mk
 
 LIB=libjjmpeg$(LIBVERSION).so
 TARGET=gnu-i386

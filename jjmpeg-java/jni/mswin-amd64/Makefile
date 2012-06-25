@@ -1,4 +1,4 @@
-include $(TOP)/config.mk
+include $(TOP)/../config.mk
 
 LIB=jjmpeg$(LIBVERSION).dll
 TARGET=mswin-amd64

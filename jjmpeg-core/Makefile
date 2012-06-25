@@ -7,24 +7,17 @@ include ./config.mk
 none:
 	@echo "Select a target:"
 	@echo ""
-	@echo " make all - compile core, java, and android, and natives"
-	@echo " make java - compile core, java classes"
-	@echo " make android - compile core, android classes, and android native"
-	@echo " make dist - create distribution archives of binaries"
+	@echo " make android TARGET=target, build specific android target, unsigned release package"
+	@echo " make java, build configured java targets"
+	@echo " make dist, build all for all configured targets"
 	@echo ""
 
-all: native-java native-android
-	ant jar
-	( cd ../jjmpeg-java && ant jar )
-	( cd ../jjmpeg-android && ant debug )
+android: native-android
+	( cd ../jjmpeg-android && ./configure --target=$(TARGET) && cd jni && make )
+	( cd ../jjmpeg-android && ant release )
 
-native-java:
-	( cd ../jjmpeg-java/jni && make )
-
-native-android:
-	( cd ../jjmpeg-android/jni && make )
-
-java: native-java
+java:
+	( cd ../jjmpeg-java && ./configure && cd jni && make )
 	ant jar
 	( cd ../jjmpeg-java && ant jar )
 
