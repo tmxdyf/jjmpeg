@@ -5,6 +5,8 @@
 
 JJPlayer is the player included in the android package.  It is a fairly bare-bones player used to test jjmpeg on this platform.  jjmpeg contains much more than just the decoding libraries, which is probably more useful than another video player.
 
+_In other words, JJPlayer is just a demonstration of jjmpeg, and not the primary goal of the project_.
+
 Here are a few short notes about it.
 
  * It only uses software decoding provided by FFmpeg for all streams (which limits it's upper resolution somewhat).
