@@ -7,7 +7,7 @@ JJPlayer is the player included in the android package.  Here are a few short no
 
  * It only uses software decoding provided by FFmpeg for all streams.
  * GLESv2 is used for the YUV to RGB conversion.
- * The activity is set up to be invoked for mime types video/* and audio/*
+ * The activity is set up to be invoked for mime types video/`*` and audio/`*`
  * The activity is set up to be invoked for http or local resources of these mime types.
  * All networking code is using the FFmpeg i/o routines.
  * It will utilise multiple-core cpus.
