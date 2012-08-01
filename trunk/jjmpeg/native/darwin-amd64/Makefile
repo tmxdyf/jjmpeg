@@ -4,6 +4,7 @@ TARGET=darwin-amd64
 include $(SRC)/config.make
 
 FFMPEG_HOME=/usr/include/ffmpeg
+jjmpeg_lib=libjjmpeg.dylib
 
 CROSS=x86_64-apple-darwin9-
 TARGET_JNI_CFLAGS = -I$(SRC)/jni/darwin
