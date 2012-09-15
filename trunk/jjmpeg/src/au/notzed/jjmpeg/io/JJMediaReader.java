@@ -602,7 +602,8 @@ public class JJMediaReader {
 		public void dispose() {
 			super.dispose();
 
-			iframe.dispose();
+			if (iframe != null)
+				iframe.dispose();
 
 			if (oscale != null) {
 				oscale.dispose();
