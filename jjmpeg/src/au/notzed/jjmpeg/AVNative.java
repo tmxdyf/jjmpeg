@@ -44,6 +44,7 @@ abstract public class AVNative extends WeakReference<AVObject> {
 		this.p = p;
 		p.order(ByteOrder.nativeOrder());
 
+		//System.out.println("new " + getClass().getName());
 		gc();
 	}
 	static final boolean is64;
@@ -101,7 +102,8 @@ abstract public class AVNative extends WeakReference<AVObject> {
 		AVNative an;
 
 		while (((an = (AVNative) refqueue.poll()) != null)) {
-			Logger.getLogger(AVNative.class.getName()).log(Level.FINEST, "Auto Disposing: {0}", an.getClass().getName());
+			Logger.getLogger(AVNative.class.getName()).log(Level.FINE, "Auto Disposing: {0}", an.getClass().getName());
+			//System.out.printf("** Auto Disposing: {0}\n", an.getClass().getName());
 			an.dispose();
 		}
 
