@@ -23,6 +23,7 @@ import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.ConcurrentModificationException;
 import java.util.LinkedList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -119,10 +120,15 @@ abstract public class AVNative extends WeakReference<AVObject> {
 	 * @param out
 	 */
 	public static void dumpLive(PrintStream out) {
-		for (AVNative n : reflist) {
-			if (n.get() != null) {
-				System.out.println("Live : " + n.getClass().getName());
+		try {
+			for (AVNative n : reflist) {
+				if (n.get() != null) {
+					System.out.println("Live : " + n.getClass().getName());
+				}
 			}
+			// just ignore these
+		} catch (NullPointerException x) {
+		} catch (ConcurrentModificationException x) {
 		}
 	}
 
