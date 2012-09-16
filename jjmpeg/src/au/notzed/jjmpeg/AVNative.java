@@ -18,6 +18,7 @@
  */
 package au.notzed.jjmpeg;
 
+import java.io.PrintStream;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
@@ -43,7 +44,7 @@ abstract public class AVNative extends WeakReference<AVObject> {
 		this.p = p;
 		p.order(ByteOrder.nativeOrder());
 
-		gc(2);
+		gc();
 	}
 	static final boolean is64;
 	/**
@@ -96,14 +97,30 @@ abstract public class AVNative extends WeakReference<AVObject> {
 		return vers;
 	}
 
-	private static void gc(int limit) {
+	private static void gc() {
 		AVNative an;
-		int count = 0;
 
-		while (count < limit
-				&& ((an = (AVNative) refqueue.poll()) != null)) {
+		while (((an = (AVNative) refqueue.poll()) != null)) {
+			Logger.getLogger(AVNative.class.getName()).log(Level.FINEST, "Auto Disposing: {0}", an.getClass().getName());
 			an.dispose();
-			count += 1;
+		}
+
+		//for (AVNative n : reflist) {
+		//	if (n.get() == null) {
+		//		System.out.println("Unreachable: " + n.getClass().getName() + " is enqueued = " + n.isEnqueued());
+		//	}
+		//}
+	}
+
+	/**
+	 * Debug: dump live object list
+	 * @param out
+	 */
+	public static void dumpLive(PrintStream out) {
+		for (AVNative n : reflist) {
+			if (n.get() != null) {
+				System.out.println("Live : " + n.getClass().getName());
+			}
 		}
 	}
 
@@ -116,7 +133,7 @@ abstract public class AVNative extends WeakReference<AVObject> {
 		if (p != null) {
 			reflist.remove(this);
 			p = null;
-			Logger.getLogger(AVNative.class.getName()).log(Level.FINEST, "Disposing: " + getClass().getName());
+			Logger.getLogger(AVNative.class.getName()).log(Level.FINE, "Disposing: {0}", getClass().getName());
 		}
 	}
 }
