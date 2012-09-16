@@ -85,7 +85,7 @@ class AVFrameNative extends AVFrameNativeAbstract {
 	}
 
 	static native ByteBuffer getPlaneAt(ByteBuffer p, int index, int pixelFormat, int width, int height);
-	
+
 	@Override
 	public void dispose() {
 		if (p != null) {

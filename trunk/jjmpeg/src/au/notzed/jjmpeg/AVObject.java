@@ -10,7 +10,7 @@ public class AVObject {
 	final protected void setNative(AVNative n) {
 		this.n = n;
 	}
-	
+
 	/**
 	 * Dispose of native resources for this object.
 	 */
