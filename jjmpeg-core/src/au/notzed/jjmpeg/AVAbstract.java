@@ -13,57 +13,57 @@ abstract class AVCodecContextNativeAbstract extends AVNative {
 	}
 	// Fields
 	native int getBitRate();
-	native int setBitRate(int val);
+	native void setBitRate(int val);
 	native int getFlags();
-	native int setFlags(int val);
+	native void setFlags(int val);
 	native int getWidth();
-	native int setWidth(int val);
+	native void setWidth(int val);
 	native int getHeight();
-	native int setHeight(int val);
+	native void setHeight(int val);
 	native int getPixFmt();
-	native int setPixFmt(int val);
+	native void setPixFmt(int val);
 	native int getSampleRate();
-	native int setSampleRate(int val);
+	native void setSampleRate(int val);
 	native int getChannels();
-	native int setChannels(int val);
+	native void setChannels(int val);
 	native long getChannelLayout();
-	native long setChannelLayout(long val);
+	native void setChannelLayout(long val);
 	native int getSampleFmt();
-	native int setSampleFmt(int val);
+	native void setSampleFmt(int val);
 	native int getFrameSize();
-	native int setFrameSize(int val);
+	native void setFrameSize(int val);
 	native int getFrameNumber();
 	native int getCodecType();
-	native int setCodecType(int val);
+	native void setCodecType(int val);
 	native int getCodecID();
-	native int setCodecID(int val);
+	native void setCodecID(int val);
 	native int getGOPSize();
-	native int setGOPSize(int val);
+	native void setGOPSize(int val);
 	native int getMaxBFrames();
-	native int setMaxBFrames(int val);
+	native void setMaxBFrames(int val);
 	native AVRational getTimeBase();
 	native int getTimeBaseNum();
-	native int setTimeBaseNum(int val);
+	native void setTimeBaseNum(int val);
 	native int getTimeBaseDen();
-	native int setTimeBaseDen(int val);
+	native void setTimeBaseDen(int val);
 	native int getStrictStdCompliance();
-	native int setStrictStdCompliance(int val);
+	native void setStrictStdCompliance(int val);
 	native int getIdctAlgo();
-	native int setIdctAlgo(int val);
+	native void setIdctAlgo(int val);
 	native int getErrorConcealment();
-	native int setErrorConcealment(int val);
+	native void setErrorConcealment(int val);
 	native int getMbDecision();
-	native int setMbDecision(int val);
+	native void setMbDecision(int val);
 	native int getThreadCount();
-	native int setThreadCount(int val);
+	native void setThreadCount(int val);
 	native int getSkipFrame();
-	native int setSkipFrame(int val);
+	native void setSkipFrame(int val);
 	native int getLowres();
-	native int setLowres(int val);
+	native void setLowres(int val);
 	native int getCodedWidth();
-	native int setCodedWidth(int val);
+	native void setCodedWidth(int val);
 	native int getCodedHeight();
-	native int setCodedHeight(int val);
+	native void setCodedHeight(int val);
 	native AVFrame getCodedFrame();
 	// Native Methods
 	 native int open(AVCodecNative codec);
@@ -312,18 +312,18 @@ abstract class AVFormatContextNativeAbstract extends AVNative {
 	}
 	// Fields
 	native AVInputFormat getInputFormat();
-	native AVInputFormat setInputFormat(AVInputFormat val);
+	native void setInputFormat(AVInputFormatNative val);
 	native AVOutputFormat getOutputFormat();
-	native AVOutputFormat setOutputFormat(AVOutputFormat val);
+	native void setOutputFormat(AVOutputFormatNative val);
 	native AVIOContext getIOContext();
-	native AVIOContext setIOContext(AVIOContext val);
+	native void setIOContext(AVIOContextNative val);
 	native int getNBStreams();
 	native AVStream getStreamAt(int index);
 	native long getStartTime();
 	native long getDuration();
 	native int getBitRate();
 	native int getFlags();
-	native int setFlags(int val);
+	native void setFlags(int val);
 	// Native Methods
 	 native int seek_frame(int stream_index, long timestamp, int flags);
 	 native int read_frame(AVPacketNative pkt);
@@ -351,19 +351,19 @@ abstract class AVFormatContextAbstract extends AVObject {
 		return n.getInputFormat();
 	}
 	public  void setInputFormat(AVInputFormat val) {
-		n.setInputFormat(val);
+		n.setInputFormat(val.n);
 	}
 	public  AVOutputFormat getOutputFormat() {
 		return n.getOutputFormat();
 	}
 	public  void setOutputFormat(AVOutputFormat val) {
-		n.setOutputFormat(val);
+		n.setOutputFormat(val.n);
 	}
 	public  AVIOContext getIOContext() {
 		return n.getIOContext();
 	}
 	public  void setIOContext(AVIOContext val) {
-		n.setIOContext(val);
+		n.setIOContext(val.n);
 	}
 	public  int getNBStreams() {
 		return n.getNBStreams();
@@ -462,7 +462,7 @@ abstract class AVOutputFormatNativeAbstract extends AVNative {
 	native int getAudioCodec();
 	native int getSubtitleCodec();
 	native int getFlags();
-	native int setFlags(int val);
+	native void setFlags(int val);
 	// Native Methods
 	static  native AVOutputFormat guess_format(String short_name, String filename, String mime_type);
 }
@@ -533,15 +533,15 @@ abstract class AVPacketNativeAbstract extends AVNative {
 	}
 	// Fields
 	native long getPTS();
-	native long setPTS(long val);
+	native void setPTS(long val);
 	native long getDTS();
-	native long setDTS(long val);
+	native void setDTS(long val);
 	native int getSize();
 	native int getStreamIndex();
-	native int setStreamIndex(int val);
+	native void setStreamIndex(int val);
 	native long getPos();
 	native int getFlags();
-	native int setFlags(int val);
+	native void setFlags(int val);
 	// Native Methods
 	 native void free_packet();
 	 native void init_packet();
@@ -606,11 +606,11 @@ abstract class AVFrameNativeAbstract extends AVNative {
 	native int getLineSizeAt(int index);
 	native int getKeyFrame();
 	native long getPTS();
-	native long setPTS(long val);
+	native void setPTS(long val);
 	native int getDisplayPictureNumber();
 	native int getCodedPictureNumber();
 	native int getNbSamples();
-	native int setNbSamples(int val);
+	native void setNbSamples(int val);
 	// Native Methods
 	static  native AVFrame alloc_frame();
 	 native void get_frame_defaults();
@@ -727,9 +727,9 @@ abstract class AVRationalNativeAbstract extends AVNative {
 	}
 	// Fields
 	native int getNum();
-	native int setNum(int val);
+	native void setNum(int val);
 	native int getDen();
-	native int setDen(int val);
+	native void setDen(int val);
 	// Native Methods
 	static  native long rescale(long a, long b, long c);
 }

@@ -553,7 +553,15 @@ static int64_t AVIOContext_seek(void *opaque, int64_t offset, int whence) {
 #define ALLOC_STREAMED 2
 
 JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVIOContextNative_allocContext
-(JNIEnv *env, jclass jc, jint size, jint flags) {
+(JNIEnv *env, jclass jc, jclass oc, jint size, jint flags) {
+	jmethodID init_p = (*env)->GetMethodID(env, oc, "<init>", NEWSIG);
+
+	if (!init_p) {
+		fprintf(stderr, "No suitable constructor for native object");
+		// throw error
+		return NULL;
+	}
+
 	unsigned char *buf = CALLDL(av_malloc)(size);
 
 	if (buf == NULL)
@@ -572,15 +580,16 @@ JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVIOContextNative_allocContext
 						      AVIOContext_writePacket,
 						      AVIOContext_seek);
 
+	d(printf(" = %p\n", res));
 	if (res != NULL) {
 		// this is deprecated, although i don't know if i should still set it anyway
 		//res->is_streamed = (flags & ALLOC_STREAMED) != 0;
 		res->seekable = (flags & ALLOC_STREAMED) ? 0 : AVIO_SEEKABLE_NORMAL;
+
+		return (*env)->NewObject(env, oc, init_p, NEWCAST(res));
+	} else {
+		return NULL;
 	}
-
-	d(printf(" = %p\n", res));
-
-	return WRAP(res, sizeof(*res));
 }
 
 JNIEXPORT jobject JNICALL Java_au_notzed_jjmpeg_AVIOContextNative_probeInput

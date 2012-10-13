@@ -35,11 +35,13 @@ $jimpl = "Native";
 
 if ($size == 64) {
     $resolveObject ="\t:class: *cptr = (:class: *)(*env)->GetLongField(env, jo, :class:_p);\n";
+    $resolveObjectField = "(:class: *)(*env)->GetLongField(env, val, :class:_p)";
     $createObject = "(*env)->NewObject(env, :class:_class, :class:_init_p, (jlong):res:)";
     $jptrsig = "J";
     $jnative = "Native64";
 } else {
     $resolveObject ="\t:class: *cptr = (:class: *)(*env)->GetIntField(env, jo, :class:_p);\n";
+    $resolveObjectField = "(:class: *)(*env)->GetIntField(env, val, :class:_p)";
     $createObject = "(*env)->NewObject(env, :class:_class, :class:_init_p, (jint):res:)";
     $jptrsig = "I";
     $jnative = "Native32";
@@ -601,18 +603,32 @@ foreach $classinfo (@classes) {
 	    print $res;
 	    #print "\tjobject jptr = (*env)->GetObjectField(env, jo, field_p);\n";
 	    #print "\t$class *cptr = ADDR(jptr);\n";
+
+	    if ($fi{ntype} eq "jobject") {
+		my $r = $resolveObjectField;
+
+		$r =~ s/:class:/$fi{type}/g;
+
+		print "\t$fi{type} *cval = $r;\n";
+	    }
+
 	    print "\tcptr->$fi{name}";
 	    if ($ind) {
 		print "[index]";
 	    }
 	    print " = ";
-	    if ($opt =~ m/o/) {
-		print "ADDR(";
+	    if ($fi{ntype} eq "jobject") {
+		print "cval";
+	    } else {
+		print "val";
 	    }
-	    print "val";
-	    if ($opt =~ m/o/) {
-		print(")");
-	    }
+	    #if ($opt =~ m/o/) {
+	#	print "ADDR(";
+	#    }
+	#    print "val";
+	#    if ($opt =~ m/o/) {
+	#	print(")");
+	#    }
 	    print ";\n}\n\n";
 	}
     }
@@ -792,12 +808,16 @@ foreach $classinfo (@classes) {
 	    print ";\n";
 	}
 	if ($opt =~ m/s/) {
-	    print "\tnative $fi{jtype} $fi{prefix}set$fi{jname}$fi{suffix}(";
+	    print "\tnative void $fi{prefix}set$fi{jname}$fi{suffix}(";
 	    #print "ByteBuffer p, ";
 	    if ($ind) {
 		print "int index, ";
 	    }
-	    print "$fi{jtype} val";
+	    if ($opt =~ m/o/) {
+		print "$fi{jtype}Native val";
+	    } else {
+		print "$fi{jtype} val";
+	    }
 	    print ");\n";
 	}
     }
@@ -888,7 +908,7 @@ foreach $classinfo (@classes) {
 	if ($opt =~ m/s/) {
 	    if ($opt =~ m/o/) {
 		print "\t${scope} void set$fi{jname}($fi{type} val) {\n";
-		print "\t\tn.set$fi{jname}(val);\n\t}\n";
+		print "\t\tn.set$fi{jname}(val.n);\n\t}\n";
 	    } elsif ($opt =~ m/e/) {
 		print "\t${scope} void set$fi{jname}($fi{type} val) {\n";
 		print "\t\tn.set$fi{jname}(val.toC());\n\t}\n";

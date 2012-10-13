@@ -19,6 +19,7 @@
 package au.notzed.jjmpeg.io;
 
 import au.notzed.jjmpeg.AVIOContext;
+import au.notzed.jjmpeg.exception.AVIOException;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -32,15 +33,21 @@ public class JJFileInputStream extends AVIOContext {
 
 	FileInputStream fis;
 
-	// FIXME: this is broken
-	protected JJFileInputStream(FileInputStream is) {
-		super(0);
-		//super(4096, 0);
-		this.fis = is;
+	JJFileInputStream(long p) {
+		super(p);
 	}
 
-	public static JJFileInputStream create(FileInputStream is) {
-		JJFileInputStream jjfis = new JJFileInputStream(is);
+	JJFileInputStream(int p) {
+		super(p);
+	}
+
+	public static JJFileInputStream create(FileInputStream is) throws AVIOException {
+		JJFileInputStream jjfis = (JJFileInputStream) allocContext(JJFileInputStream.class, 4096, 0);
+
+		if (jjfis == null)
+			throw new AVIOException("Unable to allocate context");
+
+		jjfis.fis = is;
 
 		return jjfis;
 	}

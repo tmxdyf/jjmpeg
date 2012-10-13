@@ -34,8 +34,6 @@ import au.notzed.jjmpeg.exception.AVDecodingError;
 import au.notzed.jjmpeg.exception.AVIOException;
 import au.notzed.jjmpeg.exception.AVInvalidCodecException;
 import au.notzed.jjmpeg.exception.AVInvalidStreamException;
-import java.awt.image.BufferedImage;
-import java.awt.image.DataBufferByte;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -542,6 +540,19 @@ public class JJMediaReader {
 			return fmt;
 		}
 
+		public int getOutputWidth() {
+			return swidth;
+		}
+
+		public int getOutputHeight() {
+			return sheight;
+		}
+
+		public PixelFormat getOutputPixelFormat() {
+			return ofmt;
+		}
+
+
 		/**
 		 * Set the output format for use with getOutputFrame()
 		 *
@@ -569,10 +580,9 @@ public class JJMediaReader {
 		 *
 		 * @return
 		 */
-		public BufferedImage createImage() {
-			return new BufferedImage(swidth, sheight, BufferedImage.TYPE_3BYTE_BGR);
-		}
-
+		//public BufferedImage createImage() {
+		//	return new BufferedImage(swidth, sheight, BufferedImage.TYPE_3BYTE_BGR);
+		//}
 		/**
 		 * Retrieve the scaled frame, or just the raw frame if no output format set
 		 *
@@ -591,20 +601,26 @@ public class JJMediaReader {
 		}
 
 		/**
-		 * Get the output frame into a buffered image.
-		 * TODO: only works with FIX_FMT_BGR24!
+		 * Get the output frame into an array.
 		 *
-		 * @param dst
+		 * If the format is not sed, then PIX_FMT_BGR24 is used -
+		 * corresponding to RGB format data.
+		 *
+		 * @param dst if null, a suitable sized array is allocated.
 		 * @return dst
 		 */
-		public BufferedImage getOutputFrame(BufferedImage dst) {
-			assert (dst.getType() == BufferedImage.TYPE_3BYTE_BGR);
+		public byte[] getOutputFrame(byte[] dst) {
 			if (ofmt == null) {
 				setOutputFormat(PixelFormat.PIX_FMT_BGR24, width, height);
 			}
-			// Scale directly to target image
-			byte[] data = ((DataBufferByte) dst.getRaster().getDataBuffer()).getData();
-			scale.scale(iframe, 0, height, data);
+			if (dst == null) {
+				// TODO: this could work with any format
+				assert (PixelFormat.PIX_FMT_BGR24 == ofmt);
+				dst = new byte[swidth * sheight * 3];
+			}
+
+			// Scale directly to target
+			scale.scale(iframe, 0, height, dst);
 			return dst;
 		}
 

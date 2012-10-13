@@ -372,38 +372,27 @@ public class JJMediaWriter {
 		}
 
 		/**
-		 * Convert bufferedimage to matching output format
+		 * Convert RGB array into output format
 		 * @param bi
 		 */
-		//private AVFrame loadImage(BufferedImage bi) {
-		//	int height = c.getHeight();
-
-		//	byte[] data = ((DataBufferByte) bi.getRaster().getDataBuffer()).getData();
-			// Convert to YUV
+		private AVFrame loadRGB(byte[] data) {
+			int height = c.getHeight();
 
 			// TODO: only if output format not bgr24
-		//	if (rgbPicture == null) {
-		//		int width = c.getWidth();
+			if (rgbPicture == null) {
+				int width = c.getWidth();
 
-		//		rgbPicture = AVFrame.create(PixelFormat.PIX_FMT_BGR24, width, height);
-		//		rgbSWS = SwsContext.create(width, height, PixelFormat.PIX_FMT_BGR24, width, height, c.getPixFmt(), SwsContext.SWS_X);
-		//		rgbPlane = rgbPicture.getPlaneAt(0, PixelFormat.PIX_FMT_BGR24, width, height);
-		//	}
+				rgbPicture = AVFrame.create(PixelFormat.PIX_FMT_BGR24, width, height);
+				rgbSWS = SwsContext.create(width, height, PixelFormat.PIX_FMT_BGR24, width, height, c.getPixFmt(), SwsContext.SWS_X);
+				rgbPlane = rgbPicture.getPlaneAt(0, PixelFormat.PIX_FMT_BGR24, width, height);
+			}
 
-		//	rgbPlane.data.put(data);
-		//	rgbPlane.data.rewind();
-		//	rgbSWS.scale(rgbPicture, 0, height, picture);
+			rgbPlane.data.put(data);
+			rgbPlane.data.rewind();
+			rgbSWS.scale(rgbPicture, 0, height, picture);
 
-		//	return picture;
-		//}
-
-		/**
-		 * Create an image suitable for writing to this stream.
-		 * i.e. will be TYPE_3BYTE_BGR
-		 */
-		//public BufferedImage createImage() {
-		//	return new BufferedImage(c.getWidth(), c.getHeight(), BufferedImage.TYPE_3BYTE_BGR);
-		//}
+			return picture;
+		}
 
 		/**
 		 * Write next video frame.
@@ -437,17 +426,15 @@ public class JJMediaWriter {
 		}
 
 		/**
-		 * Add a frame as an RGB buffered image.
+		 * Add a frame as an RGB bitmap
 		 * @param sd
 		 * @param bi Should be created with createImage.
 		 * @throws AVEncodingError
 		 * @throws AVIOException
 		 */
-		//public void addFrame(BufferedImage bi) throws AVEncodingError, AVIOException {
-			// TODO: check image is the right size and format
-
-		//	addFrame(loadImage(bi));
-		//}
+		public void addFrameRGB(byte[] data) throws AVEncodingError, AVIOException {
+			addFrame(loadRGB(data));
+		}
 	}
 
 	public class JJWriterAudio extends JJWriterStream {
