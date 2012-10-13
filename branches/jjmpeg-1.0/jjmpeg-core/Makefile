@@ -12,7 +12,7 @@ none:
 	@echo " make dist, build all for all configured targets"
 	@echo ""
 
-android: native-android
+android:
 	( cd ../jjmpeg-android && ./configure --target=$(TARGET) && cd jni && make )
 	( cd ../jjmpeg-android && ant release )
 
