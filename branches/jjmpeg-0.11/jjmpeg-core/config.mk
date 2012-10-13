@@ -4,9 +4,13 @@ ANDROID_TARGETS=armeabi armeabi-v7a
 JAVA_CROSS_TARGETS=mswin-amd64
 # Java native-compilation targets
 JAVA_HOST_TARGETS=gnu-amd64 gnu-i386
+# FFmpeg include location for host-built targets (cross is bundled)
+FFMPEG_HOST_CFLAGS=-I/opt/ffmpeg-0.11/include
 
 # Java SDK location
-JAVA_SDK=/usr/java/latest
+JDK_HOME=/usr/java/latest
+# And Java home
+JAVA_HOME=/usr/java/latest
 # For android release, key store location
 KEYSTORE=/home/notzed/.ssh/jjmpeg-release-key.keystore
 # Android SDK

@@ -71,7 +71,7 @@ for target in $ANDROID_TARGETS ; do
     ant clean
     make release
     echo "Signing release package for android"
-    ${JAVA_SDK}/bin/jarsigner -sigalg MD5withRSA -digestalg SHA1 -keystore ${KEYSTORE} -signedjar bin/JJPlayer-release-unaligned.apk bin/JJPlayer-release-unsigned.apk jjmpeg
+    ${JDK_HOME}/bin/jarsigner -sigalg MD5withRSA -digestalg SHA1 -keystore ${KEYSTORE} -signedjar bin/JJPlayer-release-unaligned.apk bin/JJPlayer-release-unsigned.apk jjmpeg
     ${ANDROID_SDK}/tools/zipalign -v -f 4 bin/JJPlayer-release-unaligned.apk bin/JJPlayer-release.apk
     cp ${ANDROID}/bin/JJPlayer-release.apk ${CORE}/bin/JJPlayer-${VERSION}-${target}.apk
 done
