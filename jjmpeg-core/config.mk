@@ -5,7 +5,7 @@ JAVA_CROSS_TARGETS=mswin-amd64
 # Java native-compilation targets
 JAVA_HOST_TARGETS=gnu-amd64 gnu-i386
 # FFmpeg include location for host-built targets (cross is bundled)
-FFMPEG_HOST_CFLAGS=-I/opt/ffmpeg-0.11/include
+FFMPEG_HOST_CFLAGS=-I/opt/ffmpeg-1.0/include
 
 # Java SDK location
 JDK_HOME=/usr/java/latest
@@ -19,6 +19,8 @@ ANDROID_SDK=/usr/local/android-sdk-linux
 ANDROID_NDK=/usr/local/android-ndk-r7c
 
 # Release version name
-VERSION=0.11.1a2
+VERSION=1.0.0a1
 # Library version tag
-LIBVERSION=011
+LIBVERSION=100
+# FFmpeg version path
+FFMPEG_VERSION=ffmpeg-1.0
