@@ -1,0 +1,35 @@
+
+BUILDING
+--------
+
+$ make
+
+Will compile all target platforms.
+
+config.mk defines the targets to be built.
+
+build-ffmpeg compiles ffmpeg for the cross-compiled targets (mingwin32).
+
+Perl must be installed, naturally.
+
+TARGETS
+-------
+
+Each target has it's own directory which must define 3 files:
+
+ Makefile - defines various options and includes jjmpeg.mk.
+
+ jjmpeg-platform.h - platform specific includes and definitions.
+
+ jjmpeg-platform.c - platform specific init and functions.  This must
+ at least define:
+
+   int platform_init(JNIEnv *env);
+
+ Which returns <0 on error.
+
+ISSUES
+------
+
+There are still some dependency problems, so for example one may have
+to manually remove ffmpeg.built or jjmpeg.built to update the build.
