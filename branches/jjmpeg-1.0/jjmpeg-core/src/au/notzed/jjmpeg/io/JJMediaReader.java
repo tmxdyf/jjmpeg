@@ -84,7 +84,11 @@ public class JJMediaReader {
 					streams.add(as);
 					streamsByID.put(s.getIndex(), as);
 					break;
+				default:
+					s.dispose();
+					break;
 			}
+			cc.dispose();
 		}
 
 		if (streams.isEmpty()) {
@@ -147,6 +151,7 @@ public class JJMediaReader {
 			m.dispose();
 		}
 		format.dispose();
+		packet.dispose();
 	}
 
 	/**
@@ -319,6 +324,7 @@ public class JJMediaReader {
 			AVRational tb = stream.getTimeBase();
 			tb_Num = tb.getNum();
 			tb_Den = tb.getDen();
+			tb.dispose();
 
 			startpts = stream.getStartTime();
 			startms = AVRational.rescale(startpts * 1000, tb_Num, tb_Den);
@@ -334,6 +340,7 @@ public class JJMediaReader {
 				codec.dispose();
 			}
 			c.dispose();
+			stream.dispose();
 		}
 
 		public AVCodecContext getContext() {
