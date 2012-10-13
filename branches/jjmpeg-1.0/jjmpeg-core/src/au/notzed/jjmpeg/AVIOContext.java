@@ -22,14 +22,25 @@ package au.notzed.jjmpeg;
 import au.notzed.jjmpeg.exception.AVIOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.IntBuffer;
 
 /**
  * Wrapper for AVIOContext - allows custom streams to
  * be implemented from java.
  *
+ * To implement a custom stream the following things must be done:
+ *
+ * Implement new(int p) and new(long p) to simply call the parent
+ * constructor.
+ *
+ * Implement a create() method which invokes allocContext() with the
+ * appropriate class, size and flags which will call the default
+ * constructors above, the create method can then initialise any
+ * local fields.
+ *
  * @author notzed
  */
-public abstract class AVIOContext extends AVIOContextAbstract {
+public class AVIOContext extends AVIOContextAbstract {
 
 	public static final int AVSEEK_SIZE = 0x10000;
 	//
@@ -68,38 +79,28 @@ public abstract class AVIOContext extends AVIOContextAbstract {
 		setNative(new AVIOContextNative64(this, p, 0));
 	}
 
-	//static AVIOContext create(ByteBuffer p) {
-	// These could call back to the C versions
-	//	return new AVIOContext(p) {
-	//		@Override
-	//		public int readPacket(ByteBuffer dst) {
-	//			throw new UnsupportedOperationException("Not supported yet.");
-	//		}
-	//		@Override
-	//		public int writePacket(ByteBuffer src) {
-	//			throw new UnsupportedOperationException("Not supported yet.");
-	//		}
-	//		@Override
-	//		public long seek(long offset, int whence) {
-	//			throw new UnsupportedOperationException("Not supported yet.");
-	//		}
-	//	};
-	//}
 	public static AVIOContext open(String url, int flags) throws AVIOException {
-		return AVIOContextNative.open(url, flags);
+		IntBuffer ib = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder()).asIntBuffer();
+
+		AVIOContext ct = AVIOContextNative.open(url, flags, ib);
+
+		int errno = ib.get(0);
+		if (errno < 0) {
+			throw new AVIOException(errno);
+		}
+
+		return ct;
 	}
 
 	/**
-	 * Initialise the aviocontext.
+	 * Initialise the aviocontext.  Implementations use this
+	 * to create themselves.
 	 *
 	 * @param size
 	 * @param flags Taken from ALLOC_* flags
 	 */
-	protected static AVIOContext allocContext(int size, int flags) {
-		//AVIOContext ac = AVIOContextNative.allocContext(size, flags);
-		//AVIOContextNative.bind(ac, ac);
-
-		return AVIOContextNative.allocContext(size, flags);
+	protected static AVIOContext allocContext(Class c, int size, int flags) {
+		return AVIOContextNative.allocContext(c, size, flags);
 	}
 
 	/**
@@ -137,11 +138,18 @@ class AVIOContextNative extends AVIOContextNativeAbstract {
 		this.type = type;
 	}
 
-	static native AVIOContext allocContext(int size, int flags);
+	/**
+	 * Allocate an avio context, and bind it to the given object class.
+	 * @param oc
+	 * @param size
+	 * @param flags
+	 * @return
+	 */
+	static native AVIOContext allocContext(Class oc, int size, int flags);
 
 	native AVInputFormat probeInput(String filename, int offset, int max_probe_size);
 
-	static native AVIOContext open(String url, int flags);
+	static native AVIOContext open(String url, int flags, IntBuffer error_buf);
 
 	/**
 	 * Bind AVIOContext to java instance

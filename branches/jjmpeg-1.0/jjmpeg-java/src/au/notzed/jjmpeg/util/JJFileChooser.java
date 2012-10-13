@@ -20,6 +20,7 @@ package au.notzed.jjmpeg.util;
 
 import au.notzed.jjmpeg.AVFormatContext;
 import au.notzed.jjmpeg.PixelFormat;
+import au.notzed.jjmpeg.io.JJJavaMedia;
 import au.notzed.jjmpeg.io.JJMediaReader;
 import au.notzed.jjmpeg.io.JJMediaReader.JJReaderVideo;
 import java.awt.BorderLayout;
@@ -225,13 +226,13 @@ public class JJFileChooser extends JFileChooser {
 					}
 
 					vr.setOutputFormat(PixelFormat.PIX_FMT_BGR24, w, h);
-					preview_tmp = vr.createImage();
+					preview_tmp = JJJavaMedia.createBufferedImage(vr);
 
 					// preview video until cancelled
 					int count = 0;
 
 					while (!cancelled && (vr = (JJReaderVideo) mr.readFrame()) != null) {
-						vr.getOutputFrame(preview_tmp);
+						JJJavaMedia.getOutputFrame(vr, preview_tmp);
 
 						// Use java to centre it
 						gg.setColor(Color.black);

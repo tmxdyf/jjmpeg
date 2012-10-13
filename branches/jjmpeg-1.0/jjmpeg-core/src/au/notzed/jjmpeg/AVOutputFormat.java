@@ -20,6 +20,7 @@ package au.notzed.jjmpeg;
 
 import java.nio.ByteBuffer;
 
+
 /**
  *
  * @author notzed
@@ -33,8 +34,12 @@ public class AVOutputFormat extends AVOutputFormatAbstract implements AVFormat {
 	protected AVOutputFormat(long p) {
 		setNative(new AVOutputFormatNative64(this, p));
 	}
-}
 
+	@Override
+	public String toString() {
+		return n == null ? "null" : n.toString();
+	}
+}
 class AVOutputFormatNative extends AVOutputFormatNativeAbstract {
 
 	public AVOutputFormatNative(AVObject o) {
@@ -59,5 +64,10 @@ class AVOutputFormatNative64 extends AVOutputFormatNative {
 	AVOutputFormatNative64(AVObject o, long p) {
 		super(o);
 		this.p = p;
+	}
+
+	@Override
+	public String toString() {
+		return super.toString() + " p=" + p;
 	}
 }

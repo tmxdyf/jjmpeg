@@ -36,10 +36,16 @@
 #define PTR(jo, type) (jo ? (void *)(*env)->GetIntField(env, jo, type ## _p) : NULL)
 #define SET_PTR(jo, type, co) do { if (jo) (*env)->SetIntField(env, jo, type ## _p, (int)(co)); } while (0);
 #define NEWOBJ(cp, type) (cp ? (*env)->NewObject(env, type ## _class, type ## _init_p, (int)cp) : NULL)
+#define NEWSIG "(I)V"
+#define NEWBITS "32"
+#define NEWCAST(x) ((jint)(x))
 #else
 #define PTR(jo, type) (jo ? (void *)(*env)->GetLongField(env, jo, type ## _p) : NULL)
 #define SET_PTR(jo, type, co) do { if (jo) (*env)->SetLongField(env, jo, type ## _p, (jlong)(co)); } while (0);
 #define NEWOBJ(cp, type) (cp ? (*env)->NewObject(env, type ## _class, type ## _init_p, (jlong)cp) : NULL)
+#define NEWSIG "(J)V"
+#define NEWBITS "64"
+#define NEWCAST(x) ((jlong)(x))
 #endif
 
 #include <libavcodec/avcodec.h>
