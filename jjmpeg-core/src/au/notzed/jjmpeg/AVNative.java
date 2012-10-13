@@ -36,7 +36,7 @@ abstract public class AVNative extends WeakReference<AVObject> {
 	protected AVNative(AVObject jobject) {
 		super(jobject, refqueue);
 		reflist.add(this);
-		gc(2);
+		gc();
 	}
 	static final boolean is64;
 	/**
@@ -87,15 +87,12 @@ abstract public class AVNative extends WeakReference<AVObject> {
 		return vers;
 	}
 
-	private static void gc(int limit) {
+	private static void gc() {
 		AVNative an;
-		int count = 0;
 
-		while (count < limit
-				&& ((an = (AVNative) refqueue.poll()) != null)) {
+		while (((an = (AVNative) refqueue.poll()) != null)) {
 			System.err.println("auto-disposing " + an);
 			an.dispose();
-			count += 1;
 		}
 	}
 

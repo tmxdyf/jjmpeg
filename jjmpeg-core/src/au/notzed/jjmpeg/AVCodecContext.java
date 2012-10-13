@@ -174,6 +174,7 @@ public class AVCodecContext extends AVCodecContextAbstract {
 
 		return cc;
 	}
+	private boolean opened = false;
 
 	public void open(AVCodec codec) throws AVIOException {
 		int res = n.open(codec.n);
@@ -181,6 +182,23 @@ public class AVCodecContext extends AVCodecContextAbstract {
 		if (res < 0) {
 			throw new AVIOException(res);
 		}
+		opened = true;
+	}
+
+	@Override
+	public int close() {
+		if (opened) {
+			opened = false;
+			return super.close();
+		} else {
+			return 0;
+		}
+	}
+
+	@Override
+	public void dispose() {
+		close();
+		super.dispose();
 	}
 
 	/**
