@@ -422,6 +422,8 @@ public class JJMediaWriter {
 
 				/* write the compressed frame in the media file */
 				oc.interleavedWriteFrame(packet);
+
+				cframe.dispose();
 			}
 		}
 
