@@ -12,3 +12,4 @@
 #define HAVE_LOCK_CB 1
 
 #define ENABLE_DL 1
+#define HAVE_AVDEVICE 1

@@ -427,6 +427,7 @@ abstract class AVInputFormatNativeAbstract extends AVNative {
 	native String getLongName();
 	native int getFlags();
 	// Native Methods
+	static  native AVInputFormat find_input_format(String short_name);
 }
 
 abstract class AVInputFormatAbstract extends AVObject {
@@ -448,6 +449,9 @@ abstract class AVInputFormatAbstract extends AVObject {
 		return n.getFlags();
 	}
 	// Public Methods
+	static public AVInputFormat findInputFormat(String short_name) {
+		return AVInputFormatNativeAbstract.find_input_format(short_name);
+	}
 }
 abstract class AVOutputFormatNativeAbstract extends AVNative {
 	protected AVOutputFormatNativeAbstract(AVObject o) {
@@ -867,4 +871,31 @@ abstract class AVDictionaryAbstract extends AVObject {
 	}
 	// Fields
 	// Public Methods
+}
+abstract class AVDeviceNativeAbstract extends AVNative {
+	protected AVDeviceNativeAbstract(AVObject o) {
+		super(o);
+	}
+	// Fields
+	// Native Methods
+	static  native void register_all();
+	static  native int version();
+}
+
+abstract class AVDeviceAbstract extends AVObject {
+	AVDeviceNative n;
+	final protected void setNative(AVDeviceNative n) {
+		this.n = n;
+	}
+	public void dispose() {
+		n.dispose();
+	}
+	// Fields
+	// Public Methods
+	static public void registerAll() {
+		AVDeviceNativeAbstract.register_all();
+	}
+	static public int version() {
+		return AVDeviceNativeAbstract.version();
+	}
 }

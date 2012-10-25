@@ -168,9 +168,13 @@ $nativeprefix = "Java_au_notzed_jjmpeg";
 while (<IN>) {
     next if (m/^#/);
     if (m/class (.*)/) {
-	$class = $1;
-
 	my %classinfo = ();
+
+	$class = $1;
+	if ($class =~ m/([^ ]+) (.*)/) {
+	    $class = $1;
+	    $classinfo{requires} = $2;
+	}
 
 	$classinfo{name} = $class;
 
@@ -179,6 +183,10 @@ while (<IN>) {
 	# read fields
 	while (<IN>) {
 	    next if (m/^#/);
+	    #if (m/^requires (.*)/) {
+	#	$classinfo{requires} = $1;
+	#	next;
+	 #   }
 	    last if (m/^$/) || (m/^methods$/);
 
 	    my %fieldinfo = ();
@@ -260,6 +268,11 @@ while (<IN>) {
 		my $scope = "public";
 
 		$type = trim($type);
+
+		if ($type =~ m/optional (.*)/) {
+		    $methodinfo{optional} = 1;
+		    $type = $1;
+		}
 
 		if ($type =~ m/internal (.*)/) {
 		    $scope = "internal";
@@ -441,10 +454,17 @@ if ($dodl) {
 
 	my $class = $ci{name};
 	my @methods= @{$ci{methods}};
+
+	if ($ci{requires} ne "") {
+	    print "#ifdef $ci{requires}\n";
+	}
 	foreach $methodinfo (@methods) {
 	    my %mi = %{$methodinfo};
 
 	    print "static $mi{type} (*${dlsymprefix}$mi{name})($mi{rawargs});\n";
+	}
+	if ($ci{requires} ne "") {
+	    print "#endif\n";
 	}
     }
 }
@@ -493,11 +513,24 @@ if ($dodl) {
 
 	my $class = $ci{name};
 	my @methods= @{$ci{methods}};
+
+	if ($ci{requires} ne "") {
+	    print "#ifdef $ci{requires}\n";
+	}
+
 	foreach $methodinfo (@methods) {
 	    my %mi = %{$methodinfo};
 
 	    # man dlopen says to do this hacked up shit because of c99, but gcc whines rightly about it
-	    printf "\tMAPDL($mi{name}, $mi{library}_lib);\n";
+	    if ($mi{optional}) {
+		printf "\tMAPDLIF($mi{name}, $mi{library}_lib);\n";
+	    } else {
+		printf "\tMAPDL($mi{name}, $mi{library}_lib);\n";
+	    }
+	}
+
+	if ($ci{requires} ne "") {
+	    print "#endif\n";
 	}
     }
 }
@@ -518,6 +551,10 @@ foreach $classinfo (@classes) {
     # field accessors
     my @fields = @{$ci{fields}};
 
+    if ($ci{requires} ne "") {
+	print "#ifdef $ci{requires}\n";
+    }
+    
     foreach $fieldinfo (@fields) {
 	my %fi = %{$fieldinfo};
 
@@ -663,6 +700,19 @@ foreach $classinfo (@classes) {
 	    #print "\t$class *cptr = ($class *)(*env)->GetIntField(env, jo, ${class}_p);\n";
 	    #print "\t$class *cptr = ADDR(jptr);\n";
 	}
+
+	# check 'optional' functions at the C level to avoid JVM crashes.
+	if ($dodl && $mi{optional}) {
+	    print " if (!${dlsymprefix}$mi{name}) {\n";
+	    print "  throwException(env, \"java/lang/NoSuchMethodError\", \"$mi{name}\");\n";
+	    if ($mi{type} ne "void") {
+		print "  return 0;\n";
+	    } else {
+		print "  return;\n";
+	    }
+	    print " }\n";
+	}
+
 	# wrap/converty any jni args to c args
 	foreach $argdata (@arginfo) {
 	    %ai = %{$argdata};
@@ -763,6 +813,10 @@ foreach $classinfo (@classes) {
 	    print "\treturn res;\n";
 	}
 	print "}\n\n";
+    }
+
+    if ($ci{requires} ne "") {
+	print "#endif\n";
     }
 }
 

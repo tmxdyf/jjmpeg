@@ -27,6 +27,7 @@
 #include "jjmpeg-jni.h"
 
 static int init_platform(JNIEnv *env);
+static void throwException(JNIEnv *env, const char *type, const char *what);
 
 #include "jjmpeg-jni.c"
 
@@ -45,6 +46,9 @@ static int init_local(JNIEnv *env) {
 	DLOPEN(avformat_lib, "avformat", LIBAVFORMAT_VERSION_MAJOR);
 	DLOPEN(swscale_lib, "swscale", LIBSWSCALE_VERSION_MAJOR);
 	DLOPEN(swresample_lib, "swresample", LIBSWRESAMPLE_VERSION_MAJOR);
+#ifdef HAVE_AVDEVICE
+	DLOPENIF(avdevice_lib, "avdevice", LIBAVDEVICE_VERSION_MAJOR);
+#endif
 #endif
 	jclass byteioclass = (*env)->FindClass(env, "au/notzed/jjmpeg/AVIOContext");
 	if (byteioclass == NULL)
@@ -68,6 +72,16 @@ static int init_local(JNIEnv *env) {
 	}
 
 	return 0;
+}
+
+static void throwException(JNIEnv *env, const char *type, const char *what) {
+	jclass jc;
+
+	jc = (*env)->FindClass(env, type);
+	if (jc)
+		(*env)->ThrowNew(env, jc, what);
+	else
+		fprintf(stderr, "Can't throw exception %s '%s'\n", type, what);
 }
 
 /* ********************************************************************** */
