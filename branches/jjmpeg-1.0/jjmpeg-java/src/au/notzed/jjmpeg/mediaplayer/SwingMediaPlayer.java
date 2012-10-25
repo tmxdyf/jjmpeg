@@ -396,9 +396,7 @@ public class SwingMediaPlayer extends JPanel implements MediaSink, MediaPlayer {
 					frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 					frame.pack();
 					frame.setVisible(true);
-					//smp.open("/home/notzed/Videos/Ministry.of.Sound.The.Annual.2003.avi");
-					smp.open("/home/notzed/Videos/Doctor_Who-20120402193100.mp4");
-					//smp.open("/home/notzed/Videos/big-buck-bunny_trailer.webm");
+					smp.open("/home/notzed/Videos/big-buck-bunny_trailer.webm");
 
 				} catch (IOException ex) {
 					Logger.getLogger(SwingMediaPlayer.class.getName()).log(Level.SEVERE, null, ex);

@@ -51,6 +51,9 @@
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 #include <libavutil/avutil.h>
+#ifdef HAVE_AVDEVICE
+#include <libavdevice/avdevice.h>
+#endif
 
 static int init_local(JNIEnv *env);
 
@@ -88,4 +91,7 @@ static void *avcodec_lib;
 static void *avformat_lib;
 static void *swscale_lib;
 static void *swresample_lib;
+#ifdef HAVE_AVDEVICE
+static void *avdevice_lib;
+#endif
 #endif
