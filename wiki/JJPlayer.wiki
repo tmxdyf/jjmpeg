@@ -24,14 +24,14 @@ The Internet Connectivity requirement at installation time is needed for HTTP st
 
 This is seriously alpha software, so far from complete and chock-a-block full of bugs:
 
- * In the emulator the frames are displayed in the wrong order (rapid jumping), not sure if this happens on other hardware (probably so)
- * It usually crashes at the end of playing videos (it's just closing some resources in the wrong order).
  * For audio-only streams the progress bar doesn't update.
  * Audio-only streams do not play as a service (not in the background).
  * For some videos the progress bar doesn't progress cleanly but jumps back and forth.
- * The video is simply scaled to the screen size - no aspect ratio calculations are performed.
+ * Square pixel aspect ratio is assumed.
  * UI is somewhat lacking, no pause/resume/etc.
- * Changing applications causes playing to stop and not resume - this used to work so something got broken recently.
+ * Switching to/from full-screen display is jarring.
+ * Audio sometimes loses sync on seek, but should not drift.
+ * The code is a complete mess.
 
 = License =
 
