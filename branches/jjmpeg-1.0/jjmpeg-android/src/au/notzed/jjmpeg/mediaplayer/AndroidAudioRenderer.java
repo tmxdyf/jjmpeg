@@ -30,7 +30,7 @@ import au.notzed.jjmpeg.util.JJQueue;
  */
 public class AndroidAudioRenderer {
 
-	final static int NBUFFERS = 30;
+	final static int NBUFFERS = 60;
 	AudioTrack track;
 	AnAudioFrame[] bufferArray;
 	JJQueue<AnAudioFrame> buffers = new JJQueue<AnAudioFrame>(NBUFFERS);
@@ -87,6 +87,10 @@ public class AndroidAudioRenderer {
 			track.release();
 			track = null;
 		}
+	}
+	public void postSeek(long position) {
+		if (track != null)
+			track.flush();
 	}
 
 	public AudioFrame getFrame() throws InterruptedException {

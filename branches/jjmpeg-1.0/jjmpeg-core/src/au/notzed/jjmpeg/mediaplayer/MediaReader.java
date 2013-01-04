@@ -33,24 +33,28 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Reads AV packets and doles them out to appropriate decoding queues.
- *
- * Also provides player functions such as seek, postPause and so on.
+ * Low Level Media Player
  *
  * @author notzed
  */
-public class MediaReader extends CancellableThread {
+public class MediaReader extends CancellableThread implements MediaPlayer {
 
-	static final int packetLimit = 31;
+	static final int packetLimit = 61;
 	AVFormatContext format;
 	HashMap<Integer, MediaDecoder> streamMap = new HashMap<Integer, MediaDecoder>();
-	final String file;
+	String file;
 	MediaSink dest;
 	// for recycling packets
 	JJQueue<AVPacket> packetQueue = new JJQueue<AVPacket>(packetLimit + 5);
 	// for commands to the player thread
 	LinkedBlockingQueue<PlayerCMD> cmdQueue = new LinkedBlockingQueue<PlayerCMD>();
 	long duration;
+	MediaListener listener;
+	MediaState state = MediaState.Idle;
+
+	public MediaReader() {
+		super("AVReader");
+	}
 
 	public MediaReader(String fileName) throws IOException {
 		super("AVReader: " + fileName);
@@ -58,26 +62,71 @@ public class MediaReader extends CancellableThread {
 		this.file = fileName;
 
 		format = AVFormatContext.open(file);
+		//format.setProbesize(1024 * 1024);
+		//format.setMaxAnalyzeDuration(1000000);
 		format.findStreamInfo();
+
+		state = MediaState.Idle;
 	}
 
+	/**
+	 * May only be called in the paused/playing state.
+	 * @return
+	 */
 	public Set<Entry<Integer, MediaDecoder>> getDecoders() {
 		return streamMap.entrySet();
 	}
 
+	@Override
+	public void setListener(MediaListener l) {
+		this.listener = l;
+	}
+
+	@Override
+	public void play() {
+		cmdQueue.offer(new PlayerCMD(PlayerCMD.PLAY));
+	}
+
+	@Override
+	public void seek(long ms) {
+		seek(ms, 0);
+	}
+
+	@Override
+	public long getPosition() {
+		throw new UnsupportedOperationException("Not supported yet.");
+	}
+
+	@Override
+	public MediaState getMediaState() {
+		return state;
+	}
+
 	class PlayerCMD {
 
-		int type;
+		int cmd;
 		long stamp;
+		String name;
 		final static int QUIT = 0;
 		final static int PLAY = 1;
 		final static int SEEK = 2;
 		final static int PAUSE = 3;
 		final static int RESUME = 4;
+		final static int OPEN = 5;
+		final static int CLOSE = 6;
 
-		public PlayerCMD(int type, long stamp) {
-			this.type = type;
+		public PlayerCMD(int cmd) {
+			this.cmd = cmd;
+		}
+
+		public PlayerCMD(int cmd, long stamp) {
+			this.cmd = cmd;
 			this.stamp = stamp;
+		}
+
+		public PlayerCMD(int cmd, String name) {
+			this.cmd = cmd;
+			this.name = name;
 		}
 	}
 
@@ -88,6 +137,24 @@ public class MediaReader extends CancellableThread {
 	 */
 	public long getDuration() {
 		return duration;
+	}
+
+	/**
+	 * Open a file.
+	 * @param fileName
+	 */
+	public void open(String fileName) {
+		if (getState() == Thread.State.NEW)
+			start();
+
+		cmdQueue.offer(new PlayerCMD(PlayerCMD.OPEN, fileName));
+	}
+
+	/**
+	 * Close a file.
+	 */
+	public void close() {
+		cmdQueue.offer(new PlayerCMD(PlayerCMD.CLOSE));
 	}
 
 	/**
@@ -106,14 +173,27 @@ public class MediaReader extends CancellableThread {
 	 * Pause at the current position.
 	 */
 	public void pause() {
-		cmdQueue.offer(new PlayerCMD(PlayerCMD.PAUSE, 0));
+		cmdQueue.offer(new PlayerCMD(PlayerCMD.PAUSE));
 	}
 
 	/**
 	 * Resume at the current position.
 	 */
 	public void unpause() {
-		cmdQueue.offer(new PlayerCMD(PlayerCMD.RESUME, 0));
+		cmdQueue.offer(new PlayerCMD(PlayerCMD.RESUME));
+	}
+
+	void setMediaState(MediaState state) {
+		if (this.state != state) {
+			this.state = state;
+			if (listener != null)
+				listener.mediaState(this, state);
+		}
+	}
+
+	void mediaError(IOException ex) {
+		if (listener != null)
+			listener.mediaError(this, ex);
 	}
 
 	// FIXME: exceptions
@@ -163,7 +243,11 @@ public class MediaReader extends CancellableThread {
 		for (MediaDecoder dec : streamMap.values()) {
 			dec.cancel();
 		}
-		format.closeInput();
+		streamMap.clear();
+		if (format != null) {
+			format.closeInput();
+			format = null;
+		}
 	}
 	int created;
 
@@ -177,7 +261,7 @@ public class MediaReader extends CancellableThread {
 		if (packet == null) {
 			packet = AVPacket.create();
 			created++;
-			System.out.println("creating new avpacket");
+			System.out.println("creating new avpacket: " + created);
 		}
 		return packet;
 	}
@@ -192,22 +276,101 @@ public class MediaReader extends CancellableThread {
 			dec.postSeek();
 		}
 	}
+	boolean initialised;
+
+	void initDecoders() {
+		// init all decoders if not already initialised
+		if (!initialised) {
+			for (MediaDecoder dec : streamMap.values()) {
+				dec.init();
+			}
+			initialised = true;
+		}
+	}
 
 	@Override
 	public void run() {
+		PlayerCMD cmd;
+
+		// The IDLE and INIT states
+
+		out:
+		while (!cancelled) {
+			try {
+				cmd = cmdQueue.take();
+
+				switch (state) {
+					case Idle:
+						/**
+						 * IDLE state, allowed to quit or open a file.
+						 */
+						switch (cmd.cmd) {
+							case PlayerCMD.QUIT:
+								System.out.println("quit command");
+								setMediaState(MediaState.Quit);
+								break out;
+							case PlayerCMD.OPEN:
+								try {
+									format = AVFormatContext.open(cmd.name);
+									//format.setProbesize(1024 * 1024);
+									format.setMaxAnalyzeDuration(1000);
+									format.findStreamInfo();
+									setMediaState(MediaState.Init);
+									initialised = false;
+								} catch (IOException ex) {
+									mediaError(ex);
+								}
+								break;
+						}
+						break;
+					case Init:
+					case Ready:
+						/**
+						 * INIT state, allows the caller to modify the decoded
+						 * streams and so on.
+						 * From this state one can seek or play or quit.
+						 */
+						switch (cmd.cmd) {
+							case PlayerCMD.QUIT:
+								System.out.println("quit command");
+								setMediaState(MediaState.Quit);
+								break out;
+							case PlayerCMD.SEEK:
+								if (state == MediaState.Init) {
+									initDecoders();
+									setMediaState(MediaState.Ready);
+								}
+								format.seekFile(-1, 0, cmd.stamp * 1000, cmd.stamp * 1000, 0);
+								postSeek();
+								dest.postSeek(cmd.stamp);
+								break;
+							case PlayerCMD.PLAY:
+								if (state == MediaState.Init) {
+									initDecoders();
+									setMediaState(MediaState.Ready);
+								}
+								runMedia();
+								break;
+						}
+						break;
+					case Quit:
+						break out;
+
+				}
+			} catch (InterruptedException ex) {
+				Logger.getLogger(MediaReader.class.getName()).log(Level.SEVERE, null, ex);
+			}
+		}
+	}
+
+	/**
+	 * Above READY state - play the media, handle pause, etc.
+	 */
+	void runMedia() {
 		AVPacket packet = null;
 		boolean paused = false;
 
-		// init all decoders
-		for (MediaDecoder dec : streamMap.values()) {
-			dec.init();
-		}
-		// HACK: wait for gl to start?
-		try {
-			Thread.sleep(1000);
-		} catch (InterruptedException ex) {
-			Logger.getLogger(MediaReader.class.getName()).log(Level.SEVERE, null, ex);
-		}
+		setMediaState(MediaState.Playing);
 
 		try {
 			// ... if we get to the end of file this quits, but we don't want it to?
@@ -231,99 +394,67 @@ public class MediaReader extends CancellableThread {
 					PlayerCMD pausecmd = null;
 					PlayerCMD cmd;
 
-					if (true) {
-						// Keep waiting whilst paused
+					// Keep waiting whilst paused
+					do {
+						// Collapse commands to fixed sequence
 						do {
-							// Collapse commands to fixed sequence
-							do {
-								if (paused)
-									cmd = cmdQueue.take();
-								else
-									cmd = cmdQueue.poll();
-								if (cmd != null) {
-									switch (cmd.type) {
-										case PlayerCMD.QUIT:
-											System.out.println("quit command");
-											break out;
-										case PlayerCMD.SEEK:
-											seekcmd = cmd;
-											break;
-										case PlayerCMD.PAUSE:
-											playcmd = null;
-											pausecmd = cmd;
-											break;
-										case PlayerCMD.PLAY: // TODO: seek/re-open for play?
-											playcmd = cmd;
-											pausecmd = null;
-											break;
-										case PlayerCMD.RESUME:
-											playcmd = cmd;
-											pausecmd = null;
-									}
-								}
-							} while (cmd != null);
-
-							if (seekcmd != null) {
-								format.seekFile(-1, 0, seekcmd.stamp * 1000, seekcmd.stamp * 1000, 0);
-								postSeek();
-								dest.postSeek(seekcmd.stamp);
-							}
-							if (pausecmd != null) {
-								if (!paused) {
-									dest.postPause();
-									paused = true;
-								}
-							} else if (playcmd != null) {
-								if (paused) {
-									paused = false;
-									dest.postUnpause();
-								} else {
-									dest.postPlay();
-								}
-							}
-						} while (!cancelled && paused);
-					} else {
-						do {
-							if (paused) {
+							if (paused)
 								cmd = cmdQueue.take();
-							} else {
+							else
 								cmd = cmdQueue.poll();
-							}
 							if (cmd != null) {
-								switch (cmd.type) {
+								switch (cmd.cmd) {
 									case PlayerCMD.QUIT:
+										System.out.println("quit command");
+										setMediaState(MediaState.Quit);
 										break out;
 									case PlayerCMD.SEEK:
-										format.seekFile(-1, 0, cmd.stamp * 1000, cmd.stamp * 1000, 0);
-										postSeek();
-										dest.postSeek(cmd.stamp);
-										System.out.println("post seek: " + cmd.stamp);
+										System.out.println("seek command");
+										seekcmd = cmd;
 										break;
 									case PlayerCMD.PAUSE:
-										// just wait for another command, until it is resume/play/quit
-										paused = true;
-										dest.postPause();
-										System.out.println("paused " + cmd.stamp);
+										System.out.println("pause command");
+										playcmd = null;
+										pausecmd = cmd;
 										break;
 									case PlayerCMD.PLAY: // TODO: seek/re-open for play?
-										if (paused) {
-											paused = false;
-											dest.postUnpause();
-										} else {
-											dest.postPlay();
-										}
+										System.out.println("play command");
+										playcmd = cmd;
+										pausecmd = null;
 										break;
 									case PlayerCMD.RESUME:
-										if (paused) {
-											System.out.println("resume play");
-										}
-										paused = false;
-										dest.postUnpause();
-										break;
+										System.out.println("resume command");
+										playcmd = cmd;
+										pausecmd = null;
+										// Force exit from collapse loop
+										cmd = null;
 								}
 							}
-						} while (cmd != null || paused);
-					}
+						} while (cmd != null);
+
+						if (seekcmd != null) {
+							format.seekFile(-1, 0, seekcmd.stamp * 1000, seekcmd.stamp * 1000, 0);
+							postSeek();
+							dest.postSeek(seekcmd.stamp);
+						}
+						if (pausecmd != null) {
+							if (!paused) {
+								System.out.println(" pause");
+								dest.postPause();
+								paused = true;
+								setMediaState(MediaState.Paused);
+							}
+						} else if (playcmd != null) {
+							if (paused) {
+								System.out.println(" un-pause");
+								paused = false;
+								dest.postUnpause();
+								setMediaState(MediaState.Playing);
+							} else {
+								dest.postPlay();
+							}
+						}
+					} while (!cancelled && paused);
 				} catch (InterruptedException x) {
 				} finally {
 					if (packet == null) {
@@ -344,6 +475,10 @@ public class MediaReader extends CancellableThread {
 			}
 
 			dest.postFinished();
+
+			streamMap.clear();
+			format.closeInput();
+			format = null;
 		}
 	}
 }

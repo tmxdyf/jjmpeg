@@ -20,12 +20,18 @@ package au.notzed.jjmpeg.mediaplayer;
 
 /**
  * High level player implementation API.
+ *
+ * Not sure I need this, MediaReader does all the work.
  * @author notzed
  */
 public interface MediaPlayer {
 
-	public enum State {
+	public enum MediaState {
 
+		/**
+		 * No file opened.
+		 */
+		Idle,
 		/**
 		 * Initial/initialising state
 		 */
@@ -41,12 +47,24 @@ public interface MediaPlayer {
 		/**
 		 * Paused
 		 */
-		Paused
+		Paused,
+		/**
+		 * Quit and finished, no further operations possible.
+		 */
+		Quit;
 	};
 
-	public interface Listener {
-		void positionChanged(MediaPlayer player, long newpos);
+	public interface MediaListener {
+		void mediaMoved(MediaPlayer player, long newpos);
+		void mediaError(MediaPlayer player, Exception ex);
+		void mediaState(MediaPlayer player, MediaState newstate);
 	};
+
+	/**
+	 * Set the listener
+	 * @param l
+	 */
+	public void setListener(MediaListener l);
 
 	/**
 	 * Start playing moved to playing state
@@ -85,5 +103,5 @@ public interface MediaPlayer {
 	 * Get current player state
 	 * @return
 	 */
-	public State getState();
+	public MediaState getMediaState();
 }

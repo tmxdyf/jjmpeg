@@ -37,9 +37,9 @@ include $(CLEAR_VARS)
 CORE=../../jjmpeg-core/jni
 include ../config.mk
 LOCAL_MODULE := jjmpeg$(LIBVERSION)
-LOCAL_SRC_FILES := ../../jjmpeg-core/jni/jjmpeg/jjmpeg.c
+LOCAL_SRC_FILES := ../../jjmpeg-core/jni/jjmpeg/jjmpeg.c ../../jjmpeg-core/jni/jjmpeg/yuv-neon.s
 LOCAL_STATIC_LIBRARIES := avformat avcodec swscale avutil swresample
-LOCAL_CFLAGS := -I$(FF) -I$(CORE)/jjmpeg -Iandroid-$(TARGET_ARCH_ABI) -I$(CORE)/platform
+LOCAL_CFLAGS := -I$(FF) -I$(CORE)/jjmpeg -Iandroid-$(TARGET_ARCH_ABI) -I$(CORE)/platform -DENABLE_NEON
 LOCAL_LDLIBS := -lz -llog -lGLESv2
 
 jjmpeg$(LIBVERSION): $(FF)/jjmpeg-jni.c

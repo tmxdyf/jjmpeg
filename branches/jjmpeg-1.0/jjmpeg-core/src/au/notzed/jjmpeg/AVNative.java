@@ -64,8 +64,10 @@ abstract public class AVNative extends WeakReference<AVObject> {
 		AVFormatContext.networkInit();
 	}
 
+	@Deprecated
 	static native ByteBuffer getPointer(ByteBuffer base, int offset, int size);
 
+	@Deprecated
 	static native ByteBuffer getPointerIndex(ByteBuffer base, int offset, int size, int index);
 
 	static native int initNative();

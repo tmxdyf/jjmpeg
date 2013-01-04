@@ -324,6 +324,10 @@ abstract class AVFormatContextNativeAbstract extends AVNative {
 	native int getBitRate();
 	native int getFlags();
 	native void setFlags(int val);
+	native int getProbesize();
+	native void setProbesize(int val);
+	native int getMaxAnalyzeDuration();
+	native void setMaxAnalyzeDuration(int val);
 	// Native Methods
 	 native int seek_frame(int stream_index, long timestamp, int flags);
 	 native int read_frame(AVPacketNative pkt);
@@ -385,6 +389,18 @@ abstract class AVFormatContextAbstract extends AVObject {
 	}
 	public  void setFlags(int val) {
 		n.setFlags(val);
+	}
+	public  int getProbesize() {
+		return n.getProbesize();
+	}
+	public  void setProbesize(int val) {
+		n.setProbesize(val);
+	}
+	public  int getMaxAnalyzeDuration() {
+		return n.getMaxAnalyzeDuration();
+	}
+	public  void setMaxAnalyzeDuration(int val) {
+		n.setMaxAnalyzeDuration(val);
 	}
 	// Public Methods
 	public int seekFrame(int stream_index, long timestamp, int flags) {

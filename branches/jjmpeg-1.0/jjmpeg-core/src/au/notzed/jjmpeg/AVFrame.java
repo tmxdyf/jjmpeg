@@ -19,6 +19,7 @@
 package au.notzed.jjmpeg;
 
 import au.notzed.jjmpeg.exception.AVIOException;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
@@ -140,6 +141,19 @@ public class AVFrame extends AVFrameAbstract {
 	}
 
 	/**
+	 * Convert frame to RGB.
+	 * @param fmt format of source image
+	 * @param width width of source image
+	 * @param height height of source image
+	 * @param dst buffer of 16-bit integers to hold result.  width will be rounded up to 16.
+	 * @deprecated
+	 */
+	@Deprecated
+	public void toRGB565(PixelFormat fmt, int width, int height, Buffer dst) {
+		n.toRGB565(fmt.toC(), width, height, dst);
+	}
+
+	/**
 	 * Assuming this is an audio avframe, copy samples out of AVFrame
 	 *
 	 * @param fmt must be a short format
@@ -178,6 +192,9 @@ class AVFrameNative extends AVFrameNativeAbstract {
 	native void freeFrame();
 
 	native int getSamples(int sampleFormat, int channels, short[] samples);
+
+	// TODO: get neon optimised version in ffmpeg
+	native void toRGB565(int pixelFormat, int width, int height, Buffer dst);
 }
 
 class AVFrameNative32 extends AVFrameNative {

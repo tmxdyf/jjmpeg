@@ -267,6 +267,32 @@ JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_AVFrameNative_freeFrame
 	// else throw nullpointer exception
 }
 
+#ifdef ENABLE_NEON
+extern void yuv420p_rgb565_neon(unsigned char *srcy, unsigned char *srcu, unsigned char *srcv, unsigned short *dst, int width);
+
+JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_AVFrameNative_toRGB565
+(JNIEnv *env, jobject jptr, jint fmt, jint width, jint height, jobject jdst) {
+	AVFrame *cptr = PTR(jptr, AVFrame);
+	unsigned short *dst = ADDR(jdst);
+	int dwidth = (width+15)&(~15);
+	int y;
+	unsigned char *srcy = cptr->data[0];
+	unsigned char *srcu = cptr->data[1];
+	unsigned char *srcv = cptr->data[2];
+
+	for (y=0;y<height;y++) {
+		yuv420p_rgb565_neon(srcy, srcu, srcv, dst, dwidth);
+
+		srcy += cptr->linesize[0];
+		dst += dwidth;
+		if ((y&1)) {
+			srcu += cptr->linesize[1];
+			srcv += cptr->linesize[2];
+		}
+	}	
+}
+#endif
+
 #ifdef ENABLE_GLES2
 #include <GLES2/gl2.h>
 
