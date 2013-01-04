@@ -1,0 +1,38 @@
+#!/bin/sh
+
+# configure for one specific target
+
+# --target=foo
+
+# This leaves configuring FFmpeg to the jni makefile.
+# This allows the build to be cached for each architecture
+# since we don't need to 'reconfigure' it every time.
+
+target=
+
+cp ../jjmpeg-core/config.mk .
+sed -e 's/=\(.*\)$/="\1"/' < ./config.mk > config.sh
+. ./config.sh
+
+case $1 in
+    --target=*)
+    target=`echo $1 | sed s/--target=//`
+    ;;
+    *)
+	echo "Specify target using --target=foo"
+	exit 1
+	;;
+esac
+
+echo Configuring for architecture $target ...
+
+echo "TARGET=${target}" >> config.mk
+echo "TARGET=${target}" >> config.sh
+
+files="jni/Application.mk"
+
+for name in $files ; do
+    sed -e s/@target@/$target/g \
+	< ${name}.in > ${name}
+done
+
