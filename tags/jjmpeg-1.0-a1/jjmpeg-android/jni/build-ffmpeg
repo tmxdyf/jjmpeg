@@ -1,0 +1,73 @@
+#!/bin/sh
+
+# Note that you cannot change the license options if you intend to distribute.
+
+. ../config.sh
+
+declare -a TARGETS_OPTS TARGETS_CFLAGS
+
+FF=${FFMPEG_VERSION}
+
+DEBUG_ARGS=""
+#DEBUG_ARGS="--disable-stripping --disable-optimizations"
+
+# These arrays consitute a table of options, each column
+# defines one target.
+#  target names
+TARGETS_LIST=( 'armeabi' 'armeabi-v7a')
+#  arch for target
+TARGETS_ARCH=( 'arm' 'arm' )
+#  extra configure options for target
+TARGETS_OPTS=( '' '' )
+#  extra cflags for target
+TARGETS_CFLAGS=( '' '-mfloat-abi=softfp -mfpu=neon -marm -march=armv7-a')
+
+# TODO: This will depend on the architecture (and ndk version), this is ok for ARM
+PLATFORM=${ANDROID_NDK}/platforms/android-8/arch-arm/
+PREBUILT=${ANDROID_NDK}/toolchains/arm-linux-androideabi-4.4.3/prebuilt/linux-x86
+
+# so i have something reliable to match against
+targets=`echo $TARGET | sed -e 's/^/@/' -e 's/$/@/' -e 's/ /@/g'`
+
+export SYSROOT=$PLATFORM
+src="`pwd`/../../jjmpeg-core/jni"
+this=`pwd`
+i=0
+for TARGET in ${TARGETS_LIST[@]} ; do
+    if [ x`echo $targets | grep -e "@${TARGET}@"` != x ]; then
+	rm -rf $this/build/$FF/$TARGET
+	mkdir -p $this/build/$FF/$TARGET
+	mkdir -p $this/build/$TARGET
+	cd $this/build/$FF/$TARGET || exit 1
+
+	opts=${TARGETS_OPTS[$i]}
+	arch=${TARGETS_ARCH[$i]}
+	cflags=${TARGETS_CFLAGS[$i]}
+
+	echo "Configuring FFmpeg for $TARGET ..."
+
+	$src/$FF/configure \
+	    $opts \
+	    --prefix=$this/build/$TARGET \
+	    --cross-prefix=$PREBUILT/bin/arm-linux-androideabi- \
+	    --enable-cross-compile \
+	    --target-os=linux \
+	    --sysroot="$SYSROOT" \
+	    --arch=${arch} \
+	    --extra-cflags="$cflags" \
+	    $DEBUG_ARGS \
+	    --disable-shared \
+	    --enable-static \
+	    --enable-gpl --enable-version3 \
+	    --disable-doc \
+	    --disable-ffmpeg --disable-ffplay --disable-ffprobe --disable-ffserver \
+	    --disable-avdevice --disable-avfilter --disable-postproc || exit 1
+
+	# This can't be configured
+	sed -i -e 's/ HAVE_FAST_UNALIGNED 1/ HAVE_FAST_UNALIGNED 0/' $this/build/$FF/$TARGET/config.h
+
+	make V=1 -j24  || exit 1
+	make V=1 install || (echo "Error" ; exit 1)
+    fi
+    i=`expr $i + 1`
+done

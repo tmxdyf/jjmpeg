@@ -1,0 +1,4 @@
+
+# We only ever do 1 target - the fat binary is too fat otherwise
+APP_ABI := @target@
+

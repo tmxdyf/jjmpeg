@@ -1,0 +1,17 @@
+#!/bin/sh
+
+# configure based on jjmpeg-core/config.mk
+
+config=../jjmpeg-core/config.mk
+if [ ! -f ${config} ] ; then
+    echo "Must run $0 in the jjmpeg-java directory"
+    exit 1
+fi
+
+cp ../jjmpeg-core/config.mk .
+sed -e 's/=\(.*\)$/="\1"/' < ./config.mk > config.sh
+. ./config.sh
+
+echo Configuring for architectures $JAVA_HOST_TARGETS cross builds $JAVA_CROSS_TARGETS 
+
+# don't do anything else yet
