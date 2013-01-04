@@ -36,7 +36,8 @@ public class VideoDecoder extends MediaDecoder {
 	PixelFormat format;
 	AVFrame frame;
 	// FIXME: depends on impelementation
-	final static boolean enqueueFrames = true;
+	final static boolean enqueueFrames = false;
+	long decodeTime;
 
 	/**
 	 * Create a new video decoder for a given stream.
@@ -54,8 +55,7 @@ public class VideoDecoder extends MediaDecoder {
 		height = cc.getHeight();
 		width = cc.getWidth();
 		format = cc.getPixFmt();
-		if (!enqueueFrames)
-			frame = AVFrame.create();
+		frame = AVFrame.create();
 	}
 
 	public int getWidth() {
@@ -91,35 +91,46 @@ public class VideoDecoder extends MediaDecoder {
 
 	void decodePacket(AVPacket packet) throws AVDecodingError, InterruptedException {
 		//System.out.println("video decode packet()");
-		//if (true)
-		//	return;
 
 		// Experimental alternative - just queue up AVFrames and load textures in display callback
 		if (enqueueFrames) {
 			if (videoFrame == null) {
 				videoFrame = dest.getVideoFrame();
-				frame = videoFrame.getFrame();
-				if (frame == null) {
-					frame = AVFrame.create();
-					videoFrame.setFrame(frame);
+
+				// This doesn't make sense - we want to drop frames by not decoding them when
+				// too busy, not when not busy enough.
+				if (videoFrame == null) {
+					System.out.println("frame dropped");
+					return;
 				}
+
+				frame = videoFrame.getFrame();
 			}
 		}
 
+		long now = System.nanoTime();
+
 		boolean frameFinished = cc.decodeVideo(frame, packet);
+
+		decodeTime += (System.nanoTime() - now)/1000;
 
 		if (frameFinished) {
 			if (!enqueueFrames) {
 				videoFrame = dest.getVideoFrame();
+				// Allow for throttling
+				if (videoFrame == null)
+					return;
 				videoFrame.setFrame(frame);
 			}
 
 			videoFrame.pts = convertPTS(packet.getDTS());
+			videoFrame.decodeTime = decodeTime;
 			videoFrame.enqueue();
 
 			if (enqueueFrames) {
 				videoFrame = null;
 			}
+			decodeTime = 0;
 		}
 	}
 }

@@ -27,6 +27,7 @@ import au.notzed.jjmpeg.AVFrame;
 abstract public class VideoFrame extends MediaFrame {
 
 	long pts;
+	public long decodeTime;
 
 	@Override
 	long getPTS() {

@@ -46,22 +46,76 @@ import au.notzed.jjmpeg.util.JJQueue;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
+import java.nio.ShortBuffer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.microedition.khronos.egl.*;
 import javax.microedition.khronos.opengles.GL10;
 
 /**
- *
+ * Needs a good deal of work but works somewhat.
  * @author notzed
  */
 public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 
-	// enqueue frames rather than synchronously loading them
-	static final boolean enqueueFrames = true;
+	boolean paused = false;
+
+	public void pause() {
+		paused = true;
+	}
+	public void play() {
+		paused = false;
+	}
+
+	enum Mode {
+
+		// load synchronously - too bloody slow
+		SYNC_LOAD,
+		// Only works with some codecs/settings
+		ENQUEUE_DIRECT,
+		// Copy the raw frame first
+		ENQUEUE_COPY,
+		// Convert to rgb565, and set that as texture
+		ENQUEUE_RGB
+	};
+
+	public class TimeInfo {
+
+		long start;
+		long last;
+		long total;
+		int count;
+
+		public void start() {
+			start = System.nanoTime();
+		}
+
+		public void end() {
+			add((System.nanoTime() - start) / 1000);
+		}
+
+		public void add(long t) {
+			last = t;
+			total += last;
+			count += 1;
+		}
+
+		public long average() {
+			if (count == 0)
+				return 0;
+			return total / count;
+		}
+
+		@Override
+		public String toString() {
+			long a = average();
+			return String.format("%3d.%03d %3d.%03d", last / 1000, last % 1000, a / 1000, a % 1000);
+		}
+	}
+	Mode mode = Mode.ENQUEUE_COPY;
 	// how many buffers to use, must be > 1 if enqueueFrames used
-	static final int NBUFFERS = 5;
-	boolean bindTexture = false;
+	static final int NBUFFERS = 31;
+	boolean updateView = false;
 	boolean dataChanged = false;
 	boolean stopped = false;
 	int vwidth, vheight;
@@ -74,6 +128,15 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 	GLTextureFrame[] bufferArray;
 	JJQueue<GLTextureFrame> buffers = new JJQueue<GLTextureFrame>(NBUFFERS);
 	JJQueue<GLTextureFrame> ready = new JJQueue<GLTextureFrame>(NBUFFERS);
+	int seeked = 0;
+	// profiling stuff
+	// raw load time
+	TimeInfo load = new TimeInfo();
+	TimeInfo sync = new TimeInfo();
+	TimeInfo copy = new TimeInfo();
+	TimeInfo render = new TimeInfo();
+	TimeInfo decode = new TimeInfo();
+	int framesDropped = 0;
 
 	public GLESVideoRenderer(Context context, GLVideoView view) {
 		this.context = context;
@@ -90,9 +153,18 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 		return lastpts;
 	}
 
-	public void postSeek(long position) {
+	public synchronized void postSeek(long position) {
 		lastpts = position;
 		startms = -1;
+		seeked++;
+	}
+
+	synchronized void checkSeek() {
+		if (seeked > 0) {
+			if (NBUFFERS > 1)
+				ready.drainTo(buffers);
+			seeked = 0;
+		}
 	}
 
 	// When finishing off, indicates no more work to be done
@@ -109,13 +181,18 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 		boolean create = true;
 		// current frame for run callback
 		AVFrame frame;
+		AVFrame srcFrame;
+		int rwidth;
+		ByteBuffer rgb;
+		ShortBuffer rgbs;
 
 		void genTextures() {
 			GLES20.glGenTextures(3, textures, 0);
 
 			for (int i = 0; i < 3; i++) {
 				GLES20.glBindTexture(GL_TEXTURE_2D, textures[i]);
-				glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+				//glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+				glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 				glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -129,41 +206,90 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 		}
 
 		synchronized void load() {
+			sync.start();
+			long now = System.nanoTime();
 			surface.queueEvent(this);
 			try {
 				this.wait();
 			} catch (InterruptedException ex) {
 				Logger.getLogger(GLESVideoRenderer.class.getName()).log(Level.SEVERE, null, ex);
 			}
+			sync.end();
 		}
 
 		@Override
 		public void setFrame(AVFrame frame) {
-			this.frame = frame;
-			if (enqueueFrames) {
-				// do nothing
-			} else if (GLVideoView.useShared) {
-				if (surface.bindSharedcontext()) {
-					PixelFormat fmt = PixelFormat.PIX_FMT_YUV420P;
+			//System.out.println("set frame: " + frame);
 
-					//System.out.println("load texture " + this);
+			switch (mode) {
+				case SYNC_LOAD:
+					this.srcFrame = frame;
+					load();
+					break;
+				case ENQUEUE_DIRECT:
+					// Use frame as frame
+					this.srcFrame = frame;
+					break;
+				case ENQUEUE_COPY:
+					copy.start();
+					if (this.frame == null)
+						this.frame = AVFrame.create(PixelFormat.PIX_FMT_YUV420P, vwidth, vheight);
+					this.frame.copy(frame, PixelFormat.PIX_FMT_YUV420P, vwidth, vheight);
+					copy.end();
+					break;
+				case ENQUEUE_RGB:
+					if (rgb == null) {
+						rwidth = (vwidth + 15) & (~15);
+						rgb = ByteBuffer.allocateDirect(rwidth * vheight * 2).order(ByteOrder.nativeOrder());
+						rgbs = rgb.asShortBuffer();
+					}
 
-					long n = System.nanoTime();
-					frame.loadTexture2D(fmt, vwidth, vheight, create, textures[0], textures[1], textures[2]);
-
-					n = (System.nanoTime() - n) / 1000;
-					if (n > 8000)
-						System.out.printf("SLOW tex load: %d.%06ds\n", n / 1000000, n % 1000000);
-				} else {
-					System.out.println("no surface (yet?)");
-				}
-			} else {
-				load();
+					copy.start();
+					frame.toRGB565(PixelFormat.PIX_FMT_YUV420P, vwidth, vheight, rgb);
+					copy.end();
+					break;
 			}
+
+			if (true)
+				return;
+
+			if (false) {
+				if (this.frame == null)
+					this.frame = AVFrame.create(PixelFormat.PIX_FMT_YUV420P, vwidth, vheight);
+				this.frame.copy(frame, PixelFormat.PIX_FMT_YUV420P, vwidth, vheight);
+			} else {
+				//this.frame = frame;
+				this.srcFrame = frame;
+			}
+			/*
+			 if (enqueueFrames) {
+			 // do nothing
+			 } else if (GLVideoView.useShared) {
+			 if (surface.bindSharedcontext()) {
+			 PixelFormat fmt = PixelFormat.PIX_FMT_YUV420P;
+
+			 //System.out.println("load texture " + this);
+
+			 long n = System.nanoTime();
+			 frame.loadTexture2D(fmt, vwidth, vheight, create, textures[0], textures[1], textures[2]);
+
+			 n = (System.nanoTime() - n) / 1000;
+			 if (n > 8000)
+			 System.out.printf("SLOW tex load: %d.%06ds\n", n / 1000000, n % 1000000);
+			 } else {
+			 System.out.println("no surface (yet?)");
+			 }
+			 } else {
+			 load();
+			 }*/
 		}
 
 		@Override
 		void enqueue() throws InterruptedException {
+			//if (this.frame == null)
+			//	this.frame = AVFrame.create(PixelFormat.PIX_FMT_YUV420P, vwidth, vheight);
+			//this.frame.copy(srcFrame, PixelFormat.PIX_FMT_YUV420P, vwidth, vheight);
+
 			//System.out.println("enqueue: " + this);
 			if (NBUFFERS > 1)
 				ready.offer(this);
@@ -178,29 +304,62 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 				buffers.offer(this);
 		}
 
+		// NB: not used
 		public void run() {
-			PixelFormat fmt = PixelFormat.PIX_FMT_YUV420P;
-
-			long n = System.nanoTime();
-			frame.loadTexture2D(fmt, vwidth, vheight, create, textures[0], textures[1], textures[2]);
-			n = (System.nanoTime() - n) / 1000;
-			if (n > 8000)
-				System.out.printf("SLOW tex load took: %d.%06ds\n", n / 1000000, n % 1000000);
+			//System.out.println("shit");
+			loadTexture();
 			sync();
 		}
 
 		@Override
 		public AVFrame getFrame() {
+			if (this.frame == null)
+				this.frame = AVFrame.create(PixelFormat.PIX_FMT_YUV420P, vwidth, vheight);
 			return frame;
 		}
 
+		/**
+		 * Load texture to GL, call from GL draw callback
+		 */
 		void loadTexture() {
+			load.start();
+
 			PixelFormat fmt = PixelFormat.PIX_FMT_YUV420P;
-			frame.loadTexture2D(fmt, vwidth, vheight, create, textures[0], textures[1], textures[2]);
+			switch (mode) {
+				case SYNC_LOAD:
+					srcFrame.loadTexture2D(fmt, vwidth, vheight, create, textures[0], textures[1], textures[2]);
+					break;
+				case ENQUEUE_DIRECT:
+				case ENQUEUE_COPY:
+					frame.loadTexture2D(fmt, vwidth, vheight, create, textures[0], textures[1], textures[2]);
+					break;
+				case ENQUEUE_RGB:
+					// Just a hack here.
+					//AVPlane p = frame.getPlaneAt(0, fmt, vwidth, vheight);
+
+					GLES20.glBindTexture(GL_TEXTURE_2D, textures[0]);
+					if (create) {
+						GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGB, twidth, theight, 0, GLES20.GL_RGB, GLES20.GL_UNSIGNED_SHORT_5_6_5, null);
+					}
+					GLES20.glTexSubImage2D(GLES20.GL_TEXTURE_2D, 0, 0, 0, rwidth, vheight, GLES20.GL_RGB, GLES20.GL_UNSIGNED_SHORT_5_6_5, rgb);
+					break;
+			}
+			load.end();
 		}
 	}
+	int dropped = 0;
+	int dropLimit = 8;
 
 	public VideoFrame getFrame() throws InterruptedException {
+		// It saves enough to catch up most of the time.
+		if (lag > 100 && dropped < dropLimit) {
+			dropped++;
+			framesDropped++;
+			//System.out.println("lagged, dropping frame");
+			return null;
+		}
+		dropped = 0;
+
 		if (NBUFFERS > 1) {
 			//VideoFrame vf = buffers.take();
 			VideoFrame vf;
@@ -221,13 +380,26 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 		return n;
 	}
 
+	public synchronized void setAudioLocation(long ms) {
+		audioms = ms;
+		audiosetms = System.currentTimeMillis();
+	}
+
+	public synchronized long getClock(long now) {
+		return (audioms + (now - audiosetms));
+	}
+
+	public synchronized long getDelay(long now, long pts) {
+		return pts - (audioms + (now - audiosetms));
+	}
+
 	public synchronized void setVideoSize(int w, int h) {
 		int tw = roundUp(w);
 		int th = roundUp(h);
 
 		if (this.twidth != tw
 				|| this.theight != th) {
-			bindTexture = true;
+			updateView = true;
 			twidth = tw;
 			theight = th;
 		}
@@ -237,14 +409,19 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 	boolean direct = false;
 	long startms = -1;
 	GLTextureFrame display;
+	long audioms = 0;
+	long audiosetms = 0;
+	long lag;
 
 	public void onDrawFrame(GL10 glUnused) {
-		if (stopped)
+		if (stopped || paused)
 			return;
 
 		if (thread == 0)
 			thread = Debug.threadCpuTimeNanos();
 		GLTextureFrame displayNew = null;
+
+		checkSeek();
 
 		// Find a frame that's ready for display
 		// TODO: mess ...
@@ -258,6 +435,8 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 					long pts = peek.pts;
 					long targetms = pts + startms;
 					long now = System.currentTimeMillis();
+
+					now = getClock(now);
 
 					if (startms == -1) {
 						startms = now - pts;
@@ -276,11 +455,14 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 					}
 
 					if (delay <= 0) {
+						lag = -delay;
 						// dump head
 						ready.poll();
 						if (displayNew != null)
 							displayNew.recycle();
 						displayNew = peek;
+					} else {
+						lag = 0;
 					}
 				} else {
 					delay = 1;
@@ -291,9 +473,28 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 		}
 		//System.out.println("display: " + display);
 
-		if (bindTexture) {
+		if (updateView) {
 			Matrix.setIdentityM(stMatrix, 0);
-			Matrix.scaleM(stMatrix, 0, (float) vwidth / twidth, (float) vheight / theight, 1);
+
+			float rw = 1;
+			float rh = 1;
+			float pw = (float) vwidth / pwidth;
+			float ph = (float) vheight / pheight;
+			if (vwidth != 0 && vheight != 0 && pwidth != 0 && pheight != 0) {
+				if (pw > ph) {
+					rh = pw / ph;
+				} else {
+					rw = ph / pw;
+				}
+			}
+			System.out.printf("pw %f ph %f rw %f rh %f  vsize %dx%d psize %dx%d\n", pw, ph, rw, rh, vwidth, vheight, pwidth, pheight);
+
+			// -1 just makes sure the texture fits over to avoid flickering crap
+			Matrix.scaleM(stMatrix, 0, (float) (vwidth - 1) / twidth, (float) (vheight - 1) / theight, 1);
+
+			Matrix.orthoM(projMatrix, 0, rw, -rw, rh, -rh, 3, 7);
+
+			updateView = false;
 		}
 
 		if (displayNew != null)
@@ -302,17 +503,34 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 		if (display == null)
 			return;
 
+		decode.add(display.decodeTime);
+
 		// note that we can recycle the buffer as soon as we've loaded the texture
-		if (enqueueFrames && displayNew != null) {
-			displayNew.loadTexture();
-			displayNew.recycle();
+		switch (mode) {
+			case SYNC_LOAD:
+				if (displayNew != null) {
+					displayNew.recycle();
+				}
+				break;
+			case ENQUEUE_DIRECT:
+			case ENQUEUE_COPY:
+			case ENQUEUE_RGB:
+				if (displayNew != null) {
+					displayNew.loadTexture();
+					displayNew.recycle();
+				}
+				break;
 		}
 
 		lastpts = display.getPTS();
 
+
 		// Ignore the passed-in GL10 interface, and use the GLES20
 		// class's static methods instead.
-		glClear(GL_COLOR_BUFFER_BIT);
+		//glClear(GL_COLOR_BUFFER_BIT);
+
+		render.start();
+
 		glUseProgram(paintTexture);
 		checkGlError("glUseProgram");
 
@@ -323,9 +541,13 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 		glActiveTexture(GLES20.GL_TEXTURE2);
 		glBindTexture(GL_TEXTURE_2D, display.textures[2]);
 
-		glUniform1i(texY, 0);
-		glUniform1i(texU, 1);
-		glUniform1i(texV, 2);
+		if (mode == Mode.ENQUEUE_RGB) {
+			glUniform1i(texY, 0);
+		} else {
+			glUniform1i(texY, 0);
+			glUniform1i(texU, 1);
+			glUniform1i(texV, 2);
+		}
 
 		triangleVertices.position(TRIANGLE_VERTICES_DATA_POS_OFFSET);
 		glVertexAttribPointer(positionHandle, 3, GLES20.GL_FLOAT, false, TRIANGLE_VERTICES_DATA_STRIDE_BYTES, triangleVertices);
@@ -350,18 +572,24 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 		checkGlError("glDrawArrays");
 
 		threadLast = Debug.threadCpuTimeNanos();
+
+		//GLES20.glFinish();
+		render.end();
 	}
 
 	public void onSurfaceChanged(GL10 glUnused, int width, int height) {
+		System.out.println("surface changed");
+
 		// Ignore the passed-in GL10 interface, and use the GLES20
 		// class's static methods instead.
 		GLES20.glViewport(0, 0, width, height);
-		float ratio = (float) width / height;
+		float ratio = (float) height / width;
 
 		pwidth = width;
 		pheight = height;
 
 		Matrix.orthoM(projMatrix, 0, 1, -1, 1, -1, 3, 7);
+		updateView = true;
 	}
 
 	public void onSurfaceCreated(GL10 glUnused, EGLConfig config) {
@@ -369,12 +597,16 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 		// class's static methods instead.
 
 		/* Set up alpha blending and an Android background color */
-		GLES20.glEnable(GLES20.GL_BLEND);
-		GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
-		GLES20.glClearColor(0.643f, 0.776f, 0.223f, 1.0f);
+		// wtf do i want blending for?
+		GLES20.glDisable(GLES20.GL_BLEND);
+		//GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+		glClearColor(0, 0, 0, 0);
 
 		/* Set up shaders and handles to their variables */
-		paintTexture = createProgram(paintVS, paintFS);
+		if (this.mode == Mode.ENQUEUE_RGB)
+			paintTexture = createProgram(vs_rgb, fs_rgb);
+		else
+			paintTexture = createProgram(vs_yuv, fs_yuv);
 		if (paintTexture == 0) {
 			return;
 		}
@@ -392,9 +624,14 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 		vpMatrixHandle = getUniform(paintTexture, "uMVPMatrix");
 		stMatrixHandle = getUniform(paintTexture, "uSTMatrix");
 
-		texY = getUniform(paintTexture, "yTexture");
-		texU = getUniform(paintTexture, "uTexture");
-		texV = getUniform(paintTexture, "vTexture");
+		if (this.mode == Mode.ENQUEUE_RGB) {
+			texY = getUniform(paintTexture, "sTexture");
+		} else {
+			texY = getUniform(paintTexture, "yTexture");
+			texU = getUniform(paintTexture, "uTexture");
+			texV = getUniform(paintTexture, "vTexture");
+		}
+		checkGlError("texture shit");
 
 		System.err.println("create textures");
 		if (bufferArray == null) {
@@ -441,10 +678,12 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 	}
 
 	private int createProgram(String vertexSource, String fragmentSource) {
+		//System.out.println("Load vs: \n" + vertexSource);
 		int vertexShader = loadShader(GLES20.GL_VERTEX_SHADER, vertexSource);
 		if (vertexShader == 0) {
 			return 0;
 		}
+		//System.out.println("Load fs: \n" + fragmentSource);
 		int pixelShader = loadShader(GLES20.GL_FRAGMENT_SHADER, fragmentSource);
 		if (pixelShader == 0) {
 			return 0;
@@ -487,7 +726,7 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 		-1.0f, 1.0f, 0, 0.f, 1.f,
 		1.0f, 1.0f, 0, 1.f, 1.f,};
 	private FloatBuffer triangleVertices;
-	private final String paintVS =
+	private final String vs_yuv =
 			"uniform mat4 uMVPMatrix;\n"
 			+ "uniform mat4 uSTMatrix;\n"
 			+ "uniform float uCRatio;\n"
@@ -500,7 +739,7 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 			+ "  vTextureCoord = (uSTMatrix * aTextureCoord).xy;\n"
 			+ "  vTextureNormCoord = aTextureCoord.xy;\n"
 			+ "}\n";
-	private final String paintFS =
+	private final String fs_yuv =
 			"precision mediump float;\n"
 			+ "varying vec2 vTextureCoord;\n"
 			+ "varying vec2 vTextureNormCoord;\n"
@@ -520,6 +759,15 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 			+ "	);\n"
 			+ "	vec3 rgb = yuv * yuv2rgb;\n"
 			+ "	gl_FragColor = vec4(rgb, 1.0);\n"
+			+ "}\n";
+	private final String vs_rgb = vs_yuv;
+	private final String fs_rgb =
+			"precision mediump float;\n"
+			+ "varying vec2 vTextureCoord;\n"
+			+ "varying vec2 vTextureNormCoord;\n"
+			+ "uniform sampler2D sTexture;\n"
+			+ "void main() {\n"
+			+ "  gl_FragColor = texture2D(sTexture, vTextureCoord);\n"
 			+ "}\n";
 	private float[] vpMatrix = new float[16];
 	private float[] projMatrix = new float[16];

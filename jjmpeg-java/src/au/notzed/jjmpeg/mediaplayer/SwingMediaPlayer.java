@@ -43,7 +43,7 @@ import javax.swing.event.ChangeListener;
  */
 public class SwingMediaPlayer extends JPanel implements MediaSink, MediaPlayer {
 
-	State state = State.Init;
+	MediaState state = MediaState.Init;
 	// 0 = audio, 1 = video
 	int timesync = 0;
 	// time it started running
@@ -137,7 +137,7 @@ public class SwingMediaPlayer extends JPanel implements MediaSink, MediaPlayer {
 		start = System.currentTimeMillis();
 		startTimer();
 		reader.start();
-		state = State.Playing;
+		state = MediaState.Playing;
 		audioThread.start();
 		videoThread.start();
 	}
@@ -145,20 +145,20 @@ public class SwingMediaPlayer extends JPanel implements MediaSink, MediaPlayer {
 	// todo: this state management wont work, need a listener to tell what the reader is really doing
 	@Override
 	public void play() {
-		if (state == State.Paused
-				|| state == State.Ready) {
+		if (state == MediaState.Paused
+				|| state == MediaState.Ready) {
 			// TODO: need to reset start somehow
 			reader.unpause();
-			state = State.Playing;
+			state = MediaState.Playing;
 			startTimer();
 		}
 	}
 
 	@Override
 	public void pause() {
-		if (state == State.Playing) {
+		if (state == MediaState.Playing) {
 			reader.pause();
-			state = State.Playing;
+			state = MediaState.Playing;
 			startTimer();
 		}
 	}
@@ -168,7 +168,7 @@ public class SwingMediaPlayer extends JPanel implements MediaSink, MediaPlayer {
 		switch (state) {
 			case Playing:
 				reader.pause();
-				state = State.Paused;
+				state = MediaState.Paused;
 				stopTimer();
 				break;
 		}
@@ -190,8 +190,13 @@ public class SwingMediaPlayer extends JPanel implements MediaSink, MediaPlayer {
 	}
 
 	@Override
-	public State getState() {
-		return state;
+	public void setListener(MediaListener l) {
+		throw new UnsupportedOperationException("Not supported yet.");
+	}
+
+	@Override
+	public MediaState getMediaState() {
+		throw new UnsupportedOperationException("Not supported yet.");
 	}
 
 	class AudioRenderThread extends CancellableThread {

@@ -101,4 +101,11 @@ public class JJQueue<T> {
 			head = (head + 1) & mask;
 		}
 	}
+
+	synchronized public int count() {
+		if (tail < head)
+			return tail + mask + 1 - head;
+		else
+			return tail - head;
+	}
 }

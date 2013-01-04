@@ -48,13 +48,18 @@ class AVDeviceNative extends AVDeviceNativeAbstract {
 }
 
 class AVDeviceNative64 extends AVDeviceNative {
+
 	long p;
+
 	public AVDeviceNative64(AVObject o) {
 		super(o);
 	}
 }
 
 class AVDeviceNative32 extends AVDeviceNative {
+
+	int p;
+
 	public AVDeviceNative32(AVObject o) {
 		super(o);
 	}
