@@ -91,46 +91,50 @@ public class VideoDecoder extends MediaDecoder {
 
 	void decodePacket(AVPacket packet) throws AVDecodingError, InterruptedException {
 		//System.out.println("video decode packet()");
-
-		// Experimental alternative - just queue up AVFrames and load textures in display callback
-		if (enqueueFrames) {
-			if (videoFrame == null) {
-				videoFrame = dest.getVideoFrame();
-
-				// This doesn't make sense - we want to drop frames by not decoding them when
-				// too busy, not when not busy enough.
+		boolean frameFinished;
+		do {
+			// Experimental alternative - just queue up AVFrames and load textures in display callback
+			if (enqueueFrames) {
 				if (videoFrame == null) {
-					System.out.println("frame dropped");
-					return;
+					videoFrame = dest.getVideoFrame();
+
+					// This doesn't make sense - we want to drop frames by not decoding them when
+					// too busy, not when not busy enough.
+					if (videoFrame == null) {
+						System.out.println("frame dropped");
+						return;
+					}
+
+					frame = videoFrame.getFrame();
+				}
+			}
+
+
+			long now = System.nanoTime();
+
+			frameFinished = cc.decodeVideo(frame, packet);
+
+			decodeTime += (System.nanoTime() - now) / 1000;
+
+			if (frameFinished) {
+				if (!enqueueFrames) {
+					videoFrame = dest.getVideoFrame();
+					// Allow for throttling
+					if (videoFrame == null)
+						return;
+					videoFrame.setFrame(frame);
 				}
 
-				frame = videoFrame.getFrame();
+				//videoFrame.pts = convertPTS(packet.getDTS());
+				videoFrame.pts = convertPTS(frame.getBestEffortTimestamp());
+				videoFrame.decodeTime = decodeTime;
+				videoFrame.enqueue();
+
+				if (enqueueFrames) {
+					videoFrame = null;
+				}
+				decodeTime = 0;
 			}
-		}
-
-		long now = System.nanoTime();
-
-		boolean frameFinished = cc.decodeVideo(frame, packet);
-
-		decodeTime += (System.nanoTime() - now)/1000;
-
-		if (frameFinished) {
-			if (!enqueueFrames) {
-				videoFrame = dest.getVideoFrame();
-				// Allow for throttling
-				if (videoFrame == null)
-					return;
-				videoFrame.setFrame(frame);
-			}
-
-			videoFrame.pts = convertPTS(packet.getDTS());
-			videoFrame.decodeTime = decodeTime;
-			videoFrame.enqueue();
-
-			if (enqueueFrames) {
-				videoFrame = null;
-			}
-			decodeTime = 0;
-		}
+		} while (packet.getSize() == 0 && frameFinished);
 	}
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012 Michael Zucchi
+ * Copyright (c) 2013 Michael Zucchi
  *
  * This file is part of jjmpeg.
  *
@@ -19,27 +19,32 @@
 package au.notzed.jjmpeg.mediaplayer;
 
 /**
- * Base class for decoded frames.
+ * This is to be an audio renderer for JavaSound api.
  *
- * Frames are re-cycled using a return queue.
- *
- * Lifecycle will be:
- *  Set content (codec specific)
- *  enqueue puts it into the display list.
- *  recycle is called after being displayed.
+ * Just a null one atm.
  * @author notzed
  */
-public abstract class MediaFrame implements Comparable<MediaFrame> {
+public class JavaAudioRenderer {
 
-	abstract long getPTS();
+	JavaAudioFrame dummy = new JavaAudioFrame();
 
-	abstract void dispose();
+	class JavaAudioFrame extends AudioFrame {
 
-	abstract void enqueue() throws InterruptedException;
+		@Override
+		void enqueue() throws InterruptedException {
+			// nop
+		}
 
-	abstract void recycle();
+		@Override
+		void recycle() {
+			// nop
+		}
+	}
 
-	public int compareTo(MediaFrame o) {
-		return (int) (getPTS() - o.getPTS());
+	public AudioFrame getFrame() {
+		return dummy;
+	}
+
+	public void start() {
 	}
 }
