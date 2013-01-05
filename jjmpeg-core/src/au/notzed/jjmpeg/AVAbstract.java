@@ -638,6 +638,7 @@ abstract class AVFrameNativeAbstract extends AVNative {
 	 native int alloc(int pix_fmt, int width, int height);
 	 native void free();
 	 native void copy(AVFrameNative src, int fmt, int width, int height);
+	 native long get_best_effort_timestamp();
 }
 
 abstract class AVFrameAbstract extends AVObject {
@@ -688,6 +689,9 @@ abstract class AVFrameAbstract extends AVObject {
 	}
 	public void copy(AVFrame src, PixelFormat fmt, int width, int height) {
 		n.copy(src != null ? src.n : null, fmt.toC(), width, height);
+	}
+	public long getBestEffortTimestamp() {
+		return n.get_best_effort_timestamp();
 	}
 }
 abstract class AVStreamNativeAbstract extends AVNative {

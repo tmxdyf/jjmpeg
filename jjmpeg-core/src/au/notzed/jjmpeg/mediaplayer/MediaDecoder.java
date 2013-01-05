@@ -170,6 +170,7 @@ public abstract class MediaDecoder extends CancellableThread {
 					src.recyclePacket(packet);
 			}
 		}
+		System.out.println("Decoding done " + getName());
 	}
 
 	/**
@@ -193,13 +194,22 @@ public abstract class MediaDecoder extends CancellableThread {
 	}
 
 	/**
-	 * Close the codec.
+	 * Flush cleanly and close
+	 */
+	public void complete() {
+		queue.offer(cancel);
+		try {
+			join();
+		} catch (InterruptedException ex) {
+		}
+	}
+
+	/**
+	 * Close the codec, forced immediate.
 	 */
 	@Override
 	public void cancel() {
 		System.out.println("Cancelling: " + this);
-//		clearQueue();
-		queue.offer(cancel);
 		super.cancel();
 		cc.close();
 	}

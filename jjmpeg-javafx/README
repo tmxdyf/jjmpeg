@@ -1,0 +1,54 @@
+
+REAMDE-javafx
+-------------
+
+This will contain the javafx jjmpeg components, alhtough at
+the moment it is development work on a standalone player
+application.
+
+Please see jjmpeg-core/README for further information about
+jjmpeg in general.
+
+STATUS
+------
+
+No controls, no sound, still work in progress.
+
+SWING COMPONENTS
+----------------
+
+JFXMediaPlayer is a standalone video player.
+
+BUILDING
+--------
+
+ant?
+
+Also see the jjmpeg-core/README file.
+
+LINKS
+-----
+
+jjmpeg is hosted on google code at the following url:
+ http://code.google.com/p/jjmpeg
+
+A log of development activity and thoughts:
+ http://a-hackers-craic.blogspot.com/search/label/jjmpeg
+
+A (very quiet) mailing list is available:
+ http://groups.google.com/group/jjmpeg-discuss
+
+LICENSE
+-------
+
+jjmpeg is free software: you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published
+by the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+jjmpeg is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
+License for more details.
+
+See the file COPYING for terms of use.

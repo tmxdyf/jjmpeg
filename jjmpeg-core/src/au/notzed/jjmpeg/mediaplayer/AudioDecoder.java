@@ -68,12 +68,13 @@ public class AudioDecoder extends MediaDecoder {
 
 	@Override
 	void decodePacket(AVPacket packet) throws AVDecodingError, InterruptedException {
+		boolean go = true;
 		//System.out.println("audio decode packet()");
 		//if (true)return;
 		apacket.setSrc(packet);
 		//apacket = AVAudioPacket.create(packet);
 
-		while (apacket.getSize() > 0) {
+		while (go) {
 			try {
 				AVFrame data = frame;
 				int samples = cc.decodeAudio(frame, apacket);
@@ -88,7 +89,8 @@ public class AudioDecoder extends MediaDecoder {
 
 					AudioFrame af = dest.getAudioFrame();
 					try {
-						af.pts = convertPTS(packet.getDTS());
+						//af.pts = convertPTS(packet.getDTS());
+						af.pts = convertPTS(frame.getBestEffortTimestamp());
 						af.setSamples(data, dstChannels, dstFormat, samples);
 						af.enqueue();
 						af = null;
@@ -96,6 +98,8 @@ public class AudioDecoder extends MediaDecoder {
 						if (af != null)
 							af.recycle();
 					}
+				} else {
+					go = false;
 				}
 			} catch (AVDecodingError ex) {
 				System.out.println("decode audio failed " + ex + " packet size " + packet.getSize());

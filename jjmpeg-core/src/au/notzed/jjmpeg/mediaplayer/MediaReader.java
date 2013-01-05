@@ -69,6 +69,10 @@ public class MediaReader extends CancellableThread implements MediaPlayer {
 		state = MediaState.Idle;
 	}
 
+	public String getPath() {
+		return file;
+	}
+
 	/**
 	 * May only be called in the paused/playing state.
 	 * @return
@@ -261,7 +265,7 @@ public class MediaReader extends CancellableThread implements MediaPlayer {
 		if (packet == null) {
 			packet = AVPacket.create();
 			created++;
-			System.out.println("creating new avpacket: " + created);
+			//System.out.println("creating new avpacket: " + created);
 		}
 		return packet;
 	}
@@ -313,10 +317,11 @@ public class MediaReader extends CancellableThread implements MediaPlayer {
 								try {
 									format = AVFormatContext.open(cmd.name);
 									//format.setProbesize(1024 * 1024);
-									format.setMaxAnalyzeDuration(1000);
+									//format.setMaxAnalyzeDuration(5000);
 									format.findStreamInfo();
 									setMediaState(MediaState.Init);
 									initialised = false;
+									file = cmd.name;
 								} catch (IOException ex) {
 									mediaError(ex);
 								}
@@ -358,9 +363,14 @@ public class MediaReader extends CancellableThread implements MediaPlayer {
 
 				}
 			} catch (InterruptedException ex) {
-				Logger.getLogger(MediaReader.class.getName()).log(Level.SEVERE, null, ex);
+				if (cancelled)
+					setMediaState(MediaState.Quit);
+			} catch (Exception ex) {
+				ex.printStackTrace();
 			}
 		}
+
+		System.out.println("media reader thread quit");
 	}
 
 	/**
@@ -456,6 +466,8 @@ public class MediaReader extends CancellableThread implements MediaPlayer {
 						}
 					} while (!cancelled && paused);
 				} catch (InterruptedException x) {
+					if (cancelled)
+						setMediaState(MediaState.Quit);
 				} finally {
 					if (packet == null) {
 						packet = createPacket();
@@ -464,6 +476,22 @@ public class MediaReader extends CancellableThread implements MediaPlayer {
 					}
 				}
 			}
+
+			// Let decoders know it's end of file
+			if (!cancelled) {
+				System.out.println("Send final empty packet");
+				for (MediaDecoder md : streamMap.values()) {
+					packet = createPacket();
+					packet.setData(null, 0);
+					md.enqueuePacket(packet);
+				}
+				for (MediaDecoder md : streamMap.values()) {
+					md.complete();
+				}
+			}
+		} catch (InterruptedException x) {
+			if (cancelled)
+				setMediaState(MediaState.Quit);
 		} catch (Exception x) {
 			x.printStackTrace();
 		} finally {
@@ -474,11 +502,12 @@ public class MediaReader extends CancellableThread implements MediaPlayer {
 				dec.cancel();
 			}
 
-			dest.postFinished();
-
 			streamMap.clear();
 			format.closeInput();
 			format = null;
+
+			setMediaState(MediaState.Idle);
+			dest.postFinished();
 		}
 	}
 }
