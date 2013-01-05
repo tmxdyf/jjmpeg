@@ -1,0 +1,209 @@
+#summary News from 2012
+
+*21-12-12*
+ I had an enquiry about jjmpeg's Android player code a couple of days ago, and although I didn't want to commit to any specific work I did have a bit of a play yesterday.
+
+ It turns out that some of the assumptions I made about the re-use of AVFrame's was quite wrong (given the lack of documentation; not surprising) and if one is to buffer the results then the images simply have to be copied (or one has to load the textures synchronously, which was very slow last time I looked).  That fixed the out of order frame display although the playback was still a bit irregular.
+
+ I suppose I need to do some profiling again - currently i'm using the gpu to do the YUV conversion and scaling, which seems like a good idea except that texture loading was really slow when I timed it last.  And it complicates things appreciably (either need to synchronise it in the render callback, or use shared contexts - which were even slower when I last profiled).  Might even be faster to use NEON to do the YUV + scaling, and then drop it into a Bitmap.
+
+ But the more complex problem is the timing and frame-rate conversion stuff.
+
+ As i'm now on leave I have time to poke - but not necessarily the inclination - so any updates will include any progress.
+
+*19-10-12*
+ This is a bit old vis the checkins but I changed my javafx stuff to use jjmpeg-1.0 and found a lot of bugs in it.  Actually the 'video wall' still has quite a few issues and isn't nearly as smooth so I guess I missed something somewhere.
+
+*13-10-12*
+ So I guess that bored zed with a few hours was today.  Nice sunny day I didn't really want to waste inside, but I relocated outside and am squinting at my thinkpad screen and ready for another beer ...
+
+ I copied the GPLv3 branch of jjmpeg-0.11 to jjmpeg-1.0, fixed a few version ids, updated the FFmpeg source and compiled it as is - the few warnings of deprecated functions are the same as they were for 0.11.1, so I guess it should work.  The JJFileChooser test works anyway.  The longest part of the whole process was checking it in - fuck subversion is slow, makes me wish for cvs.
+
+ I think I will change to using this for my JavaFX stuff, so that should give it some much needed testing.  I know i'm already a few patches down on the HEAD version since i'm not using it (that, and the fact that merging is shit in subversion).
+
+*13-10-12*
+ No real news as such.  I noticed FFmpeg 1.0 is out ... it's on the TODO list but no concrete plans just yet, it's awaiting a bored zed and a few hours ...
+
+ Recently I played a bit with some DVB-T stuff but it was kind of a dead-end so I gave up - I need to get a bit deeper into it to get anywhere with that and I can't just do a 'quick and dirty' by re-using FFmpeg's demux - bummer (but not surprising).  But I did find some MT bugs with the custom Java stream input stuff in head jjmpeg, so I will have to check that in some time.
+
+ I'm currently toying with a linux webcam 'app', so that'll give jjmpeg a bit more of a workout too.
+
+*16-9-12*
+ Whilst playing with some JavaFX stuff I found some issues with jjmpeg (head version):
+ * For starters the GC on jre7+ is very loose so trying to incrementally garbage collect the old weak references just wasn't working well enough.
+ * I wasn't closing the codecs in JJMediaReader ... oops.  I've made the codeccontext track whether they're open, and it auto-closes on dispose() as with the rest.
+ * Although not necessary with the auto-gc, I made JJMediaReader dispose of all resources explicitly to avoid the need of the auto-gc stuff.
+
+ These issues are probably in the 0.11 branch too but i'm not using that for anything yet.
+
+*15-8-12*
+ No development news, but I just got a Mele A2000 to play with.  Unfortunately jjplayer is pretty much fucked on it, renders frames out of order and so on.  It's not a priority (the cpu isn't that fast anyway) but I will probably try and find out why when I next have a look at jjmpeg.  Whenever that is ... i'm knee deep in other stuff at the moment.
+
+*25-6-12*
+ Not sure when i'll feel like working on this much again, so i uploaded an updated android package for armeabi-v7a.  This one has the bus error fixed and is compiled for ARM NEON with all the optimisations turned on, it is significantly faster than the armeabi version on my tablet.  Only the build scripts changed so the other packages should be the same so I didn't bother uploading those.
+
+ I added a short wiki page about [JJPlayer] for android.
+
+*23-6-12*
+ Solved the bus error - mis-aligned loads in FFmpeg code, and tablet configured to BUS error on such.  Mostly just surprised that such an error was hit so rarely.
+
+ Still playing with the build scaffolding before I do another premature release.
+
+*22-6-12*
+ New branch created for 0.11.1, and 0.11.1a1 uploaded & tagged.
+
+*21-6-12*
+ Ok so I might've worked out the android crash: either i'm using the wrong compiler flags for the cpu and/or there are bugs in ffmpeg (alignment) or the android compiler with vfp and/or armv7-a.
+
+ If I compile with soft float and no specific target - i.e. armeabi - then it seems to end up as stable as you'd expect.  This is probably why my earlier non-GL attempts worked too, and so the whole problem was unrelated to the display code.  Foo.
+
+ TBH it makes stuff all difference anyway to performance ...
+
+ I noticed 0.11.x has a lot of ARM changes so i will probably have to bite the bullet and move onward and upward ... hopefully there are no major api changes again. _So far it looks like they're aren't, yay_.
+
+*21-6-12*
+ I decided to do a release again - not because it's reached a particular pinnacle of achievement, but because the old one was getting a bit stale.
+
+ This is based on the new jjmpg-0.10 branch which - i've tagged it with jjmpeg-0.10.4a1 - the number is the FFmpeg version on which the library is compiled against, and a1 is for alpha-1.  I included the android package too, although it is very unfeatureful`[`sic`]`, comes with some pretty big caveats and doesn't really work well for some videos.
+
+ I did not do a a source archive, but the source is available in subversion at the jjmpeg-0.10.4a1 tag, including the entire ffmpeg source tree - which is an unpatched copy.  This is what I will use should I ever do one.
+
+*20-6-12*
+ Didn't have much else to do and had a burst of enthusiasm so I kept going.
+
+ As I suspected there were some issues.  First with the 64-bit pointers, but it was only a single missing constructor method.  Then I missed some dynamic linkage stuff.  And had some ordering issues with the initialisation.  I also added a microsoft build that works similarly to the android one, although in this case I can only create dynamically linked libraries.  I have no idea if this works.
+
+ Finally I hacked up a really basic swing frontend to test the player code that is crashing on android.  So far no problems when running in the open-jdk jvm ...
+
+*20-6-12*
+ I've created a new branch jjmpeg-0.10 which is based on the android port, but with support for Java platforms as well.  Note that this branch is GPLv3 only.
+
+ I had to split the project into 3 sub-parts to work with ant/netbeans/android build stuff.
+  * jjmpeg-core: Portable classes, ffmpeg source, code generators.
+  * jjmpeg-java: Swing classes, Java jni library cross compile scripts.
+  * jjmpeg-android: Android classes, a player (for now), and android NDK JNI and ffmpeg cross compile scripts.
+
+ I had to do some pretty nasty mucking around to have it work nicely in Netbeans: although I doubt it's a long term/stable solution.  I'm not really happy with what I came up with but I couldn't come up with anything better at this point.  For the android build script I added jjmpeg-core/src to the sources list so it just works automatically.
+
+ It's checked in, each should compile, but it hasn't been tested at all.  The compile sequence from the command line (assuming various paths are setup in each jni/project):
+  # jjmpeg-core: ant jar
+  # jjmpeg-android: (cd jni && make) ; ant ?whatever?
+  # jjmpeg-java: (cd jni && make) ; ant jar
+  # jjmpegdemos wont work yet.
+
+ Everything needs to be checked out at the same level as they all reference jjmpeg-core using a relative path.
+
+ (I suspect it wont work yet either, i'm just documenting the commits.  I will test bits of it as I have time in the coming days).
+
+*15-6-12*
+ Had a bit of a play today trying to work out the crash issue.  Tried compiling without optimisations, disabling multi-threaded ffmpeg, and running an earlier implementation which was much simpler.  No luck, even the old implementation which i thought was stable vanished with a bus error.
+
+ I noticed there's now ffmpeg 10.4 and 11.1 out too - 'yay' (what the hell, is this mozilla now?).  I suppose I should at least update to 10.4, although maybe it's something with the binding or api use.  Need to get port it back to desktop java and see if the same happens there.
+
+*7-6-12*
+ Ahh, so one detail I missed is that the AVPacket from read_packet() needs to be dup'd before passing it off for asynchronous processing.  The mediaplayer code in jjmpeg demos wasn't doing it this way so it wasn't necessary there.
+
+ This simple change has fixed the seek/startup audio glitches.  I was hoping it would fix the crash too - but nope, still there.
+
+ I put some [http://a-hackers-craic.blogspot.com.au/2012/06/slow-queues-and-big-maths.html more information about today's hacking] on my blog.
+
+*6-6-12*
+ I finally had a chance to look at the android jjmpeg stuff again.
+
+ I got the audio resampling api worked out (missed calling init ... and a few data size miscalculations) and added (a pretty broken) seek to the multi-threaded player code, so I thought i'd check it all in including all the broken/messy experiments.
+
+ It's a bit busted - seeking mostly works except audio gets corrupt with some formats.  Both audio and video are a bit messed up at the start of some videos too; not sure what's going on there.
+
+ And I still haven't solved the stability problems.  After a few minutes the application often just vanishes silently (not even a backtrace in logcat).  Oh yeah another big one, the android job control stuff is not all implemented yet, so if you go back/forth from it to other applications, it does bad things - like start playing from the start again ... simultaneously with playing it from where it was.  Each time you do it.
+
+ It's work in progress ...
+
+*14-5-12*
+ Actually now I'm not sure.  I spent a huge amount of time over it on the weekend but am really none the wiser on the stability problems.  Seemed to be from the gl texture load, then perhaps from audio decode.  Possibly transformer prime bugs - the emulator just keeps going until it runs out of memory (seems to be an emulator bug).
+
+ I've kind of wasted enough time on this and a player wasn't my primary objective so I may just check in what I have, although now i'm in the middle of adding libswrescale support and will get that out of the way first.
+
+*10-5-12*
+ I think I worked out the crash problem, the way I was using the avframe's as buffers is out of spec, at least without some more mucking around.  I tried the original 'dumb' version which just copies the data around, and that was rock solid.
+
+ I'm experimenting with a couple of different ways to see which works the best.  Either just copying the frame so it can be displayed whenever I want, or copying directly to a texture which becomes the 'buffering'.  The latter seems the best although I need to either put up with some thread overheads/possible conflicts with the GL rendering thread, or work out some EGL stuff.
+
+*9-5-12*
+ jjmpeg-android: Had a go at getting seeking working and 'feeling right'.  Made a bit of a  mess of the code trying to suss it all out (but hey, it's still being developed).  Works really well for some files, and fails completely for others (e.g. mp3).  avformat_seek_file() seems to work much better than avformat_seek_frame() with 0.10.
+
+ But i'm still having stability problems, after several minutes (2-30) the player will usually crash and just terminate the VM.  I tried debugging but it was failing deep inside decode_video or decode_audio, for non obvious reasons.  I tried disabling (ffmpeg) threads and compiling with no optimisations but it made no difference.
+
+*6-5-12*
+ Re-worked the binding a bit more on the android version - added 64/32 bit 'native' interfaces in a way which allows a single jar to cover both pointer sizes.  I'm thinking this might end up becoming the main version for all platforms.
+
+ I also hooked up sound in the demo player - although with absolutely no sync so far, so it is not robust.
+
+ And I hooked up some of the intent logic to that you can launch it to play videos from the rest of the system.  It's pretty flakey, but i'm still working out some of the android lifecycle requirements, and i'm not sure if there are some binding errors.  I didn't have much luck getting the libavformat network stuff going either, so it only plays local resources.
+
+*4-5-12*
+ Had a big performance boost on the android tablet, mostly from fixing the compilation script.
+
+ Anyway, [http://a-hackers-craic.blogspot.com.au/2012/05/jjmpegandroid.html i wrote a post] about it and the day's hurdles and humps.
+
+*3-5-12*
+ Just spent the hour necessary copying around files to get a clean tree of the work I did last week and have it all work properly in netbeans and android's tools.  And another playing with the demo.
+
+ I have done very little testing so far, but the basic mechanisms seem solid enough.  I updated the player to run through all frames; with single threaded software decoding of only the video, colour conversion, and just using an ImageView for display ... it not surprisingly can't keep up with even a simple video (mp4 Big Buck Bunny advert as used on the w3.org video test page).  Still getting up to speed on android's apis, so at least that establishes a baseline.
+
+ As with all variations of jjmpeg, i only build on GNU systems.
+
+*25-4-12*
+ Had a few hours to poke at the android stuff.  Android's JNI doesn't like NULL ByteBuffers and trying to create one just crashes the whole JVM.  This is a bit of a problem as I was using that to pass pointers around ...
+
+ So ... I need to change the whole binding mechanism.  It's something I was planning to do eventually anyway, but this gives it a bit more of a reason to hurry it up.  I started on this today but it got to be a bit too much effort for a lazy public holiday afternoon. so I watched the footy instead.
+
+*22-4-12*
+ I just created a branch to play with an android port.
+
+ The android port will be *GPL3 only*, as I will have to distribute the FFmpeg binaries as well and have to decide what version of that I will build.  And that is what I decided.
+
+ I'm still not sure exactly how interested i am in doing this because a video player on a tablet is pretty meh to me, and the android development community is in general a bit greedy and selfish when it comes to using other people's code for free.
+
+ So don't expect rapid progress unless I find a need for this myself.  For now it is a learning exercise with using the NDK, and also exploring performance characteristics of mobile hardware.
+
+*17-3-12*
+ I packaged up a test release and added a downloads tab.  I'm too lazy right now to tag it and check everything in but I will endeavour to do that in the next few days/week.
+
+ I didn't do much testing but did confirm I could build the source from the tar ball and run the JJFileChooser.  I am using a custom Makefile from the top-level now, as ant just vomited up nonsense when I tried to use it outside of NetBeans, and besides even the messy Makefile is cleaner and much faster.
+
+ The binary archive contains the compiled jars and all of the native libraries I am able to build with my setup - i.e. i386/amd64 for both GNU/Linux, and Microsoft Windows.  I include the version the native library works against in the README.FFmpeg-version file in each native directory; it will not work if the library versions do not match.
+
+ Anyway, consider this experimental - i.e. not only is it unsupported it may not even work at all.
+
+*15-3-12*
+ So, for some strange reason I missed the subtleties of the changes in FFmpeg 0.10 for implementing custom stream handlers - I thought they were just vanishing.  I was looking something else up and noticed the changes, so I fixed up the code in the ffmpeg-0.10 branch. The `dictionary' stuff is still nasty so i'm just not touching that for now.
+*1-3-12*
+ Just checked in some stuff I had lying about.  Mostly it's some maintenance on JJMediaReader, and some DVB stuff.  I also moved all the examples to jjmpegdemos (so some of the links here and on my blog are probably broken).
+
+ For JJMediaReader i've now implemented seeking, so JJVideoScanner is deprecated.  It also handles a bit of stuff for creating icons (i.e. aspect-sensitive scaled versions of images) if one so desires, and greyscale output.  I also tried to get it to work with reading the dvb device directly and preventing it from reading too much while searching for embedded streams, but this just didn't work very well, and either because of that or some other reason the device often overflows and libavformat gives up.  Recording dvb to a file works fine though.
+
+ Post my last news item I did actually end up getting most of the stuff working on FFmpeg 0.10 and removing the use of deprecated functions (as far as I could tell, as I link to them using dlopen() I have to check it manually), this is on the ffmpeg-0.10 branch but for the moment I am not keeping that up to date.  IIRC it should work though, despite the warning in the README.  I do not know yet when I will work on that again either as I am just not using it yet and the decision to move there depends on some external factors.
+
+*11-2-12*
+ I created a branch to work on the FFmpeg 0.10 interfaces whilst removing the deprecated stuff.  However since the `libav' mess the API has been changing a lot, so now i'm not so sure I want to do this.
+*10-2-12*
+ Created a digital-tv viewer demo using jjdvb to see if it still worked after all the build changes.  I was looking at the tv tuner example and wonderered why I never went further with it.  I think in part it was because I wanted to do i/o buffereing in Java and that didn't work at the time; but then i remembered the primary reason: EIT programme guides.  I guess it can go back on the shelf again until I forget about that and poke at it again ...
+*10-2-12*
+ Revamped the build system quite a bit, to follow the stuff I developed in PDFZ (mediaz project), it also added darwin targets based on a patch from Giulio, but I wont be testing those.
+*10-2-12*
+ I played some some performance tests and [http://a-hackers-craic.blogspot.com.au/2012/02/tuning.html documented the results].  Explained all there.  But in short ByteBuffer is pretty fast and avoiding a single redundant copy doesn't gain you much.
+
+ Still, why not?  So based on that I changed JJMediaReader to use the direct scaling/conversion interface when reading BufferedImages directly.  I also changed JJFileChooser to use JJMediaReader, thus [http://code.google.com/p/jjmpeg/source/diff?spec=svn59&old=55&r=59&format=unidiff&path=%2Ftrunk%2Fjjmpeg%2Fsrc%2Fau%2Fnotzed%2Fjjmpeg%2Futil%2FJJFileChooser.java reducing the code quite a bit].
+
+*7-2-12*
+ It turns out i misunderstood NewDirectByteBuffer(), it doesn't return NULL on NULL input, it just returns a buffer that starts at address 0 ... well, obvious really.  So my bugs were NULL pointer accesses in code that shouldn't have been hit, at least in C.  Anyway the transcoder example works with more codecs now.
+
+ I noticed ffmpeg 0.10 was released recently: the api's have changed a bit, so I will have to do some work to update everything.  I'm not in any rush right now though ...
+*6-2-12*
+ I had a go at writing a transcoder in jjmpegdemo's.  I had to fill out the binding a bit for the audio writing, and I also added a JJMediaWriter class to do much of the work.  It crashes on some formats, so i'm not sure what's going on there.
+
+ I changed the API a bit, CodecID is now just a table of constants rather than an enum since the numbers aren't consecutive.  And i'm still fiddling with the names of some of the classes.
+*21-1-12*
+ I've been on leave for the last month or so - and not terribly interested in sitting in front of a keyboard.  And apart from that jjmpeg is doing enough for my client, and so doesn't need much work.
+
+ But if anyone has some ideas or requests consider posting to the mailing list, I tend to be more interested in things if provoked into action ...
