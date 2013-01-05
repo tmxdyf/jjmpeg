@@ -1,4 +1,6 @@
-#summary News from 2012
+#summary Archived News from 2012
+
+The front-page News updates from the start until the end of 2012.
 
 *21-12-12*
  I had an enquiry about jjmpeg's Android player code a couple of days ago, and although I didn't want to commit to any specific work I did have a bit of a play yesterday.
