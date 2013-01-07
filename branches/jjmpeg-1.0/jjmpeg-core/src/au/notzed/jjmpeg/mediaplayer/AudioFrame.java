@@ -30,6 +30,7 @@ public abstract class AudioFrame extends MediaFrame {
 
 	long pts;
 	//public final AVSamples frame;
+	// TODO: short stuff isn't thatt useful, change to bytes?
 	short[] samples;
 	int samplesLen;
 	int channelsCount;

@@ -65,11 +65,35 @@ public class JFXVideoRenderer extends Pane {
 		scheduler.start();
 	}
 
+	public void pause() {
+		scheduler.pause();
+	}
+
+	public void unpause() {
+		scheduler.unpause();
+	}
+
+	public long getPosition() {
+		return getVideoClock(System.currentTimeMillis());
+	}
+
+	public synchronized void postSeek(long position) {
+		scheduler.postSeek(position);
+	}
+
 	public void stop() {
 		if (scheduler != null) {
 			scheduler.cancel();
 			scheduler = null;
 		}
+	}
+
+	public void release() {
+		stop();
+		if (oscale != null)
+			oscale.dispose();
+		if (oframe != null)
+			oframe.dispose();
 	}
 
 	public void setVideoFormat(au.notzed.jjmpeg.PixelFormat fmt, int width, int height) {
@@ -114,22 +138,31 @@ public class JFXVideoRenderer extends Pane {
 
 		return buffers.take();
 	}
+	// Frame timestamp output, or synchronising to video
+	// TODO: encapsulate in 'real time clock' object or somesuch
+	long videoms;
+	long videosetms;
 	// Frame scheduling
 	long audioms;
 	long audiosetms;
 	long startms = -1;
+
+	private synchronized void setVideoLocation(long ms) {
+		videoms = ms;
+		videosetms = System.currentTimeMillis();
+	}
+
+	public synchronized long getVideoClock(long now) {
+		return (videoms + (now - videosetms));
+	}
 
 	public synchronized void setAudioLocation(long ms) {
 		audioms = ms;
 		audiosetms = System.currentTimeMillis();
 	}
 
-	public synchronized long getClock(long now) {
+	public synchronized long getAudioClock(long now) {
 		return (audioms + (now - audiosetms));
-	}
-
-	public synchronized long getDelay(long now, long pts) {
-		return pts - (audioms + (now - audiosetms));
 	}
 
 	class JFXVideoFrame extends VideoFrame implements Runnable {
@@ -164,6 +197,7 @@ public class JFXVideoRenderer extends Pane {
 
 		@Override
 		public void run() {
+			setVideoLocation(pts);
 			// Called to show the frame on GUI thread
 			surface.setImage(image);
 			// Need to keep this around until we're showing the next one
@@ -178,6 +212,37 @@ public class JFXVideoRenderer extends Pane {
 		public VideoScheduler() {
 			super("Video Scheduler");
 		}
+		boolean paused = false;
+		int seeked = 0;
+
+		public synchronized void postSeek(long ms) {
+			seeked++;
+		}
+
+		public synchronized void pause() {
+			paused = true;
+		}
+
+		public synchronized void unpause() {
+			paused = false;
+			notify();
+		}
+
+		synchronized boolean checkPaused() throws InterruptedException {
+			// TODO: handle seeking within pause here too?
+			if (seeked > 0) {
+				seeked = 0;
+				startms = -1;
+				ready.drainTo(buffers);
+			}
+
+			boolean p = paused;
+			while (paused) {
+				wait();
+			}
+
+			return p;
+		}
 
 		@Override
 		public void run() {
@@ -185,15 +250,16 @@ public class JFXVideoRenderer extends Pane {
 				try {
 					JFXVideoFrame peek;
 					long delay;
-					JFXVideoFrame displayNew = null;
 					do {
+						checkPaused();
+
 						peek = ready.take();
 
 						long pts = peek.pts;
 						long targetms = pts + startms;
 						long now = System.currentTimeMillis();
 
-						now = getClock(now);
+						now = getAudioClock(now);
 
 						if (startms == -1) {
 							startms = now - pts;
@@ -209,16 +275,14 @@ public class JFXVideoRenderer extends Pane {
 						if (delay > 500) {
 							System.out.println("weird delay " + delay + " pts " + peek.pts + " now = " + (now - startms));
 							startms = -1;
+							delay = 0;
 						}
 
 						if (delay < 0) {
 							lag = -delay;
 							System.out.println(" drop display, lagged: " + lag);
 							// dump head
-							ready.poll();
-							if (displayNew != null)
-								displayNew.recycle();
-							displayNew = peek;
+							peek.recycle();
 						} else {
 							lag = 0;
 						}
