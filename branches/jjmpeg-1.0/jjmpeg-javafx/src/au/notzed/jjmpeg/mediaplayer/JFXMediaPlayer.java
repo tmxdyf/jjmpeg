@@ -21,9 +21,11 @@ package au.notzed.jjmpeg.mediaplayer;
 import au.notzed.jjmpeg.AVRational;
 import au.notzed.jjmpeg.AVSampleFormat;
 import au.notzed.jjmpeg.mediaplayer.MediaPlayer.MediaState;
+import java.io.File;
 import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javafx.animation.FadeTransition;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.application.Application;
@@ -31,7 +33,10 @@ import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.geometry.Pos;
+import javafx.scene.Cursor;
+import javafx.scene.Group;
 import javafx.scene.Scene;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 import javafx.util.Duration;
@@ -42,6 +47,7 @@ import javafx.util.Duration;
  */
 public class JFXMediaPlayer extends Application implements MediaSink, MediaPlayer.MediaListener {
 
+	StackPane root;
 	MediaReader reader;
 	JFXVideoRenderer vout;
 	JavaAudioRenderer aout;
@@ -63,7 +69,9 @@ public class JFXMediaPlayer extends Application implements MediaSink, MediaPlaye
 		reader.setListener(this);
 
 		paths = getParameters().getUnnamed().toArray(new String[0]);
-		//paths = new String[]{ "/home/notzed/Videos/big-buck-bunny_trailer.webm.mp4" };
+
+		if (paths.length == 0 && new File("/home/notzed/Videos/big-buck-bunny_trailer.webm.mp4").canRead())
+			paths = new String[]{"/home/notzed/Videos/big-buck-bunny_trailer.webm.mp4"};
 
 		if (paths.length == 0) {
 			System.err.println("No parameters supplied");
@@ -198,18 +206,31 @@ public class JFXMediaPlayer extends Application implements MediaSink, MediaPlaye
 			}
 
 			// Now show GUI
-			StackPane root = new StackPane();
+			root = new StackPane();
 			root.getChildren().add(vout);
+
+			root.setOnMouseMoved(new EventHandler<MouseEvent>() {
+				@Override
+				public void handle(MouseEvent t) {
+					userActive();
+				}
+			});
+
 
 			controls = new JFXMediaControls();
 			controls.setPrefWidth(width);
-			controls.setAlignment(Pos.BOTTOM_CENTER);
-			root.getChildren().add(controls);
+			Group g = new Group(controls);
+			StackPane.setAlignment(g, Pos.BOTTOM_CENTER);
+			root.getChildren().add(g);
 
 			controls.setPlayer(this);
+			controls.setId("player-controls");
+
 			controls.setDuration(reader.getDuration());
 
 			Scene scene = new Scene(root, width, height);
+
+			scene.getStylesheets().add("/au/notzed/jjmpeg/mediaplayer/style.css");
 
 			primaryStage.setTitle("JJPlayer: " + reader.getPath());
 			primaryStage.setScene(scene);
@@ -226,6 +247,11 @@ public class JFXMediaPlayer extends Application implements MediaSink, MediaPlaye
 			autoUpdate.setCycleCount(Timeline.INDEFINITE);
 			autoUpdate.play();
 
+			// Reset mouse state
+			root.setCursor(Cursor.NONE);
+			mouseHidden = true;
+			controls.setOpacity(0);
+
 			//	seek.setMax((int) reader.getDuration());
 
 			//	if (haveAudio)
@@ -239,9 +265,7 @@ public class JFXMediaPlayer extends Application implements MediaSink, MediaPlaye
 			Logger.getLogger(this.getClass().getName()).log(Level.SEVERE, null, ex);
 		}
 	}
-
 	EventHandler<ActionEvent> updateHandler = new EventHandler<ActionEvent>() {
-
 		@Override
 		public void handle(ActionEvent t) {
 			if (reader != null && controls != null) {
@@ -274,6 +298,66 @@ public class JFXMediaPlayer extends Application implements MediaSink, MediaPlaye
 				// Just start it playing right away
 				player.play();
 				break;
+		}
+	}
+	// User did something - show ui or mouse or whatever needs showing
+	boolean mouseHiding;
+	boolean mouseHidden = false;
+	FadeTransition fadeout;
+	FadeTransition fadein;
+	EventHandler<ActionEvent> hideHandler = new EventHandler<ActionEvent>() {
+		@Override
+		public void handle(ActionEvent t) {
+			root.setCursor(Cursor.NONE);
+			mouseHidden = true;
+
+			if (fadein != null) {
+				fadein.setRate(-1);
+			} else {
+				fadeout = new FadeTransition(Duration.millis(750), controls);
+				fadeout.setFromValue(1);
+				fadeout.setToValue(0);
+				fadeout.setOnFinished(new EventHandler<ActionEvent>() {
+					@Override
+					public void handle(ActionEvent t) {
+						fadeout = null;
+					}
+				});
+				fadeout.play();
+			}
+		}
+	};
+	Timeline mouseHide = new Timeline(new KeyFrame(Duration.seconds(2), hideHandler));
+
+	void userActive() {
+
+		// can probably just use one fade transition
+		// and use playFrom + setdirection to manage it.
+
+		if (mouseHidden) {
+			// show mouse
+			root.setCursor(Cursor.DEFAULT);
+			if (fadeout != null) {
+				fadeout.setRate(-1);
+			} else if (fadein != null) {
+				fadein.setRate(1);
+			} else if (fadein == null) {
+				fadein = new FadeTransition(Duration.millis(750), controls);
+				fadein.setFromValue(0);
+				fadein.setToValue(1);
+				fadein.setOnFinished(new EventHandler<ActionEvent>() {
+					@Override
+					public void handle(ActionEvent t) {
+						fadein = null;
+					}
+				});
+				fadein.play();
+			}
+
+			mouseHidden = false;
+		} else {
+			mouseHide.stop();
+			mouseHide.play();
 		}
 	}
 }

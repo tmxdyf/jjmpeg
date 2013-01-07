@@ -1,0 +1,14 @@
+/*
+    Document   : style
+    Created on : Oct 11, 2012, 2:11:14 PM
+    Author     : notzed
+    Description: JJPlayer stylesheet
+*/
+
+#player-controls {
+	-fx-background-color: #88c9c9c9;
+	-fx-border-color: #000000;
+    -fx-border-radius: 11;
+    -fx-background-radius: 11;
+	-fx-padding: 5 5 5 5;
+}
