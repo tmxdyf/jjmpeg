@@ -209,7 +209,7 @@ public class JFXMediaPlayer extends Application implements MediaSink, MediaPlaye
 			root = new StackPane();
 			root.getChildren().add(vout);
 
-			root.setOnMouseMoved(new EventHandler<MouseEvent>() {
+			root.addEventFilter(MouseEvent.ANY, new EventHandler<MouseEvent>() {
 				@Override
 				public void handle(MouseEvent t) {
 					userActive();
