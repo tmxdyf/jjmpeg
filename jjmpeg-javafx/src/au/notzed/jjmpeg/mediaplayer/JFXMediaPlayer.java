@@ -63,7 +63,7 @@ public class JFXMediaPlayer extends Application implements MediaSink, MediaPlaye
 		reader.setListener(this);
 
 		paths = getParameters().getUnnamed().toArray(new String[0]);
-		paths = new String[]{ "/home/notzed/Videos/big-buck-bunny_trailer.webm.mp4" };
+		//paths = new String[]{ "/home/notzed/Videos/big-buck-bunny_trailer.webm.mp4" };
 
 		if (paths.length == 0) {
 			System.err.println("No parameters supplied");
