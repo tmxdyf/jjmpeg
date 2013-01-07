@@ -335,13 +335,13 @@ JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_AVFrameNative_loadTexture2D
 
 // Audio stuff for AVFrame
 
+// I've included the type in the name rather than mess with the mangling shit for overriden types
 
-JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_AVFrameNative_getSamples
+JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_AVFrameNative_getSamplesShort
 (JNIEnv *env, jobject jptr, jint fmt, int channels, jshortArray jsamples) {
 	AVFrame *frame = PTR(jptr, AVFrame);
 	int jlen = (*env)->GetArrayLength(env, jsamples);
-	int planesize;
-	int clen = CALLDL(av_samples_get_buffer_size)(&planesize, channels, frame->nb_samples, fmt, 1) / 2;
+	int clen = CALLDL(av_samples_get_buffer_size)(NULL, channels, frame->nb_samples, fmt, 1) / 2;
 
 	// TODO: format must be S16
 
@@ -353,6 +353,28 @@ JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_AVFrameNative_getSamples
 	(*env)->SetShortArrayRegion(env, jsamples, 0, clen, (const jshort *)frame->extended_data[0]);
 
 	return clen;
+}
+
+JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_AVFrameNative_getSamplesByte
+(JNIEnv *env, jobject jptr, jint fmt, jint channels, jbyteArray jsamples) {
+	AVFrame *frame = PTR(jptr, AVFrame);
+	int jlen = (*env)->GetArrayLength(env, jsamples);
+	int planesize;
+	int clen = CALLDL(av_samples_get_buffer_size)(NULL, channels, frame->nb_samples, fmt, 1);
+
+	if (jlen < clen) {
+		LOGI("getSamples() byte array write had %d needed %d", jlen, clen);
+		clen = jlen;
+	}
+
+	(*env)->SetByteArrayRegion(env, jsamples, 0, clen, frame->extended_data[0]);
+
+	return clen;
+}
+
+JNIEXPORT jint JNICALL Java_au_notzed_jjmpeg_AVFrameNative_getSamplesSize
+(JNIEnv *env, jclass jc, jint fmt, jint channels, jint nb_samples, jint align) {
+	return CALLDL(av_samples_get_buffer_size)(NULL, channels, nb_samples, fmt, 1);
 }
 
 /* ********************************************************************** */

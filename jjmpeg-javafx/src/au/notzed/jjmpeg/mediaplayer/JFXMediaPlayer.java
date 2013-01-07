@@ -24,11 +24,17 @@ import au.notzed.jjmpeg.mediaplayer.MediaPlayer.MediaState;
 import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.application.Application;
 import javafx.application.Platform;
+import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
+import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 
 /**
  *
@@ -39,9 +45,11 @@ public class JFXMediaPlayer extends Application implements MediaSink, MediaPlaye
 	MediaReader reader;
 	JFXVideoRenderer vout;
 	JavaAudioRenderer aout;
+	JFXMediaControls controls;
 	Stage primaryStage;
 	int index = 0;
 	String[] paths;
+	Timeline autoUpdate;
 
 	@Override
 	public void start(Stage primaryStage) {
@@ -55,7 +63,7 @@ public class JFXMediaPlayer extends Application implements MediaSink, MediaPlaye
 		reader.setListener(this);
 
 		paths = getParameters().getUnnamed().toArray(new String[0]);
-		//paths = new String[]{ "/home/notzed/Videos/big-buck-bunny_trailer.webm.mp4" };
+		paths = new String[]{ "/home/notzed/Videos/big-buck-bunny_trailer.webm.mp4" };
 
 		if (paths.length == 0) {
 			System.err.println("No parameters supplied");
@@ -73,6 +81,8 @@ public class JFXMediaPlayer extends Application implements MediaSink, MediaPlaye
 
 	@Override
 	public AudioFrame getAudioFrame() throws InterruptedException {
+		if (haveVideo)
+			vout.setAudioLocation(aout.getPosition());
 		return aout.getFrame();
 	}
 
@@ -83,23 +93,34 @@ public class JFXMediaPlayer extends Application implements MediaSink, MediaPlaye
 
 	@Override
 	public void postSeek(long stampms) {
+		vout.postSeek(stampms);
+		aout.postSeek(stampms);
 	}
 
 	@Override
 	public void postPlay() {
+		System.out.println(" post play");
+		aout.start();
 	}
 
 	@Override
 	public void postPause() {
+		System.out.println(" post pause");
+		vout.pause();
+		aout.stop();
 	}
 
 	@Override
 	public void postUnpause() {
+		System.out.println(" post unpause");
+		vout.unpause();
+		aout.start();
 	}
 
 	@Override
 	public void postFinished() {
 		vout.stop();
+		aout.stop();
 		System.out.println("finished file " + paths[index - 1]);
 		if (index < paths.length) {
 			System.out.println("loading file " + paths[index]);
@@ -138,11 +159,11 @@ public class JFXMediaPlayer extends Application implements MediaSink, MediaPlaye
 			} else if (md instanceof AudioDecoder) {
 				ad = (AudioDecoder) md;
 
-				// Force stereo output for multi-channel data
+				// Force stereo output for multi-channel data, for now
 				int cc = Math.min(2, ad.cc.getChannels());
 
 				ad.setOutputFormat(3, cc, AVSampleFormat.SAMPLE_FMT_S16, ad.cc.getSampleRate());
-				//	aRenderer.setAudioFormat(ad.cc.getSampleRate(), cc, ad.cc.getSampleFmt());
+				aout.setAudioFormat(ad.cc.getSampleRate(), cc, ad.cc.getSampleFmt());
 				haveAudio = true;
 			}
 		}
@@ -153,8 +174,8 @@ public class JFXMediaPlayer extends Application implements MediaSink, MediaPlaye
 		super.stop();
 
 		reader.cancel();
-		vout.stop();
-		//aout.stop();
+		vout.release();
+		aout.release();
 	}
 
 	void initMedia() {
@@ -166,6 +187,11 @@ public class JFXMediaPlayer extends Application implements MediaSink, MediaPlaye
 
 			int width = 320, height = 256;
 
+			if (controls != null) {
+				controls.setPlayer(null);
+				autoUpdate.stop();
+			}
+
 			if (haveVideo) {
 				width = vd.width;
 				height = vd.height;
@@ -174,6 +200,14 @@ public class JFXMediaPlayer extends Application implements MediaSink, MediaPlaye
 			// Now show GUI
 			StackPane root = new StackPane();
 			root.getChildren().add(vout);
+
+			controls = new JFXMediaControls();
+			controls.setPrefWidth(width);
+			controls.setAlignment(Pos.BOTTOM_CENTER);
+			root.getChildren().add(controls);
+
+			controls.setPlayer(this);
+			controls.setDuration(reader.getDuration());
 
 			Scene scene = new Scene(root, width, height);
 
@@ -188,6 +222,10 @@ public class JFXMediaPlayer extends Application implements MediaSink, MediaPlaye
 
 			reader.play();
 
+			autoUpdate = new Timeline(new KeyFrame(Duration.millis(500), updateHandler));
+			autoUpdate.setCycleCount(Timeline.INDEFINITE);
+			autoUpdate.play();
+
 			//	seek.setMax((int) reader.getDuration());
 
 			//	if (haveAudio)
@@ -201,6 +239,23 @@ public class JFXMediaPlayer extends Application implements MediaSink, MediaPlaye
 			Logger.getLogger(this.getClass().getName()).log(Level.SEVERE, null, ex);
 		}
 	}
+
+	EventHandler<ActionEvent> updateHandler = new EventHandler<ActionEvent>() {
+
+		@Override
+		public void handle(ActionEvent t) {
+			if (reader != null && controls != null) {
+				long position = 0;
+
+				if (haveAudio)
+					position = aout.getPosition();
+				else if (haveVideo)
+					position = vout.getPosition();
+
+				controls.setLocation(position);
+			}
+		}
+	};
 
 	@Override
 	public void mediaState(MediaPlayer player, MediaState newstate) {

@@ -29,8 +29,16 @@ import java.util.HashMap;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
+/*
+ * Notes and todos for api improvements.
+ *
+ * TODO: AudioDecoder has setOutputFormat, but VideoDecoder does not
+ * TODO: cancel() is used as a finishing function, should have something clearer
+ *       like release.
+ * TODO: Some way of determining the overall rendered position - sound or video
+ * TODO: resume vs play - don't need resume
+ */
 
 /**
  * Low Level Media Player
@@ -431,6 +439,7 @@ public class MediaReader extends CancellableThread implements MediaPlayer {
 										System.out.println("play command");
 										playcmd = cmd;
 										pausecmd = null;
+										cmd = null;
 										break;
 									case PlayerCMD.RESUME:
 										System.out.println("resume command");
@@ -449,18 +458,19 @@ public class MediaReader extends CancellableThread implements MediaPlayer {
 						}
 						if (pausecmd != null) {
 							if (!paused) {
-								System.out.println(" pause");
+								System.out.println("MediaReader: pause");
 								dest.postPause();
 								paused = true;
 								setMediaState(MediaState.Paused);
 							}
 						} else if (playcmd != null) {
 							if (paused) {
-								System.out.println(" un-pause");
+								System.out.println("MediaReader: un-pause");
 								paused = false;
 								dest.postUnpause();
 								setMediaState(MediaState.Playing);
 							} else {
+								System.out.println("MediaREader: playing");
 								dest.postPlay();
 							}
 						}

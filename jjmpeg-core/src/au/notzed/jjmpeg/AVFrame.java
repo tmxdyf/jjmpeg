@@ -164,7 +164,33 @@ public class AVFrame extends AVFrameAbstract {
 	 */
 	public int getSamples(AVSampleFormat fmt, int channels, short[] samples) {
 		// TODO: Use back buffer if set?
-		return n.getSamples(fmt.toC(), channels, samples);
+		return n.getSamplesShort(fmt.toC(), channels, samples);
+	}
+
+	/**
+	 * Assuming this is an audio avframe, copy samples out of AVFrame
+	 *
+	 * @param fmt must be a short format
+	 * @param channels from context
+	 * @param samples should be long enough to hold samples (channels * frame.getNbSamples()), but will not overflow if not.
+	 * (todo: should probably throw exception)
+	 * @return number of (short) samples copied
+	 */
+	public int getSamples(AVSampleFormat fmt, int channels, byte[] samples) {
+		return n.getSamplesByte(fmt.toC(), channels, samples);
+	}
+
+	/**
+	 * Calls av_samples_get_buffer_size() to calculate the number of bytes required
+	 * to store the given number of samples in the given format.
+	 * @param fmt
+	 * @param channels
+	 * @param nb_samples
+	 * @param align For aligning the data to a given byte size.  Not sure what to use here.
+	 * @return
+	 */
+	static public int getSamplesSize(AVSampleFormat fmt, int channels, int nb_samples, int align) {
+		return AVFrameNative.getSamplesSize(fmt.toC(), channels, nb_samples, align);
 	}
 
 	public boolean isKeyFrame() {
@@ -191,7 +217,11 @@ class AVFrameNative extends AVFrameNativeAbstract {
 
 	native void freeFrame();
 
-	native int getSamples(int sampleFormat, int channels, short[] samples);
+	native int getSamplesShort(int sampleFormat, int channels, short[] samples);
+
+	native int getSamplesByte(int sampleFormat, int channels, byte[] samples);
+
+	static native int getSamplesSize(int sampleFormat, int channels, int nb_samples, int align);
 
 	// TODO: get neon optimised version in ffmpeg
 	native void toRGB565(int pixelFormat, int width, int height, Buffer dst);
