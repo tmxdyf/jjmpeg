@@ -38,6 +38,8 @@ import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Pane;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBoxBuilder;
 import javafx.scene.text.Text;
 import javafx.stage.FileChooser;
@@ -58,6 +60,8 @@ public class EOFXView extends Stage {
 	ImageView imageView;
 
 	public EOFXView(Image image) {
+		StackPane stack = new StackPane();
+
 		scroll = new ScrollPane();
 		scroll.setPannable(true);
 
@@ -90,6 +94,8 @@ public class EOFXView extends Stage {
 
 		HBox buttons = new HBox(2);
 
+		// Can't for the life of me get this to offset nicely so it's stuck at some edge
+
 		Button save = new Button("Save");
 		buttons.getChildren().add(save);
 
@@ -100,32 +106,33 @@ public class EOFXView extends Stage {
 			}
 		});
 
-		root.setTop(buttons);
-		root.setCenter(scroll);
+		Group g = new Group(buttons);
 
-		Scene scene = new Scene(root, image.getWidth() + 2, image.getHeight() + 25);
+		StackPane.setAlignment(g, Pos.TOP_LEFT);
+		buttons.setId("player-controls");
+		stack.getChildren().addAll(scroll, g);
+		root.setCenter(stack);
 
+		Scene scene = new Scene(root, image.getWidth() + 2, image.getHeight() + 4);
+
+		scene.getStylesheets().add("/au/notzed/jjmpeg/mediaplayer/style.css");
 		scene.getAccelerators().put(new KeyCodeCombination(KeyCode.S, KeyCodeCombination.SHORTCUT_DOWN), new Runnable() {
-
 			@Override
 			public void run() {
 				saveImage();
 			}
 		});
 		scene.getAccelerators().put(new KeyCodeCombination(KeyCode.ESCAPE, KeyCodeCombination.SHORTCUT_ANY), new Runnable() {
-
 			@Override
 			public void run() {
 				// Err, otherwise i get a gtk error
 				Platform.runLater(new Runnable() {
-
 					@Override
 					public void run() {
 						close();
 					}
 				});
 			}
-
 		});
 
 		setTitle("Eye of FX");

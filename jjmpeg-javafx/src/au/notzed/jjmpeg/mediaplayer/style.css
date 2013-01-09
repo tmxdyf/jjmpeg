@@ -11,6 +11,7 @@
     -fx-border-radius: 11;
     -fx-background-radius: 11;
 	-fx-padding: 5 5 5 5;
+	-fx-border-width: 2;
 }
 
 #player-root {
