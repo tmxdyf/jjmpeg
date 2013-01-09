@@ -493,14 +493,14 @@ public class JJGLPlayerDirect extends Activity {
 
 			for (JJReaderStream rs : mr.getStreams()) {
 				switch (rs.getType()) {
-					case AVCodecContext.AVMEDIA_TYPE_AUDIO:
+					case AVMediaType.AVMEDIA_TYPE_AUDIO:
 						if (enableaudio && as == null) {
 							as = (JJReaderAudio) rs;
 							as.open();
 							Log.i("jjplayer", String.format("Found Audio: %dHz channels %d", as.getContext().getSampleRate(), as.getContext().getChannels()));
 						}
 						break;
-					case AVCodecContext.AVMEDIA_TYPE_VIDEO:
+					case AVMediaType.AVMEDIA_TYPE_VIDEO:
 						if (enablevideo && vs == null) {
 							vs = (JJReaderVideo) rs;
 						}

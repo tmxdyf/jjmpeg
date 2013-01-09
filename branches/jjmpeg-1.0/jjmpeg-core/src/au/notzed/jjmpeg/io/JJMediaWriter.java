@@ -162,7 +162,7 @@ public class JJMediaWriter {
 
 		c = st.getCodec();
 		c.setCodecID(codec_id);
-		c.setCodecType(AVMediaType.AVMEDIA_TYPE_VIDEO.toC());
+		c.setCodecType(AVMediaType.AVMEDIA_TYPE_VIDEO);
 		/* put sample parameters */
 		c.setBitRate(bit_rate);
 
@@ -223,7 +223,7 @@ public class JJMediaWriter {
 
 		c = st.getCodec();
 		c.setCodecID(codec_id);
-		c.setCodecType(AVMediaType.AVMEDIA_TYPE_AUDIO.toC());
+		c.setCodecType(AVMediaType.AVMEDIA_TYPE_AUDIO);
 
 		// sample parameters
 		c.setSampleFmt(fmt);

@@ -1,7 +1,7 @@
 /*
- * Copyright (c) 2006 Michael Niedermayer <michaelni@gmx.at>
+ * Copyright (c)  2001 Fabrice Bellard
  * Copyright 2013 Michael Zucchi
- * 
+ *
  * This file is part of jjmpeg, a java binding to ffmpeg's libraries.
  *
  * jjmpeg is free software: you can redistribute it and/or modify
@@ -20,16 +20,23 @@
 package au.notzed.jjmpeg;
 
 /**
- *
+ * Discard enums for various decoding points.
  * @author notzed
  */
-public interface AVMediaType {
+public interface AVDiscard {
 
-	public static final int AVMEDIA_TYPE_UNKNOWN = -1,
-			AVMEDIA_TYPE_VIDEO = 0,
-			AVMEDIA_TYPE_AUDIO = 1,
-			AVMEDIA_TYPE_DATA = 2,
-			AVMEDIA_TYPE_SUBTITLE = 3,
-			AVMEDIA_TYPE_ATTACHMENT = 4,
-			AVMEDIA_TYPE_NB = 5;
-}
+	public static final int AVDISCARD_NONE = -16, ///< discard nothing
+			AVDISCARD_DEFAULT = 0, ///< discard useless packets like 0 size packets in avi
+			AVDISCARD_NONREF = 8, ///< discard all non reference
+			AVDISCARD_BIDIR = 16, ///< discard all bidirectional frames
+			AVDISCARD_NONKEY = 32, ///< discard all frames except keyframes
+			AVDISCARD_ALL = 48; ///< discard all
+	public static final int values[] = {
+		AVDISCARD_NONE,
+		AVDISCARD_DEFAULT,
+		AVDISCARD_NONREF,
+		AVDISCARD_BIDIR,
+		AVDISCARD_NONKEY,
+		AVDISCARD_ALL
+	};
+};

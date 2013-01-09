@@ -30,15 +30,8 @@ import java.nio.ShortBuffer;
  *
  * @author notzed
  */
-public class AVCodecContext extends AVCodecContextAbstract {
+public class AVCodecContext extends AVCodecContextAbstract implements AVMediaType {
 
-	public static final int AVMEDIA_TYPE_UNKNOWN = -1;
-	public static final int AVMEDIA_TYPE_VIDEO = 0;
-	public static final int AVMEDIA_TYPE_AUDIO = 1;
-	public static final int AVMEDIA_TYPE_DATA = 2;
-	public static final int AVMEDIA_TYPE_SUBTITLE = 3;
-	public static final int AVMEDIA_TYPE_ATTACHMENT = 4;
-	public static final int AVMEDIA_TYPE_NB = 5;
 	//
 	public static final int FF_MB_DECISION_SIMPLE = 0;        ///< uses mb_cmp
 	public static final int FF_MB_DECISION_BITS = 1;       ///< chooses the one which needs the fewest bits

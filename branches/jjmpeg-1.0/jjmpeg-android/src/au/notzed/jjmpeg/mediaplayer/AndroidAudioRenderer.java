@@ -32,9 +32,9 @@ public class AndroidAudioRenderer {
 
 	final static int NBUFFERS = 60;
 	AudioTrack track;
-	AnAudioFrame[] bufferArray;
-	JJQueue<AnAudioFrame> buffers = new JJQueue<AnAudioFrame>(NBUFFERS);
-	JJQueue<AnAudioFrame> ready = new JJQueue<AnAudioFrame>(NBUFFERS);
+	AndroidAudioFrame[] bufferArray;
+	JJQueue<AndroidAudioFrame> buffers = new JJQueue<AndroidAudioFrame>(NBUFFERS);
+	JJQueue<AndroidAudioFrame> ready = new JJQueue<AndroidAudioFrame>(NBUFFERS);
 
 	void setAudioFormat(int sampleRate, int channels, AVSampleFormat fmt) {
 		if (track != null) {
@@ -52,9 +52,9 @@ public class AndroidAudioRenderer {
 				channels >= 2 ? AudioFormat.CHANNEL_OUT_STEREO : AudioFormat.CHANNEL_OUT_MONO,
 				AudioFormat.ENCODING_PCM_16BIT, 8192 * 2 * 4, AudioTrack.MODE_STREAM);
 
-		bufferArray = new AnAudioFrame[NBUFFERS];
+		bufferArray = new AndroidAudioFrame[NBUFFERS];
 		for (int i = 0; i < NBUFFERS; i++) {
-			AnAudioFrame af = new AnAudioFrame();
+			AndroidAudioFrame af = new AndroidAudioFrame();
 			bufferArray[i] = af;
 			buffers.offer(af);
 		}
@@ -97,9 +97,9 @@ public class AndroidAudioRenderer {
 		return buffers.take();
 	}
 
-	class AnAudioFrame extends AudioFrame {
+	class AndroidAudioFrame extends AudioFrame {
 
-		public AnAudioFrame() {
+		public AndroidAudioFrame() {
 		}
 
 		@Override

@@ -63,6 +63,7 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 	public void pause() {
 		paused = true;
 	}
+
 	public void play() {
 		paused = false;
 	}
@@ -137,6 +138,7 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 	TimeInfo render = new TimeInfo();
 	TimeInfo decode = new TimeInfo();
 	int framesDropped = 0;
+	int[] atextures = new int[3];
 
 	public GLESVideoRenderer(Context context, GLVideoView view) {
 		this.context = context;
@@ -177,6 +179,7 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 	 */
 	class GLTextureFrame extends VideoFrame implements Runnable {
 
+		// NB: This is only used in SYNC_LOAD mode
 		int[] textures = new int[3];
 		boolean create = true;
 		// current frame for run callback
@@ -187,15 +190,17 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 		ShortBuffer rgbs;
 
 		void genTextures() {
-			GLES20.glGenTextures(3, textures, 0);
+			if (mode == Mode.SYNC_LOAD) {
+				GLES20.glGenTextures(3, textures, 0);
 
-			for (int i = 0; i < 3; i++) {
-				GLES20.glBindTexture(GL_TEXTURE_2D, textures[i]);
-				//glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-				glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-				glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+				for (int i = 0; i < 3; i++) {
+					GLES20.glBindTexture(GL_TEXTURE_2D, textures[i]);
+					//glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+					glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+					glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+				}
 			}
 			create = true;
 		}
@@ -331,13 +336,13 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 					break;
 				case ENQUEUE_DIRECT:
 				case ENQUEUE_COPY:
-					frame.loadTexture2D(fmt, vwidth, vheight, create, textures[0], textures[1], textures[2]);
+					frame.loadTexture2D(fmt, vwidth, vheight, create, atextures[0], atextures[1], atextures[2]);
 					break;
 				case ENQUEUE_RGB:
 					// Just a hack here.
 					//AVPlane p = frame.getPlaneAt(0, fmt, vwidth, vheight);
 
-					GLES20.glBindTexture(GL_TEXTURE_2D, textures[0]);
+					GLES20.glBindTexture(GL_TEXTURE_2D, atextures[0]);
 					if (create) {
 						GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGB, twidth, theight, 0, GLES20.GL_RGB, GLES20.GL_UNSIGNED_SHORT_5_6_5, null);
 					}
@@ -381,6 +386,18 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 	}
 
 	public synchronized void setAudioLocation(long ms) {
+		// This stuff is to try to compensate for a poor implementation
+		// of audio.getPlayPosition() and/or System.currentTimeMillis()
+		long now = System.currentTimeMillis();
+		long diff = Math.abs(getClock(now) - ms);
+
+		if (diff < 50)
+			return;
+
+		if (diff > 10) {
+			System.out.println("audio clock jitter/drift: " + (getClock(now) - ms));
+		}
+
 		audioms = ms;
 		audiosetms = System.currentTimeMillis();
 	}
@@ -449,7 +466,7 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 					// max speed
 					//delay = -1;
 
-					if (delay > 50) {
+					if (delay > 150) {
 						System.out.println("weird delay " + delay + " pts " + peek.pts + " now = " + (now - startms));
 						startms = -1;
 					}
@@ -534,13 +551,21 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 		glUseProgram(paintTexture);
 		checkGlError("glUseProgram");
 
-		glActiveTexture(GLES20.GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, display.textures[0]);
-		glActiveTexture(GLES20.GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, display.textures[1]);
-		glActiveTexture(GLES20.GL_TEXTURE2);
-		glBindTexture(GL_TEXTURE_2D, display.textures[2]);
-
+		if (mode == Mode.SYNC_LOAD) {
+			glActiveTexture(GLES20.GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, display.textures[0]);
+			glActiveTexture(GLES20.GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, display.textures[1]);
+			glActiveTexture(GLES20.GL_TEXTURE2);
+			glBindTexture(GL_TEXTURE_2D, display.textures[2]);
+		} else {
+			glActiveTexture(GLES20.GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, atextures[0]);
+			glActiveTexture(GLES20.GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, atextures[1]);
+			glActiveTexture(GLES20.GL_TEXTURE2);
+			glBindTexture(GL_TEXTURE_2D, atextures[2]);
+		}
 		if (mode == Mode.ENQUEUE_RGB) {
 			glUniform1i(texY, 0);
 		} else {
@@ -580,13 +605,12 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 	public void onSurfaceChanged(GL10 glUnused, int width, int height) {
 		System.out.println("surface changed");
 
-		// Ignore the passed-in GL10 interface, and use the GLES20
-		// class's static methods instead.
-		GLES20.glViewport(0, 0, width, height);
-		float ratio = (float) height / width;
+		// HACK: Try not to resize when the navigation bar is shown/hidden.
+		pwidth = Math.max(width, pwidth);
+		pheight = Math.max(height, pheight);
 
-		pwidth = width;
-		pheight = height;
+		// HACK: Offset by difference if we're 'shrunk' to fir the nav bar.
+		GLES20.glViewport(0, height - pheight, pwidth, pheight);
 
 		Matrix.orthoM(projMatrix, 0, 1, -1, 1, -1, 3, 7);
 		updateView = true;
@@ -642,8 +666,21 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 				buffers.offer(tf);
 			}
 		}
-		for (int i = 0; i < NBUFFERS; i++) {
-			bufferArray[i].genTextures();
+		if (mode == Mode.SYNC_LOAD) {
+			for (int i = 0; i < NBUFFERS; i++) {
+				bufferArray[i].genTextures();
+			}
+		} else {
+			GLES20.glGenTextures(3, atextures, 0);
+
+			for (int i = 0; i < 3; i++) {
+				GLES20.glBindTexture(GL_TEXTURE_2D, atextures[i]);
+				//glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+				glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+				glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+			}
 		}
 		checkGlError("glTexParameteri mTextureID");
 

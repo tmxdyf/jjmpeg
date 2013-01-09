@@ -21,6 +21,7 @@ package au.notzed.jjmpeg.mediaplayer;
 import au.notzed.jjmpeg.util.CancellableThread;
 import au.notzed.jjmpeg.AVCodecContext;
 import au.notzed.jjmpeg.AVFormatContext;
+import au.notzed.jjmpeg.AVMediaType;
 import au.notzed.jjmpeg.AVPacket;
 import au.notzed.jjmpeg.AVStream;
 import au.notzed.jjmpeg.util.JJQueue;
@@ -39,7 +40,6 @@ import java.util.concurrent.LinkedBlockingQueue;
  * TODO: Some way of determining the overall rendered position - sound or video
  * TODO: resume vs play - don't need resume
  */
-
 /**
  * Low Level Media Player
  *
@@ -96,12 +96,7 @@ public class MediaReader extends CancellableThread implements MediaPlayer {
 
 	@Override
 	public void play() {
-		cmdQueue.offer(new PlayerCMD(PlayerCMD.PLAY));
-	}
-
-	@Override
-	public void seek(long ms) {
-		seek(ms, 0);
+		cmdQueue.offer(new PlayerCMD(CommandType.PLAY));
 	}
 
 	@Override
@@ -114,31 +109,47 @@ public class MediaReader extends CancellableThread implements MediaPlayer {
 		return state;
 	}
 
+	enum CommandType {
+
+		QUIT,
+		PLAY,
+		SEEK,
+		PAUSE,
+		RESUME,
+		OPEN,
+		CLOSE;
+	}
+
 	class PlayerCMD {
 
-		int cmd;
+		CommandType cmd;
 		long stamp;
 		String name;
-		final static int QUIT = 0;
-		final static int PLAY = 1;
-		final static int SEEK = 2;
-		final static int PAUSE = 3;
-		final static int RESUME = 4;
-		final static int OPEN = 5;
-		final static int CLOSE = 6;
+		Whence whence;
 
-		public PlayerCMD(int cmd) {
+		public PlayerCMD(CommandType cmd) {
 			this.cmd = cmd;
 		}
 
-		public PlayerCMD(int cmd, long stamp) {
+		public PlayerCMD(CommandType cmd, long stamp, Whence whence) {
+			this.cmd = cmd;
+			this.stamp = stamp;
+			this.whence = whence;
+		}
+
+		public PlayerCMD(CommandType cmd, long stamp) {
 			this.cmd = cmd;
 			this.stamp = stamp;
 		}
 
-		public PlayerCMD(int cmd, String name) {
+		public PlayerCMD(CommandType cmd, String name) {
 			this.cmd = cmd;
 			this.name = name;
+		}
+
+		@Override
+		public String toString() {
+			return cmd.toString();
 		}
 	}
 
@@ -159,14 +170,14 @@ public class MediaReader extends CancellableThread implements MediaPlayer {
 		if (getState() == Thread.State.NEW)
 			start();
 
-		cmdQueue.offer(new PlayerCMD(PlayerCMD.OPEN, fileName));
+		cmdQueue.offer(new PlayerCMD(CommandType.OPEN, fileName));
 	}
 
 	/**
 	 * Close a file.
 	 */
 	public void close() {
-		cmdQueue.offer(new PlayerCMD(PlayerCMD.CLOSE));
+		cmdQueue.offer(new PlayerCMD(CommandType.CLOSE));
 	}
 
 	/**
@@ -177,22 +188,23 @@ public class MediaReader extends CancellableThread implements MediaPlayer {
 	 * @param stamp timestamp in ms
 	 * @param type, ignored
 	 */
-	public void seek(long stamp, int type) {
-		cmdQueue.offer(new PlayerCMD(PlayerCMD.SEEK, stamp));
+	@Override
+	public void seek(long stamp, Whence whence) {
+		cmdQueue.offer(new PlayerCMD(CommandType.SEEK, stamp, whence));
 	}
 
 	/**
 	 * Pause at the current position.
 	 */
 	public void pause() {
-		cmdQueue.offer(new PlayerCMD(PlayerCMD.PAUSE));
+		cmdQueue.offer(new PlayerCMD(CommandType.PAUSE));
 	}
 
 	/**
 	 * Resume at the current position.
 	 */
 	public void unpause() {
-		cmdQueue.offer(new PlayerCMD(PlayerCMD.RESUME));
+		cmdQueue.offer(new PlayerCMD(CommandType.RESUME));
 	}
 
 	void setMediaState(MediaState state) {
@@ -210,6 +222,10 @@ public class MediaReader extends CancellableThread implements MediaPlayer {
 
 	// FIXME: exceptions
 	public void createDefaultDecoders(MediaSink dest) throws IOException {
+		if (state != MediaState.Init) {
+			throw new RuntimeException("Invalid media state for init");
+		}
+
 		this.dest = dest;
 
 		int nstreams = format.getNBStreams();
@@ -221,11 +237,11 @@ public class MediaReader extends CancellableThread implements MediaPlayer {
 			AVStream s = format.getStreamAt(i);
 			AVCodecContext cc = s.getCodec();
 			int type = cc.getCodecType();
-			if (vstream == -1 && type == AVCodecContext.AVMEDIA_TYPE_VIDEO) {
+			if (vstream == -1 && type == AVMediaType.AVMEDIA_TYPE_VIDEO) {
 				vstream = i;
 				vavstream = s;
 			}
-			if (astream == -1 && type == AVCodecContext.AVMEDIA_TYPE_AUDIO) {
+			if (astream == -1 && type == AVMediaType.AVMEDIA_TYPE_AUDIO) {
 				astream = i;
 				aavstream = s;
 			}
@@ -245,6 +261,19 @@ public class MediaReader extends CancellableThread implements MediaPlayer {
 			AudioDecoder ad;
 			streamMap.put(astream, ad = new AudioDecoder(this, dest, aavstream, astream));
 			duration = Math.max(duration, ad.duration);
+		}
+	}
+
+	/**
+	 * Called by main player when the streams to be decoded
+	 *  have been intialised.
+	 */
+	public void ready() {
+		if (state == MediaState.Init) {
+			initDecoders();
+			setMediaState(MediaState.Ready);
+		} else {
+			throw new RuntimeException("Invalid state for ready");
 		}
 	}
 
@@ -300,6 +329,20 @@ public class MediaReader extends CancellableThread implements MediaPlayer {
 		}
 	}
 
+	void openFile(String name) {
+		try {
+			format = AVFormatContext.open(name);
+			//format.setProbesize(1024 * 1024);
+			//format.setMaxAnalyzeDuration(5000);
+			format.findStreamInfo();
+			setMediaState(MediaState.Init);
+			initialised = false;
+			file = name;
+		} catch (IOException ex) {
+			mediaError(ex);
+		}
+	}
+
 	@Override
 	public void run() {
 		PlayerCMD cmd;
@@ -317,23 +360,26 @@ public class MediaReader extends CancellableThread implements MediaPlayer {
 						 * IDLE state, allowed to quit or open a file.
 						 */
 						switch (cmd.cmd) {
-							case PlayerCMD.QUIT:
+							case QUIT:
 								System.out.println("quit command");
 								setMediaState(MediaState.Quit);
 								break out;
-							case PlayerCMD.OPEN:
-								try {
-									format = AVFormatContext.open(cmd.name);
-									//format.setProbesize(1024 * 1024);
-									//format.setMaxAnalyzeDuration(5000);
-									format.findStreamInfo();
-									setMediaState(MediaState.Init);
-									initialised = false;
-									file = cmd.name;
-								} catch (IOException ex) {
-									mediaError(ex);
+							case OPEN:
+								openFile(cmd.name);
+								break;
+							case PLAY:
+								if (file != null) {
+									// First open file, then re-queue play
+									openFile(file);
+									// Hmm, the player will automatically play
+									// on start ...
+
+									//if (getMediaState() == MediaState.Init)
+									//	cmdQueue.offer(cmd);
 								}
 								break;
+							default:
+								System.out.println("Unexpected command in idle state:" + cmd);
 						}
 						break;
 					case Init:
@@ -344,11 +390,11 @@ public class MediaReader extends CancellableThread implements MediaPlayer {
 						 * From this state one can seek or play or quit.
 						 */
 						switch (cmd.cmd) {
-							case PlayerCMD.QUIT:
+							case QUIT:
 								System.out.println("quit command");
 								setMediaState(MediaState.Quit);
 								break out;
-							case PlayerCMD.SEEK:
+							case SEEK:
 								if (state == MediaState.Init) {
 									initDecoders();
 									setMediaState(MediaState.Ready);
@@ -357,13 +403,15 @@ public class MediaReader extends CancellableThread implements MediaPlayer {
 								postSeek();
 								dest.postSeek(cmd.stamp);
 								break;
-							case PlayerCMD.PLAY:
+							case PLAY:
 								if (state == MediaState.Init) {
 									initDecoders();
 									setMediaState(MediaState.Ready);
 								}
 								runMedia();
 								break;
+							default:
+								System.out.println("Unexpected command in init/ready state:" + cmd);
 						}
 						break;
 					case Quit:
@@ -422,26 +470,26 @@ public class MediaReader extends CancellableThread implements MediaPlayer {
 								cmd = cmdQueue.poll();
 							if (cmd != null) {
 								switch (cmd.cmd) {
-									case PlayerCMD.QUIT:
+									case QUIT:
 										System.out.println("quit command");
 										setMediaState(MediaState.Quit);
 										break out;
-									case PlayerCMD.SEEK:
+									case SEEK:
 										System.out.println("seek command");
 										seekcmd = cmd;
 										break;
-									case PlayerCMD.PAUSE:
+									case PAUSE:
 										System.out.println("pause command");
 										playcmd = null;
 										pausecmd = cmd;
 										break;
-									case PlayerCMD.PLAY: // TODO: seek/re-open for play?
+									case PLAY: // TODO: seek/re-open for play?
 										System.out.println("play command");
 										playcmd = cmd;
 										pausecmd = null;
 										cmd = null;
 										break;
-									case PlayerCMD.RESUME:
+									case RESUME:
 										System.out.println("resume command");
 										playcmd = cmd;
 										pausecmd = null;
@@ -452,9 +500,13 @@ public class MediaReader extends CancellableThread implements MediaPlayer {
 						} while (cmd != null);
 
 						if (seekcmd != null) {
-							format.seekFile(-1, 0, seekcmd.stamp * 1000, seekcmd.stamp * 1000, 0);
+							long ts = seekcmd.whence.getPosition(dest.getMediaPosition(), seekcmd.stamp);
+							ts = Math.min(ts, getDuration());
+							ts = Math.max(ts, 0);
+							System.out.println("seeking, current pos = " + dest.getMediaPosition() + " to " + ts);
+							format.seekFile(-1, 0, ts * 1000, ts * 1000, 0);
 							postSeek();
-							dest.postSeek(seekcmd.stamp);
+							dest.postSeek(ts);
 						}
 						if (pausecmd != null) {
 							if (!paused) {

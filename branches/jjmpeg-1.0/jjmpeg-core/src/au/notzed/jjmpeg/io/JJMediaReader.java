@@ -23,6 +23,7 @@ import au.notzed.jjmpeg.AVCodec;
 import au.notzed.jjmpeg.AVCodecContext;
 import au.notzed.jjmpeg.AVFormatContext;
 import au.notzed.jjmpeg.AVFrame;
+import au.notzed.jjmpeg.AVMediaType;
 import au.notzed.jjmpeg.AVPacket;
 import au.notzed.jjmpeg.AVRational;
 import au.notzed.jjmpeg.AVSamples;
@@ -74,12 +75,12 @@ public class JJMediaReader {
 			AVStream s = format.getStreamAt(i);
 			AVCodecContext cc = s.getCodec();
 			switch (cc.getCodecType()) {
-				case AVCodecContext.AVMEDIA_TYPE_VIDEO:
+				case AVMediaType.AVMEDIA_TYPE_VIDEO:
 					JJReaderVideo vs = new JJReaderVideo(s);
 					streams.add(vs);
 					streamsByID.put(s.getIndex(), vs);
 					break;
-				case AVCodecContext.AVMEDIA_TYPE_AUDIO:
+				case AVMediaType.AVMEDIA_TYPE_AUDIO:
 					JJReaderAudio as = new JJReaderAudio(s);
 					streams.add(as);
 					streamsByID.put(s.getIndex(), as);
@@ -109,13 +110,13 @@ public class JJMediaReader {
 
 		for (JJReaderStream m : streams) {
 			switch (m.getType()) {
-				case AVCodecContext.AVMEDIA_TYPE_VIDEO:
+				case AVMediaType.AVMEDIA_TYPE_VIDEO:
 					if (!vopen) {
 						m.open();
 						vopen = true;
 					}
 					break;
-				case AVCodecContext.AVMEDIA_TYPE_AUDIO:
+				case AVMediaType.AVMEDIA_TYPE_AUDIO:
 					if (!aopen) {
 						m.open();
 						aopen = true;
@@ -130,7 +131,7 @@ public class JJMediaReader {
 	 */
 	public JJReaderVideo openFirstVideoStream() throws AVInvalidCodecException, AVIOException {
 		for (JJReaderStream m : streams) {
-			if (m.getType() == AVCodecContext.AVMEDIA_TYPE_VIDEO) {
+			if (m.getType() == AVMediaType.AVMEDIA_TYPE_VIDEO) {
 				m.open();
 				return (JJReaderVideo) m;
 			}
@@ -532,7 +533,7 @@ public class JJMediaReader {
 
 		@Override
 		public int getType() {
-			return AVCodecContext.AVMEDIA_TYPE_VIDEO;
+			return AVMediaType.AVMEDIA_TYPE_VIDEO;
 		}
 
 		public int getWidth() {
@@ -725,7 +726,7 @@ public class JJMediaReader {
 
 		@Override
 		public int getType() {
-			return AVCodecContext.AVMEDIA_TYPE_AUDIO;
+			return AVMediaType.AVMEDIA_TYPE_AUDIO;
 		}
 
 		public AVSampleFormat getSampleFormat() {

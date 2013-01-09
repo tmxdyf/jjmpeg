@@ -12,3 +12,38 @@
     -fx-background-radius: 11;
 	-fx-padding: 5 5 5 5;
 }
+
+#player-root {
+	-fx-background-color: #000000;
+}
+
+.button {
+	-fx-background-color: transparent;
+}
+
+.button:hover {
+	-fx-background-color: #9be6e6;
+}
+
+.button:focused {
+    -fx-background-insets: 0, 0, 1, 2;
+}
+.button:armed {
+	-fx-background-color: #7bb5b5
+}
+
+.toggle-button {
+	-fx-background-color: transparent;
+}
+
+.toggle-button:hover {
+	-fx-background-color: #9be6e6;
+}
+
+.toggle-button:armed {
+	-fx-background-color: #7bb5b5
+}
+
+.toggle-button:selected {
+	-fx-background-color: #7bb5b5
+}

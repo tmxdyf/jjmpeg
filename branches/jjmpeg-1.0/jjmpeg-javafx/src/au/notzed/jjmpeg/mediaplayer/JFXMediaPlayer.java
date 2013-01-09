@@ -18,9 +18,11 @@
  */
 package au.notzed.jjmpeg.mediaplayer;
 
+import au.notzed.eofx.EOFXView;
 import au.notzed.jjmpeg.AVRational;
 import au.notzed.jjmpeg.AVSampleFormat;
 import au.notzed.jjmpeg.mediaplayer.MediaPlayer.MediaState;
+import au.notzed.jjmpeg.mediaplayer.MediaPlayer.Whence;
 import java.io.File;
 import java.io.IOException;
 import java.util.logging.Level;
@@ -36,7 +38,10 @@ import javafx.geometry.Pos;
 import javafx.scene.Cursor;
 import javafx.scene.Group;
 import javafx.scene.Scene;
+import javafx.scene.image.WritableImage;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 import javafx.util.Duration;
@@ -101,28 +106,37 @@ public class JFXMediaPlayer extends Application implements MediaSink, MediaPlaye
 
 	@Override
 	public void postSeek(long stampms) {
-		vout.postSeek(stampms);
-		aout.postSeek(stampms);
+		if (haveVideo)
+			vout.postSeek(stampms);
+		if (haveAudio)
+			aout.postSeek(stampms);
 	}
 
 	@Override
 	public void postPlay() {
 		System.out.println(" post play");
-		aout.start();
+		if (haveAudio)
+			aout.start();
+		if (haveVideo)
+			vout.unpause();
 	}
 
 	@Override
 	public void postPause() {
 		System.out.println(" post pause");
-		vout.pause();
-		aout.stop();
+		if (haveVideo)
+			vout.pause();
+		if (haveAudio)
+			aout.stop();
 	}
 
 	@Override
 	public void postUnpause() {
 		System.out.println(" post unpause");
-		vout.unpause();
-		aout.start();
+		if (haveVideo)
+			vout.unpause();
+		if (haveAudio)
+			aout.start();
 	}
 
 	@Override
@@ -193,7 +207,7 @@ public class JFXMediaPlayer extends Application implements MediaSink, MediaPlaye
 			reader.createDefaultDecoders(this);
 			initRenderers();
 
-			int width = 320, height = 256;
+			int width = 512, height = 256;
 
 			if (controls != null) {
 				controls.setPlayer(null);
@@ -209,10 +223,72 @@ public class JFXMediaPlayer extends Application implements MediaSink, MediaPlaye
 			root = new StackPane();
 			root.getChildren().add(vout);
 
+			root.setId("player-root");
+
+			vout.setPreserveRatio(true);
+			vout.fitWidthProperty().bind(root.widthProperty());
+			vout.fitHeightProperty().bind(root.heightProperty());
+
 			root.addEventFilter(MouseEvent.ANY, new EventHandler<MouseEvent>() {
 				@Override
 				public void handle(MouseEvent t) {
 					userActive();
+				}
+			});
+
+			BorderPane overlay = new BorderPane();
+			overlay.setFocusTraversable(true);
+			overlay.setMouseTransparent(true);
+			// TODO: put the 'actions' somewhere central, perhaps in reader or here
+			// remove from controls.
+			overlay.addEventHandler(KeyEvent.KEY_PRESSED, new EventHandler<KeyEvent>() {
+				boolean wasfull = false;
+				long skipMS = 30_000;
+
+				@Override
+				public void handle(KeyEvent t) {
+					System.out.println("key pressed" + t.getCode());
+					switch (t.getCode()) {
+						case F11:
+							wasfull = true;
+							primaryStage.setFullScreen(true);
+							break;
+						case ESCAPE:
+							// For some reason, escape turns off full-screen mode,
+							// however, it doesn't capture the event ...
+							if (!wasfull)
+								Platform.exit();
+							wasfull = false;
+							break;
+						case RIGHT:
+							System.out.println("forward skip");
+							reader.seek(skipMS, Whence.Here);
+							break;
+						case LEFT:
+							System.out.println("backward skip");
+							reader.seek(-skipMS, Whence.Here);
+							break;
+						case PAGE_UP:
+							reader.seek(0, Whence.Start);
+							break;
+						case PAGE_DOWN:
+							reader.seek(reader.getDuration(), Whence.Start);
+							break;
+						case SPACE:
+							System.out.println("toggle pause");
+							controls.togglePause();
+							break;
+						case PRINTSCREEN:
+							System.out.println("print screen capture");
+							if (haveVideo) {
+								WritableImage img = vout.getCurrentFrame();
+								if (img != null)
+									EOFXView.showImage(img, reader.getPath() + " " + controls.msToString(getMediaPosition()));
+							}
+						default:
+							return;
+					}
+					t.consume();
 				}
 			});
 
@@ -222,6 +298,7 @@ public class JFXMediaPlayer extends Application implements MediaSink, MediaPlaye
 			Group g = new Group(controls);
 			StackPane.setAlignment(g, Pos.BOTTOM_CENTER);
 			root.getChildren().add(g);
+			root.getChildren().add(overlay);
 
 			controls.setPlayer(this);
 			controls.setId("player-controls");
@@ -238,10 +315,14 @@ public class JFXMediaPlayer extends Application implements MediaSink, MediaPlaye
 
 			if (haveVideo)
 				vout.start();
-			if (haveAudio)
+			if (haveAudio) {
 				aout.start();
+				// Init line position
+				aout.postSeek(0);
+			}
 
-			reader.play();
+			//reader.play();
+			reader.ready();
 
 			autoUpdate = new Timeline(new KeyFrame(Duration.millis(500), updateHandler));
 			autoUpdate.setCycleCount(Timeline.INDEFINITE);
@@ -269,12 +350,7 @@ public class JFXMediaPlayer extends Application implements MediaSink, MediaPlaye
 		@Override
 		public void handle(ActionEvent t) {
 			if (reader != null && controls != null) {
-				long position = 0;
-
-				if (haveAudio)
-					position = aout.getPosition();
-				else if (haveVideo)
-					position = vout.getPosition();
+				long position = getMediaPosition();
 
 				controls.setLocation(position);
 			}
@@ -359,5 +435,17 @@ public class JFXMediaPlayer extends Application implements MediaSink, MediaPlaye
 			mouseHide.stop();
 			mouseHide.play();
 		}
+	}
+
+	@Override
+	public long getMediaPosition() {
+		long position = 0;
+
+		if (haveAudio)
+			position = aout.getPosition();
+		else if (haveVideo)
+			position = vout.getPosition();
+
+		return position;
 	}
 }
