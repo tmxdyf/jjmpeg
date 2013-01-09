@@ -46,6 +46,11 @@ abstract class AVCodecContextNativeAbstract extends AVNative {
 	native void setTimeBaseNum(int val);
 	native int getTimeBaseDen();
 	native void setTimeBaseDen(int val);
+	native AVRational getSampleAspectRatio();
+	native int getSampleAspectRatioNum();
+	native void setSampleAspectRatioNum(int val);
+	native int getSampleAspectRatioDen();
+	native void setSampleAspectRatioDen(int val);
 	native int getStrictStdCompliance();
 	native void setStrictStdCompliance(int val);
 	native int getIdctAlgo();
@@ -187,6 +192,21 @@ abstract class AVCodecContextAbstract extends AVObject {
 	}
 	public  void setTimeBaseDen(int val) {
 		n.setTimeBaseDen(val);
+	}
+	public  AVRational getSampleAspectRatio() {
+		return n.getSampleAspectRatio();
+	}
+	public  int getSampleAspectRatioNum() {
+		return n.getSampleAspectRatioNum();
+	}
+	public  void setSampleAspectRatioNum(int val) {
+		n.setSampleAspectRatioNum(val);
+	}
+	public  int getSampleAspectRatioDen() {
+		return n.getSampleAspectRatioDen();
+	}
+	public  void setSampleAspectRatioDen(int val) {
+		n.setSampleAspectRatioDen(val);
 	}
 	public  int getStrictStdCompliance() {
 		return n.getStrictStdCompliance();

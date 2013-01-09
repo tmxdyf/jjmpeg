@@ -42,6 +42,7 @@ import javafx.scene.image.WritableImage;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 import javafx.util.Duration;
@@ -208,6 +209,7 @@ public class JFXMediaPlayer extends Application implements MediaSink, MediaPlaye
 			initRenderers();
 
 			int width = 512, height = 256;
+			double aspect = 1.0;
 
 			if (controls != null) {
 				controls.setPlayer(null);
@@ -215,9 +217,13 @@ public class JFXMediaPlayer extends Application implements MediaSink, MediaPlaye
 			}
 
 			if (haveVideo) {
-				width = vd.width;
-				height = vd.height;
+				width = vd.getWidth();
+				height = vd.getHeight();
+				aspect = vd.getDisplayAspectRatio();
 			}
+
+			System.out.println("aspect ratio: " + aspect);
+			vout.setScaleX(aspect);
 
 			// Now show GUI
 			root = new StackPane();
@@ -226,7 +232,8 @@ public class JFXMediaPlayer extends Application implements MediaSink, MediaPlaye
 			root.setId("player-root");
 
 			vout.setPreserveRatio(true);
-			vout.fitWidthProperty().bind(root.widthProperty());
+			// Divide by aspect to compensate for scale
+			vout.fitWidthProperty().bind(root.widthProperty().divide(aspect));
 			vout.fitHeightProperty().bind(root.heightProperty());
 
 			root.addEventFilter(MouseEvent.ANY, new EventHandler<MouseEvent>() {
@@ -305,7 +312,7 @@ public class JFXMediaPlayer extends Application implements MediaSink, MediaPlaye
 
 			controls.setDuration(reader.getDuration());
 
-			Scene scene = new Scene(root, width, height);
+			Scene scene = new Scene(root, width * aspect, height);
 
 			scene.getStylesheets().add("/au/notzed/jjmpeg/mediaplayer/style.css");
 
