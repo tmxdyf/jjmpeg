@@ -236,7 +236,7 @@ public class JFXMediaPlayer extends Application implements MediaSink, MediaPlaye
 			vout.fitWidthProperty().bind(root.widthProperty().divide(aspect));
 			vout.fitHeightProperty().bind(root.heightProperty());
 
-			root.addEventFilter(MouseEvent.ANY, new EventHandler<MouseEvent>() {
+			root.addEventFilter(MouseEvent.MOUSE_MOVED, new EventHandler<MouseEvent>() {
 				@Override
 				public void handle(MouseEvent t) {
 					userActive();
@@ -259,14 +259,16 @@ public class JFXMediaPlayer extends Application implements MediaSink, MediaPlaye
 						case F11:
 							wasfull = true;
 							primaryStage.setFullScreen(true);
-							break;
+							t.consume();
+							return;
 						case ESCAPE:
 							// For some reason, escape turns off full-screen mode,
 							// however, it doesn't capture the event ...
 							if (!wasfull)
 								Platform.exit();
 							wasfull = false;
-							break;
+							t.consume();
+							return;
 						case RIGHT:
 							System.out.println("forward skip");
 							reader.seek(skipMS, Whence.Here);
@@ -276,9 +278,16 @@ public class JFXMediaPlayer extends Application implements MediaSink, MediaPlaye
 							reader.seek(-skipMS, Whence.Here);
 							break;
 						case PAGE_UP:
-							reader.seek(0, Whence.Start);
+							// 5 minutes
+							reader.seek(-5 * 60_000, Whence.Here);
 							break;
 						case PAGE_DOWN:
+							reader.seek(5 * 60_000, Whence.Here);
+							break;
+						case HOME:
+							reader.seek(0, Whence.Start);
+							break;
+						case END:
 							reader.seek(reader.getDuration(), Whence.Start);
 							break;
 						case SPACE:
@@ -296,6 +305,7 @@ public class JFXMediaPlayer extends Application implements MediaSink, MediaPlaye
 							return;
 					}
 					t.consume();
+					userActive();
 				}
 			});
 
