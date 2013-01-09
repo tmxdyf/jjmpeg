@@ -644,19 +644,25 @@ abstract class AVFrameNativeAbstract extends AVNative {
 	}
 	// Fields
 	native int getLineSizeAt(int index);
+	native int getWidth();
+	native int getHeight();
+	native int getNbSamples();
+	native void setNbSamples(int val);
+	native int getFormat();
 	native int getKeyFrame();
 	native long getPTS();
 	native void setPTS(long val);
-	native int getDisplayPictureNumber();
 	native int getCodedPictureNumber();
-	native int getNbSamples();
-	native void setNbSamples(int val);
+	native int getDisplayPictureNumber();
+	native int getInterlacedFrame();
+	native int getTopFieldFirst();
 	// Native Methods
 	static  native AVFrame alloc_frame();
 	 native void get_frame_defaults();
 	 native int fill_audio_frame(int nb_channels, int sample_fmt, ByteBuffer buf, int buf_size, int align);
 	 native int alloc(int pix_fmt, int width, int height);
 	 native void free();
+	 native int deinterlace(AVFrameNative src, int pix_fmt, int width, int height);
 	 native void copy(AVFrameNative src, int fmt, int width, int height);
 	 native long get_best_effort_timestamp();
 }
@@ -673,6 +679,21 @@ abstract class AVFrameAbstract extends AVObject {
 	public  int getLineSizeAt(int index) {
 		return n.getLineSizeAt(index);
 	}
+	public  int getWidth() {
+		return n.getWidth();
+	}
+	public  int getHeight() {
+		return n.getHeight();
+	}
+	public  int getNbSamples() {
+		return n.getNbSamples();
+	}
+	public  void setNbSamples(int val) {
+		n.setNbSamples(val);
+	}
+	public  int getFormat() {
+		return n.getFormat();
+	}
 	public  int getKeyFrame() {
 		return n.getKeyFrame();
 	}
@@ -682,17 +703,17 @@ abstract class AVFrameAbstract extends AVObject {
 	public  void setPTS(long val) {
 		n.setPTS(val);
 	}
-	public  int getDisplayPictureNumber() {
-		return n.getDisplayPictureNumber();
-	}
 	public  int getCodedPictureNumber() {
 		return n.getCodedPictureNumber();
 	}
-	public  int getNbSamples() {
-		return n.getNbSamples();
+	public  int getDisplayPictureNumber() {
+		return n.getDisplayPictureNumber();
 	}
-	public  void setNbSamples(int val) {
-		n.setNbSamples(val);
+	public  int getInterlacedFrame() {
+		return n.getInterlacedFrame();
+	}
+	public  int getTopFieldFirst() {
+		return n.getTopFieldFirst();
 	}
 	// Public Methods
 	public void getFrameDefaults() {
@@ -706,6 +727,9 @@ abstract class AVFrameAbstract extends AVObject {
 	}
 	public void free() {
 		n.free();
+	}
+	public int deinterlace(AVFrame src, PixelFormat pix_fmt, int width, int height) {
+		return n.deinterlace(src != null ? src.n : null, pix_fmt.toC(), width, height);
 	}
 	public void copy(AVFrame src, PixelFormat fmt, int width, int height) {
 		n.copy(src != null ? src.n : null, fmt.toC(), width, height);
@@ -722,11 +746,13 @@ abstract class AVStreamNativeAbstract extends AVNative {
 	native int getIndex();
 	native int getId();
 	native AVCodecContext getCodec();
-	native AVRational getRFrameRate();
 	native AVRational getTimeBase();
 	native long getStartTime();
 	native long getDuration();
 	native long getNBFrames();
+	native AVRational getAvgFrameRate();
+	native int getAvgFrameRateNum();
+	native int getAvgFrameRateDen();
 	// Native Methods
 }
 
@@ -748,9 +774,6 @@ abstract class AVStreamAbstract extends AVObject {
 	public  AVCodecContext getCodec() {
 		return n.getCodec();
 	}
-	public  AVRational getRFrameRate() {
-		return n.getRFrameRate();
-	}
 	public  AVRational getTimeBase() {
 		return n.getTimeBase();
 	}
@@ -762,6 +785,15 @@ abstract class AVStreamAbstract extends AVObject {
 	}
 	public  long getNBFrames() {
 		return n.getNBFrames();
+	}
+	public  AVRational getAvgFrameRate() {
+		return n.getAvgFrameRate();
+	}
+	public  int getAvgFrameRateNum() {
+		return n.getAvgFrameRateNum();
+	}
+	public  int getAvgFrameRateDen() {
+		return n.getAvgFrameRateDen();
 	}
 	// Public Methods
 }
