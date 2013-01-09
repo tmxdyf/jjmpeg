@@ -63,7 +63,7 @@ public class VideoDecoder extends MediaDecoder {
 		frame = AVFrame.create();
 		int n = cc.getSampleAspectRatioNum();
 		if (n != 0) {
-			dar = (double)n / cc.getSampleAspectRatioDen();
+			dar = (double) n / cc.getSampleAspectRatioDen();
 		} else
 			dar = 1;
 	}
@@ -80,6 +80,21 @@ public class VideoDecoder extends MediaDecoder {
 		return dar;
 	}
 
+	/**
+	 * Get the average frame delay in mS.
+	 *
+	 * Do not use this for frame timing ...
+	 * @return -1 if not known.
+	 */
+	public int getAverageFrameDelay() {
+		int n = stream.getAvgFrameRateNum();
+		int d = stream.getAvgFrameRateDen();
+
+		if (n != 0)
+			return (int)(1000L * d / n);
+		else
+			return -1;
+	}
 	//public void setOutputSize(int swidth, int sheight) {
 	//	scale.dispose();
 	//	this.swidth = swidth;

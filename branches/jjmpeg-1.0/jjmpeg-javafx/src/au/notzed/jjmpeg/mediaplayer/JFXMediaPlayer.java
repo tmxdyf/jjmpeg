@@ -220,6 +220,7 @@ public class JFXMediaPlayer extends Application implements MediaSink, MediaPlaye
 				width = vd.getWidth();
 				height = vd.getHeight();
 				aspect = vd.getDisplayAspectRatio();
+				vout.setFrameDelay(vd.getAverageFrameDelay());
 			}
 
 			System.out.println("aspect ratio: " + aspect);

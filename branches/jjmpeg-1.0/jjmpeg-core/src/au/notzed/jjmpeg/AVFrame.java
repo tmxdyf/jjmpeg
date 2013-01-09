@@ -196,6 +196,14 @@ public class AVFrame extends AVFrameAbstract {
 	public boolean isKeyFrame() {
 		return getKeyFrame() != 0;
 	}
+
+	public boolean isInterlacedFrame() {
+		return getInterlacedFrame() != 0;
+	}
+
+	public boolean isTopFieldFirst() {
+		return getTopFieldFirst() != 0;
+	}
 }
 
 class AVFrameNative extends AVFrameNativeAbstract {

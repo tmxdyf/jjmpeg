@@ -36,6 +36,7 @@ import javafx.scene.layout.Pane;
 public class JFXVideoRenderer extends ImageView {
 
 	ImageView surface;
+	au.notzed.jjmpeg.PixelFormat ifmt;
 	int vwidth, vheight;
 	au.notzed.jjmpeg.PixelFormat ofmt = au.notzed.jjmpeg.PixelFormat.PIX_FMT_BGRA;
 	SwsContext oscale;
@@ -46,6 +47,8 @@ public class JFXVideoRenderer extends ImageView {
 	JJQueue<JFXVideoFrame> buffers = new JJQueue<JFXVideoFrame>(NBUFFERS);
 	JJQueue<JFXVideoFrame> ready = new JJQueue<JFXVideoFrame>(NBUFFERS);
 	JFXVideoFrame current;
+	// Average frame delay - for interlace mode
+	int frameDelay = 40;
 	// Frame throttling
 	long lag;
 	int dropped;
@@ -53,11 +56,35 @@ public class JFXVideoRenderer extends ImageView {
 	int framesDropped = 0;
 	//
 	VideoScheduler scheduler;
+	DeinterlaceMode deinterlaceMode = DeinterlaceMode.Fields;
+
+	enum DeinterlaceMode {
+
+		/**
+		 * Do nothing.
+		 */
+		None,
+		/**
+		 * Individual fields are shown.
+		 */
+		Fields,
+		/**
+		 * avpicture_deinterlace is used.
+		 */
+		Merge
+	}
 
 	public JFXVideoRenderer() {
 		surface = this;
 
 		//getChildren().add(surface);
+	}
+
+	public void setFrameDelay(int frameDelay) {
+		if (frameDelay == -1)
+			frameDelay = 40;
+		this.frameDelay = frameDelay;
+		System.out.println("Using field delay : " + (frameDelay/2));
 	}
 
 	public void start() {
@@ -108,6 +135,7 @@ public class JFXVideoRenderer extends ImageView {
 	public void setVideoFormat(au.notzed.jjmpeg.PixelFormat fmt, int width, int height) {
 		vwidth = width;
 		vheight = height;
+		ifmt = fmt;
 
 		if (oscale != null)
 			oscale.dispose();
@@ -188,16 +216,42 @@ public class JFXVideoRenderer extends ImageView {
 	class JFXVideoFrame extends VideoFrame implements Runnable {
 
 		WritableImage image;
+		WritableImage field0;
+		WritableImage field1;
+		boolean interlaced;
+		boolean topFieldFirst;
+		// Which field is being displayed next
+		boolean firstField;
 
 		public JFXVideoFrame(int width, int height) {
 			image = new WritableImage(width, height);
+			// For interlaced frames.
+			field0 = new WritableImage(width, height / 2);
+			field1 = new WritableImage(width, height / 2);
 		}
 
 		@Override
 		public void setFrame(AVFrame frame) {
+
+			interlaced = frame.isInterlacedFrame();
+			topFieldFirst = frame.isTopFieldFirst();
+			firstField = true;
+
+			if (interlaced && deinterlaceMode == DeinterlaceMode.Merge) {
+				int a= frame.deinterlace(frame, ifmt, vwidth, vheight);
+				interlaced = false;
+			}
+
 			// Just copy directly to writable image
 			oscale.scale(frame, 0, vheight, oframe);
 			image.getPixelWriter().setPixels(0, 0, vwidth, vheight, PixelFormat.getIntArgbPreInstance(), odata, vwidth);
+
+			if (interlaced) {
+				field0.getPixelWriter().setPixels(0, 0, vwidth, vheight / 2, PixelFormat.getIntArgbPreInstance(), odata, vwidth * 2);
+				odata.position(vwidth);
+				field1.getPixelWriter().setPixels(0, 0, vwidth, vheight / 2, PixelFormat.getIntArgbPreInstance(), odata, vwidth * 2);
+				odata.position(0);
+			}
 		}
 
 		@Override
@@ -217,13 +271,34 @@ public class JFXVideoRenderer extends ImageView {
 
 		@Override
 		public void run() {
-			setVideoLocation(pts);
-			// Called to show the frame on GUI thread
-			surface.setImage(image);
-			// Need to keep this around until we're showing the next one
-			if (current != null)
-				current.recycle();
-			current = this;
+			// Must always be called twice on interleaved frames
+			if (interlaced) {
+				surface.setScaleY(2);
+				// TODO: check this logic
+				if (!(firstField ^ topFieldFirst)) {
+					setVideoLocation(pts);
+					surface.setImage(field0);
+				} else {
+					setVideoLocation(pts + frameDelay/2);
+					surface.setImage(field1);
+				}
+				if (firstField) {
+					firstField = false;
+				} else {
+					if (current != null)
+						current.recycle();
+					current = this;
+				}
+			} else {
+				surface.setScaleY(1);
+				setVideoLocation(pts);
+				// Called to show the frame on GUI thread
+				surface.setImage(image);
+				// Need to keep this around until we're showing the next one
+				if (current != null)
+					current.recycle();
+				current = this;
+			}
 		}
 	}
 
@@ -330,6 +405,12 @@ public class JFXVideoRenderer extends ImageView {
 					sleep(delay);
 
 					Platform.runLater(peek);
+
+					// Interlaced: call it twice
+					if (peek.interlaced) {
+						sleep(frameDelay/2);
+						Platform.runLater(peek);
+					}
 				} catch (InterruptedException x) {
 				}
 			}
