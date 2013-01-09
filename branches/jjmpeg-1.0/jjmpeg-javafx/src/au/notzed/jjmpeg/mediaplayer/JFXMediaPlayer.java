@@ -294,7 +294,7 @@ public class JFXMediaPlayer extends Application implements MediaSink, MediaPlaye
 
 
 			controls = new JFXMediaControls();
-			controls.setPrefWidth(width);
+			//controls.setPrefWidth(width);
 			Group g = new Group(controls);
 			StackPane.setAlignment(g, Pos.BOTTOM_CENTER);
 			root.getChildren().add(g);
