@@ -34,6 +34,10 @@ public class VideoDecoder extends MediaDecoder {
 
 	int width;
 	int height;
+	/**
+	 * Display aspect ratio
+	 */
+	double dar;
 	PixelFormat format;
 	AVFrame frame;
 	// FIXME: depends on impelementation
@@ -57,6 +61,11 @@ public class VideoDecoder extends MediaDecoder {
 		width = cc.getWidth();
 		format = cc.getPixFmt();
 		frame = AVFrame.create();
+		int n = cc.getSampleAspectRatioNum();
+		if (n != 0) {
+			dar = (double)n / cc.getSampleAspectRatioDen();
+		} else
+			dar = 1;
 	}
 
 	public int getWidth() {
@@ -66,6 +75,11 @@ public class VideoDecoder extends MediaDecoder {
 	public int getHeight() {
 		return height;
 	}
+
+	public double getDisplayAspectRatio() {
+		return dar;
+	}
+
 	//public void setOutputSize(int swidth, int sheight) {
 	//	scale.dispose();
 	//	this.swidth = swidth;
