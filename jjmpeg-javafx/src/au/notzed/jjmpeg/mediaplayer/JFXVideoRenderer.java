@@ -33,7 +33,7 @@ import javafx.scene.layout.Pane;
  *
  * @author notzed
  */
-public class JFXVideoRenderer extends Pane {
+public class JFXVideoRenderer extends ImageView {
 
 	ImageView surface;
 	int vwidth, vheight;
@@ -55,12 +55,21 @@ public class JFXVideoRenderer extends Pane {
 	VideoScheduler scheduler;
 
 	public JFXVideoRenderer() {
-		surface = new ImageView();
+		surface = this;
 
-		getChildren().add(surface);
+		//getChildren().add(surface);
 	}
 
 	public void start() {
+
+		lag = 0;
+		dropped = 0;
+		startms = -1;
+		videoms = 0;
+		videosetms = 0;
+		audioms = 0;
+		audiosetms = 0;
+
 		scheduler = new VideoScheduler();
 		scheduler.start();
 	}
@@ -77,7 +86,7 @@ public class JFXVideoRenderer extends Pane {
 		return getVideoClock(System.currentTimeMillis());
 	}
 
-	public synchronized void postSeek(long position) {
+	public void postSeek(long position) {
 		scheduler.postSeek(position);
 	}
 
@@ -157,6 +166,17 @@ public class JFXVideoRenderer extends Pane {
 	}
 
 	public synchronized void setAudioLocation(long ms) {
+		// This stuff is to try to compensate for a poor implementation
+		// of audio.getPlayPosition() and/or System.currentTimeMillis()
+		long now = System.currentTimeMillis();
+		long diff = Math.abs(getAudioClock(now) - ms);
+
+		if (diff < 50)
+			return;
+
+		if (diff > 10) {
+			System.out.println("audio clock jitter/drift: " + (getAudioClock(now) - ms));
+		}
 		audioms = ms;
 		audiosetms = System.currentTimeMillis();
 	}
@@ -207,6 +227,19 @@ public class JFXVideoRenderer extends Pane {
 		}
 	}
 
+	/**
+	 * Retrieve a copy of the current image
+	 * @return
+	 */
+	public WritableImage getCurrentFrame() {
+		if (current == null)
+			return null;
+
+		WritableImage wi = new WritableImage(current.image.getPixelReader(), vwidth, vheight);
+
+		return wi;
+	}
+
 	class VideoScheduler extends CancellableThread {
 
 		public VideoScheduler() {
@@ -214,9 +247,11 @@ public class JFXVideoRenderer extends Pane {
 		}
 		boolean paused = false;
 		int seeked = 0;
+		long seekms;
 
 		public synchronized void postSeek(long ms) {
 			seeked++;
+			seekms = ms;
 		}
 
 		public synchronized void pause() {
@@ -228,11 +263,12 @@ public class JFXVideoRenderer extends Pane {
 			notify();
 		}
 
-		synchronized boolean checkPaused() throws InterruptedException {
+		synchronized boolean checkPaused(long now) throws InterruptedException {
 			// TODO: handle seeking within pause here too?
 			if (seeked > 0) {
 				seeked = 0;
-				startms = -1;
+				startms = now - seekms;
+				System.out.println("post seek discard frames: " + ready.count());
 				ready.drainTo(buffers);
 			}
 
@@ -251,17 +287,19 @@ public class JFXVideoRenderer extends Pane {
 					JFXVideoFrame peek;
 					long delay;
 					do {
-						checkPaused();
+						long now = System.currentTimeMillis();
+
+						checkPaused(now);
 
 						peek = ready.take();
 
 						long pts = peek.pts;
 						long targetms = pts + startms;
-						long now = System.currentTimeMillis();
 
 						now = getAudioClock(now);
 
 						if (startms == -1) {
+							System.out.println("reset startms, pts = " + pts);
 							startms = now - pts;
 							//startms = now - seekoffset;
 							delay = 0;
@@ -280,7 +318,7 @@ public class JFXVideoRenderer extends Pane {
 
 						if (delay < 0) {
 							lag = -delay;
-							System.out.println(" drop display, lagged: " + lag);
+							System.out.println(" drop display pts " + pts + ", lagged: " + lag);
 							// dump head
 							peek.recycle();
 						} else {

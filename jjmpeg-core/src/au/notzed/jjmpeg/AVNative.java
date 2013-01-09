@@ -30,12 +30,14 @@ import java.util.LinkedList;
  */
 abstract public class AVNative extends WeakReference<AVObject> {
 
-	static private ReferenceQueue<AVObject> refqueue = new ReferenceQueue<AVObject>();
-	static private LinkedList<AVNative> reflist = new LinkedList<AVNative>();
+	static private final ReferenceQueue<AVObject> refqueue = new ReferenceQueue<AVObject>();
+	static private final LinkedList<AVNative> reflist = new LinkedList<AVNative>();
 
 	protected AVNative(AVObject jobject) {
 		super(jobject, refqueue);
-		reflist.add(this);
+		synchronized (reflist) {
+			reflist.add(this);
+		}
 		gc();
 	}
 	static final boolean is64;
@@ -116,6 +118,8 @@ abstract public class AVNative extends WeakReference<AVObject> {
 	 */
 	public void dispose() {
 		System.out.println("jjmpeg: dispose native: " + this);
-		reflist.remove(this);
+		synchronized (reflist) {
+			reflist.remove(this);
+		}
 	}
 }

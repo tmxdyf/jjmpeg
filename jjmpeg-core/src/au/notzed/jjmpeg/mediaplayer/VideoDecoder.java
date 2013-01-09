@@ -18,6 +18,7 @@
  */
 package au.notzed.jjmpeg.mediaplayer;
 
+import au.notzed.jjmpeg.AVDiscard;
 import au.notzed.jjmpeg.AVFrame;
 import au.notzed.jjmpeg.AVPacket;
 import au.notzed.jjmpeg.AVStream;
@@ -88,6 +89,24 @@ public class VideoDecoder extends MediaDecoder {
 			}
 		}
 	}
+	/**
+	 * Needs to be the same as the drop limit for the video output,
+	 * so we can guess the true frame drop rate.
+	 */
+	int dropLimit = 8;
+	/**
+	 * Number of times we missed at this state
+	 */
+	int throttleMiss = 0;
+	/**
+	 * Throttle state - increments as we miss too many frames.
+	 */
+	int throttleState = 1;
+	/**
+	 * How many frames to miss in a row before jumping up a state.
+	 */
+	int throttleThreshold = 200;
+	int frameCount;
 
 	void decodePacket(AVPacket packet) throws AVDecodingError, InterruptedException {
 		//System.out.println("video decode packet()");
@@ -120,8 +139,25 @@ public class VideoDecoder extends MediaDecoder {
 				if (!enqueueFrames) {
 					videoFrame = dest.getVideoFrame();
 					// Allow for throttling
-					if (videoFrame == null)
+					if (videoFrame == null) {
+
+						// Experiemental: try dropping decoding too if we can't keep up
+						// It looks ugly but there's no alternative.
+						throttleMiss++;
+						if (throttleMiss > throttleThreshold
+								&& throttleState < AVDiscard.values.length - 2) {
+							throttleState += 1;
+							throttleMiss = 0;
+							cc.setSkipFrame(AVDiscard.values[throttleState]);
+							System.out.println("CPU too slow, jumping throttle state: " + throttleState);
+						}
+						frameCount = 0;
 						return;
+					}
+					// Need a couple of frames in a row to count as a reset
+					if (frameCount > 0)
+						throttleMiss = 0;
+					frameCount += 1;
 					videoFrame.setFrame(frame);
 				}
 

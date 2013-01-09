@@ -38,4 +38,10 @@ public interface MediaSink {
 	public void postUnpause();
 
 	public void postFinished();
+
+	/**
+	 * Return the current playback position displayed.
+	 * @return
+	 */
+	public long getMediaPosition();
 }

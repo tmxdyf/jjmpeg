@@ -99,7 +99,7 @@ public class SwingMediaPlayer extends JPanel implements MediaSink, MediaPlayer {
 		public void stateChanged(ChangeEvent e) {
 			if (!updateSeek)
 				//		if (!seek.getValueIsAdjusting())
-				seek(seek.getValue());
+				seek(seek.getValue(), Whence.Start);
 		}
 	};
 	ActionListener uiupdate = new ActionListener() {
@@ -175,8 +175,8 @@ public class SwingMediaPlayer extends JPanel implements MediaSink, MediaPlayer {
 	}
 
 	@Override
-	public void seek(long ms) {
-		reader.seek(ms, 0);
+	public void seek(long ms, Whence whence) {
+		reader.seek(ms, whence);
 	}
 
 	@Override
@@ -197,6 +197,11 @@ public class SwingMediaPlayer extends JPanel implements MediaSink, MediaPlayer {
 	@Override
 	public MediaState getMediaState() {
 		throw new UnsupportedOperationException("Not supported yet.");
+	}
+
+	@Override
+	public long getMediaPosition() {
+		return clock;
 	}
 
 	class AudioRenderThread extends CancellableThread {

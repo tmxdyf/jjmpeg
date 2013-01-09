@@ -18,6 +18,7 @@
  */
 package au.notzed.jjmpeg.mediaplayer;
 
+import au.notzed.jjmpeg.mediaplayer.MediaPlayer.Whence;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.event.ActionEvent;
@@ -47,20 +48,32 @@ public class JFXMediaControls extends VBox {
 	Button forward;
 	Button end;
 	boolean updatePosition;
+	static long skipMS = 30_000;
 
 	public JFXMediaControls() {
 
-		position = new Slider();
+		position = new Slider() {
+			@Override
+			public void requestFocus() {
+			}
+		};
 
 		HBox hbox = new HBox();
 
 		time = new Label("00:00:00");
 		length = new Label("00:00:00");
-		start = new Button("|<<");
-		back = new Button(".<");
-		play = new ToggleButton("|>");
-		forward = new Button(">.");
-		end = new Button(">>|");
+		start = new Button(null, JFXIcons.start());
+		back = new Button(null, JFXIcons.skipBackward());
+		play = new ToggleButton(null, JFXIcons.play());
+		forward = new Button(null, JFXIcons.skipForward());
+		end = new Button(null, JFXIcons.finish());
+
+		position.setFocusTraversable(false);
+		start.setFocusTraversable(false);
+		back.setFocusTraversable(false);
+		play.setFocusTraversable(false);
+		forward.setFocusTraversable(false);
+		end.setFocusTraversable(false);
 
 		hbox.getChildren().addAll(time, start, back, play, forward, end, length);
 		HBox.setHgrow(time, Priority.ALWAYS);
@@ -86,25 +99,25 @@ public class JFXMediaControls extends VBox {
 		start.setOnAction(new EventHandler<ActionEvent>() {
 			@Override
 			public void handle(ActionEvent t) {
-				player.reader.seek(0);
+				player.reader.seek(0, Whence.Start);
 			}
 		});
 		end.setOnAction(new EventHandler<ActionEvent>() {
 			@Override
 			public void handle(ActionEvent t) {
-				player.reader.seek(player.reader.getDuration());
+				player.reader.seek(player.reader.getDuration(), Whence.Start);
 			}
 		});
 		back.setOnAction(new EventHandler<ActionEvent>() {
 			@Override
 			public void handle(ActionEvent t) {
-				player.reader.seek(Math.max(0, (long)position.getValue() - 5000));
+				player.reader.seek(-skipMS, Whence.Here);
 			}
 		});
 		forward.setOnAction(new EventHandler<ActionEvent>() {
 			@Override
 			public void handle(ActionEvent t) {
-				player.reader.seek(Math.min(player.reader.getDuration(), (long)position.getValue() + 5000));
+				player.reader.seek(skipMS, Whence.Here);
 			}
 		});
 
@@ -114,11 +127,15 @@ public class JFXMediaControls extends VBox {
 				if (!updatePosition) {
 					if (player != null
 							&& player.reader != null) {
-						player.reader.seek(t1.longValue());
+						player.reader.seek(t1.longValue(), Whence.Start);
 					}
 				}
 			}
 		});
+	}
+
+	public void togglePause() {
+		play.fire();
 	}
 
 	public void setPlayer(JFXMediaPlayer player) {

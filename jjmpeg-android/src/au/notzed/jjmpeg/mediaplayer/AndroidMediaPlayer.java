@@ -36,6 +36,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.View.OnSystemUiVisibilityChangeListener;
 import android.view.View.OnTouchListener;
+import android.view.Window;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.FrameLayout.LayoutParams;
@@ -48,6 +49,7 @@ import au.notzed.jjmpeg.AVRational;
 import au.notzed.jjmpeg.AVSampleFormat;
 import au.notzed.jjmpeg.R;
 import au.notzed.jjmpeg.mediaplayer.MediaPlayer.MediaState;
+import au.notzed.jjmpeg.mediaplayer.MediaPlayer.Whence;
 import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -92,6 +94,7 @@ public class AndroidMediaPlayer extends Activity implements MediaSink, MediaPlay
 		super.onCreate(savedInstanceState);
 
 		//requestWindowFeature(Window.FEATURE_NO_TITLE);
+		getWindow().requestFeature(Window.FEATURE_ACTION_BAR_OVERLAY);
 		this.getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
 
 		frame = new FrameLayout(this);
@@ -168,7 +171,7 @@ public class AndroidMediaPlayer extends Activity implements MediaSink, MediaPlay
 		seek.setOnSeekBarChangeListener(new OnSeekBarChangeListener() {
 			public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
 				if (reader != null && !updateSeek) {
-					reader.seek(progress, 0);
+					reader.seek(progress, Whence.Start);
 					userActive();
 				}
 			}
@@ -482,6 +485,13 @@ public class AndroidMediaPlayer extends Activity implements MediaSink, MediaPlay
 		if (vRenderer != null)
 			vRenderer.setAudioLocation(aRenderer.getPosition());
 		return aRenderer.getFrame();
+	}
+
+	public long getMediaPosition() {
+		if (haveAudio)
+			return aRenderer.getPosition();
+		else
+			return vRenderer.getPosition();
 	}
 
 	// TODO: how do i handle this object going away?

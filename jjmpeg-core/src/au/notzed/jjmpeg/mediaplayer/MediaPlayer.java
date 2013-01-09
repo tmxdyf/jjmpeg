@@ -54,9 +54,30 @@ public interface MediaPlayer {
 		Quit;
 	};
 
+	public enum Whence {
+
+		Start {
+			@Override
+			long getPosition(long now, long target) {
+				return target;
+			}
+		},
+		Here {
+			@Override
+			long getPosition(long now, long target) {
+				return now + target;
+			}
+		};
+
+		abstract long getPosition(long now, long target);
+	}
+
 	public interface MediaListener {
+
 		void mediaMoved(MediaPlayer player, long newpos);
+
 		void mediaError(MediaPlayer player, Exception ex);
+
 		void mediaState(MediaPlayer player, MediaState newstate);
 	};
 
@@ -85,7 +106,7 @@ public interface MediaPlayer {
 	 * Seek to position in milliseconds
 	 * @param ms
 	 */
-	public void seek(long ms);
+	public void seek(long ms, Whence whence);
 
 	/**
 	 * Get current play position in milliseconds

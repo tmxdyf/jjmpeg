@@ -162,7 +162,7 @@ public class JJAudioPlayer extends Activity {
 
 			for (JJReaderStream rs : mr.getStreams()) {
 				switch (rs.getType()) {
-					case AVCodecContext.AVMEDIA_TYPE_AUDIO:
+					case AVMediaType.AVMEDIA_TYPE_AUDIO:
 						if (as == null) {
 							as = (JJReaderAudio) rs;
 							as.open();
