@@ -33,6 +33,7 @@ import javafx.animation.Timeline;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
+import javafx.event.Event;
 import javafx.event.EventHandler;
 import javafx.geometry.Pos;
 import javafx.scene.Cursor;
@@ -238,12 +239,11 @@ public class JFXMediaPlayer extends Application implements MediaSink, MediaPlaye
 			vout.fitWidthProperty().bind(root.widthProperty().divide(aspect));
 			vout.fitHeightProperty().bind(root.heightProperty());
 
-			root.addEventFilter(MouseEvent.MOUSE_MOVED, new EventHandler<MouseEvent>() {
-				@Override
-				public void handle(MouseEvent t) {
-					userActive();
-				}
-			});
+			root.addEventFilter(MouseEvent.MOUSE_MOVED, userAction);
+			root.addEventFilter(MouseEvent.MOUSE_PRESSED, userAction);
+			root.addEventFilter(MouseEvent.MOUSE_DRAGGED, userAction);
+			root.addEventFilter(MouseEvent.MOUSE_RELEASED, userAction);
+			root.addEventFilter(MouseEvent.MOUSE_CLICKED, userAction);
 
 			controls = new JFXMediaControls();
 			//controls.setPrefWidth(width);
@@ -375,6 +375,12 @@ public class JFXMediaPlayer extends Application implements MediaSink, MediaPlaye
 			Logger.getLogger(this.getClass().getName()).log(Level.SEVERE, null, ex);
 		}
 	}
+	EventHandler<Event> userAction = new EventHandler<Event>() {
+		@Override
+		public void handle(Event t) {
+			userActive();
+		}
+	};
 	EventHandler<ActionEvent> updateHandler = new EventHandler<ActionEvent>() {
 		@Override
 		public void handle(ActionEvent t) {
