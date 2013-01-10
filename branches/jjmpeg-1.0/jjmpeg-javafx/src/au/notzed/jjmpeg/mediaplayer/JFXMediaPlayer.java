@@ -39,10 +39,9 @@ import javafx.scene.Cursor;
 import javafx.scene.Group;
 import javafx.scene.Scene;
 import javafx.scene.image.WritableImage;
-import javafx.scene.input.KeyEvent;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.MouseEvent;
-import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 import javafx.util.Duration;
@@ -169,6 +168,8 @@ public class JFXMediaPlayer extends Application implements MediaSink, MediaPlaye
 //
 	boolean haveVideo;
 	boolean haveAudio;
+	long skip30s = 30_000;
+	long skip5m = 60_000 * 5;
 
 	public void initRenderers() {
 		for (MediaDecoder md : reader.streamMap.values()) {
@@ -244,79 +245,11 @@ public class JFXMediaPlayer extends Application implements MediaSink, MediaPlaye
 				}
 			});
 
-			BorderPane overlay = new BorderPane();
-			overlay.setFocusTraversable(true);
-			overlay.setMouseTransparent(true);
-			// TODO: put the 'actions' somewhere central, perhaps in reader or here
-			// remove from controls.
-			overlay.addEventHandler(KeyEvent.KEY_PRESSED, new EventHandler<KeyEvent>() {
-				boolean wasfull = false;
-				long skipMS = 30_000;
-
-				@Override
-				public void handle(KeyEvent t) {
-					System.out.println("key pressed" + t.getCode());
-					switch (t.getCode()) {
-						case F11:
-							wasfull = true;
-							primaryStage.setFullScreen(true);
-							t.consume();
-							return;
-						case ESCAPE:
-							// For some reason, escape turns off full-screen mode,
-							// however, it doesn't capture the event ...
-							if (!wasfull)
-								Platform.exit();
-							wasfull = false;
-							t.consume();
-							return;
-						case RIGHT:
-							System.out.println("forward skip");
-							reader.seek(skipMS, Whence.Here);
-							break;
-						case LEFT:
-							System.out.println("backward skip");
-							reader.seek(-skipMS, Whence.Here);
-							break;
-						case PAGE_UP:
-							// 5 minutes
-							reader.seek(-5 * 60_000, Whence.Here);
-							break;
-						case PAGE_DOWN:
-							reader.seek(5 * 60_000, Whence.Here);
-							break;
-						case HOME:
-							reader.seek(0, Whence.Start);
-							break;
-						case END:
-							reader.seek(reader.getDuration(), Whence.Start);
-							break;
-						case SPACE:
-							System.out.println("toggle pause");
-							controls.togglePause();
-							break;
-						case PRINTSCREEN:
-							System.out.println("print screen capture");
-							if (haveVideo) {
-								WritableImage img = vout.getCurrentFrame();
-								if (img != null)
-									EOFXView.showImage(img, reader.getPath() + " " + controls.msToString(getMediaPosition()));
-							}
-						default:
-							return;
-					}
-					t.consume();
-					userActive();
-				}
-			});
-
-
 			controls = new JFXMediaControls();
 			//controls.setPrefWidth(width);
 			Group g = new Group(controls);
 			StackPane.setAlignment(g, Pos.BOTTOM_CENTER);
 			root.getChildren().add(g);
-			root.getChildren().add(overlay);
 
 			controls.setPlayer(this);
 			controls.setId("player-controls");
@@ -325,7 +258,85 @@ public class JFXMediaPlayer extends Application implements MediaSink, MediaPlaye
 
 			Scene scene = new Scene(root, width * aspect, height);
 
+			fullScreen = false;
 			scene.getStylesheets().add("/au/notzed/jjmpeg/mediaplayer/style.css");
+
+			scene.getAccelerators().put(new KeyCodeCombination(KeyCode.F11), new Runnable() {
+				@Override
+				public void run() {
+					setFullScreen(true);
+				}
+			});
+			scene.getAccelerators().put(new KeyCodeCombination(KeyCode.ESCAPE), new Runnable() {
+				@Override
+				public void run() {
+					if (!fullScreen)
+						Platform.exit();
+					fullScreen = false;
+				}
+			});
+			scene.getAccelerators().put(new KeyCodeCombination(KeyCode.RIGHT), new Runnable() {
+				@Override
+				public void run() {
+					System.out.println("forward skip");
+					reader.seek(skip30s, Whence.Here);
+					userActive();
+				}
+			});
+			scene.getAccelerators().put(new KeyCodeCombination(KeyCode.LEFT), new Runnable() {
+				@Override
+				public void run() {
+					System.out.println("backward skip");
+					reader.seek(-skip30s, Whence.Here);
+					userActive();
+				}
+			});
+			scene.getAccelerators().put(new KeyCodeCombination(KeyCode.PAGE_UP), new Runnable() {
+				@Override
+				public void run() {
+					reader.seek(-skip5m, Whence.Here);
+					userActive();
+				}
+			});
+			scene.getAccelerators().put(new KeyCodeCombination(KeyCode.PAGE_DOWN), new Runnable() {
+				@Override
+				public void run() {
+					reader.seek(skip5m, Whence.Here);
+					userActive();
+				}
+			});
+			scene.getAccelerators().put(new KeyCodeCombination(KeyCode.HOME), new Runnable() {
+				@Override
+				public void run() {
+					reader.seek(0, Whence.Start);
+					userActive();
+				}
+			});
+			scene.getAccelerators().put(new KeyCodeCombination(KeyCode.END), new Runnable() {
+				@Override
+				public void run() {
+					reader.seek(reader.getDuration(), Whence.Start);
+					userActive();
+				}
+			});
+			scene.getAccelerators().put(new KeyCodeCombination(KeyCode.SPACE), new Runnable() {
+				@Override
+				public void run() {
+					controls.togglePause();
+					userActive();
+				}
+			});
+			scene.getAccelerators().put(new KeyCodeCombination(KeyCode.PRINTSCREEN, KeyCodeCombination.SHIFT_DOWN), new Runnable() {
+				@Override
+				public void run() {
+					System.out.println("print screen capture");
+					if (haveVideo) {
+						WritableImage img = vout.getCurrentFrame();
+						if (img != null)
+							EOFXView.showImage(img, reader.getPath() + " " + controls.msToString(getMediaPosition()));
+					}
+				}
+			});
 
 			primaryStage.setTitle("JJPlayer: " + reader.getPath());
 			primaryStage.setScene(scene);
@@ -374,6 +385,14 @@ public class JFXMediaPlayer extends Application implements MediaSink, MediaPlaye
 			}
 		}
 	};
+	boolean fullScreen;
+
+	void setFullScreen(boolean state) {
+		if (state != fullScreen) {
+			fullScreen = state;
+			primaryStage.setFullScreen(state);
+		}
+	}
 
 	@Override
 	public void mediaState(MediaPlayer player, MediaState newstate) {
