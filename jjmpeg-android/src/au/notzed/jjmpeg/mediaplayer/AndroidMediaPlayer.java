@@ -70,8 +70,8 @@ public class AndroidMediaPlayer extends Activity implements MediaSink, MediaPlay
 	String filename;
 	MediaReader reader;
 	//
-	AndroidAudioRenderer aRenderer;
-	GLESVideoRenderer vRenderer;
+	AndroidAudioRenderer aout;
+	GLESVideoRenderer vout;
 	//
 	AVRational videoTB;
 	long videoStart;
@@ -88,10 +88,14 @@ public class AndroidMediaPlayer extends Activity implements MediaSink, MediaPlay
 	boolean haveVideo;
 	boolean haveAudio;
 	boolean showDebug;
+	int throttleRate = 1;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+
+		reader = new MediaReader();
+		reader.setListener(this);
 
 		//requestWindowFeature(Window.FEATURE_NO_TITLE);
 		getWindow().requestFeature(Window.FEATURE_ACTION_BAR_OVERLAY);
@@ -102,7 +106,7 @@ public class AndroidMediaPlayer extends Activity implements MediaSink, MediaPlay
 
 		FrameLayout.LayoutParams fp = new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT);
 
-		view = new GLVideoView(this);
+		view = new GLVideoView(this, reader.getMediaClock());
 		view.setKeepScreenOn(true);
 
 		frame.setOnTouchListener(new OnTouchListener() {
@@ -130,8 +134,8 @@ public class AndroidMediaPlayer extends Activity implements MediaSink, MediaPlay
 		frame.addView(view, fp);
 		setContentView(frame);
 
-		vRenderer = view.renderer;
-		aRenderer = new AndroidAudioRenderer();
+		vout = view.renderer;
+		aout = new AndroidAudioRenderer(reader.getMediaClock());
 
 		Intent it = getIntent();
 		System.out.println("intent action = " + it.getAction());
@@ -184,9 +188,6 @@ public class AndroidMediaPlayer extends Activity implements MediaSink, MediaPlay
 				fingerDown = false;
 			}
 		});
-
-		reader = new MediaReader();
-		reader.setListener(this);
 
 		hideUI();
 
@@ -263,6 +264,9 @@ public class AndroidMediaPlayer extends Activity implements MediaSink, MediaPlay
 		SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(this);
 
 		showDebug = sp.getBoolean("pref_debug", false);
+		throttleRate = Integer.valueOf(sp.getString("pref_throttle", "1"));
+		if (vd != null)
+			vd.setThrottleRate(throttleRate);
 	}
 
 	@Override
@@ -318,7 +322,7 @@ public class AndroidMediaPlayer extends Activity implements MediaSink, MediaPlay
 		if (reader != null)
 			reader.cancel();
 
-		aRenderer.release();
+		aout.release();
 		reader = null;
 	}
 	// Polls the play position and updates the scrollbar
@@ -330,20 +334,20 @@ public class AndroidMediaPlayer extends Activity implements MediaSink, MediaPlay
 					debugInfo.setText(
 							String.format("Texture Load: %s    Sync Load:    %s    Frame Copy:   %s\nDecode Time:  %s    Render Time:  %s    Frames Dropped:  %12d\n"
 							+ "Audio Ready:  %12d       Video Ready   %12d",
-							vRenderer.load,
-							vRenderer.sync,
-							vRenderer.copy,
-							vRenderer.decode,
-							vRenderer.render,
-							vRenderer.framesDropped,
-							AndroidAudioRenderer.NBUFFERS - aRenderer.buffers.count(),
-							vRenderer.ready.count()));
+							vout.load,
+							vout.sync,
+							vout.copy,
+							vout.decode,
+							vout.render,
+							vout.framesDropped,
+							AndroidAudioRenderer.NBUFFERS - aout.buffers.count(),
+							vout.ready.count()));
 				} else {
 					debugInfo.setVisibility(View.INVISIBLE);
 				}
 				if (!fingerDown) {
 					updateSeek = true;
-					seek.setProgress((int) vRenderer.getPosition());
+					seek.setProgress((int) vout.getPosition());
 					updateSeek = false;
 				}
 				seek.postDelayed(updatePosition, 1000);
@@ -380,9 +384,12 @@ public class AndroidMediaPlayer extends Activity implements MediaSink, MediaPlay
 				seek.setMax((int) reader.getDuration());
 
 				if (haveAudio)
-					aRenderer.play();
+					aout.start();
 				if (!haveVideo)
 					view.stop();
+				else {
+					vout.setVideoAspect((float) vd.getDisplayAspectRatio());
+				}
 				seek.postDelayed(updatePosition, 100);
 				isStarted = true;
 				hideUI();
@@ -401,13 +408,16 @@ public class AndroidMediaPlayer extends Activity implements MediaSink, MediaPlay
 	 seek.setMax((int) reader.getDuration());
 	 }*/
 	public void initRenderers() {
+		vd = null;
+		ad = null;
 		for (MediaDecoder md : reader.streamMap.values()) {
 			if (md instanceof VideoDecoder) {
 				vd = (VideoDecoder) md;
 				videoTB = vd.stream.getTimeBase();
 				videoStart = vd.stream.getStartTime();
 
-				vRenderer.setVideoSize(vd.width, vd.height);
+				vout.setVideoSize(vd.width, vd.height);
+				vd.setThrottleRate(throttleRate);
 				haveVideo = true;
 			} else if (md instanceof AudioDecoder) {
 				ad = (AudioDecoder) md;
@@ -416,7 +426,7 @@ public class AndroidMediaPlayer extends Activity implements MediaSink, MediaPlay
 				int cc = Math.min(2, ad.cc.getChannels());
 
 				ad.setOutputFormat(3, cc, AVSampleFormat.SAMPLE_FMT_S16, ad.cc.getSampleRate());
-				aRenderer.setAudioFormat(ad.cc.getSampleRate(), cc, ad.cc.getSampleFmt());
+				aout.setAudioFormat(ad.cc.getSampleRate(), cc, ad.cc.getSampleFmt());
 				haveAudio = true;
 			}
 		}
@@ -439,8 +449,8 @@ public class AndroidMediaPlayer extends Activity implements MediaSink, MediaPlay
 		startms = -1;
 		seekoffset = stamp;
 
-		vRenderer.postSeek(stamp);
-		aRenderer.postSeek(stamp);
+		//vout.postSeek(stamp);
+		//aout.postSeek(stamp);
 
 		runOnUiThread(doUpdateSeek);
 	}
@@ -455,43 +465,41 @@ public class AndroidMediaPlayer extends Activity implements MediaSink, MediaPlay
 
 	public void postPause() {
 		// could do something so it pauses immediately?
-		aRenderer.pause();
-		vRenderer.pause();
+		//aout.pause();
+		//vout.pause();
 	}
 
 	public void postUnpause() {
 		// ensure we re-sync delay
 		startms = -1;
-		aRenderer.play();
-		vRenderer.play();
+		//aout.play();
+		//vout.play();
 	}
 
 	public void postFinished() {
-		if (vRenderer != null) {
-			vRenderer.stop();
+		if (vout != null) {
+			vout.stop();
 			view.stop();
-			aRenderer.stop();
-			long start = (vRenderer.threadLast - vRenderer.thread) / 1000;
+			aout.stop();
+			long start = (vout.threadLast - vout.thread) / 1000;
 			System.err.printf(" GL thread finished cpu time = %d.%06ds\n", start / 1000000L, start % 1000000L);
 		}
 	}
 
 	public VideoFrame getVideoFrame() throws InterruptedException {
 		// Update ui
-		return vRenderer.getFrame();
+		return vout.getFrame();
 	}
 
 	public AudioFrame getAudioFrame() throws InterruptedException {
-		if (vRenderer != null)
-			vRenderer.setAudioLocation(aRenderer.getPosition());
-		return aRenderer.getFrame();
+		return aout.getFrame();
 	}
 
 	public long getMediaPosition() {
 		if (haveAudio)
-			return aRenderer.getPosition();
+			return aout.getPosition();
 		else
-			return vRenderer.getPosition();
+			return vout.getPosition();
 	}
 
 	// TODO: how do i handle this object going away?

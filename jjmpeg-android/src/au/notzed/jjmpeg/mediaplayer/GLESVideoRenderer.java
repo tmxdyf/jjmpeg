@@ -59,6 +59,7 @@ import javax.microedition.khronos.opengles.GL10;
 public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 
 	boolean paused = false;
+	private final MediaClock clock;
 
 	public void pause() {
 		paused = true;
@@ -139,8 +140,9 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 	TimeInfo decode = new TimeInfo();
 	int framesDropped = 0;
 	int[] atextures = new int[3];
+	int lastSequence;
 
-	public GLESVideoRenderer(Context context, GLVideoView view) {
+	public GLESVideoRenderer(Context context, GLVideoView view, MediaClock clock) {
 		this.context = context;
 		this.surface = view;
 
@@ -149,24 +151,11 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 
 		Matrix.setIdentityM(stMatrix, 0);
 		Matrix.setIdentityM(matrix, 0);
+		this.clock = clock;
 	}
 
 	public long getPosition() {
 		return lastpts;
-	}
-
-	public synchronized void postSeek(long position) {
-		lastpts = position;
-		startms = -1;
-		seeked++;
-	}
-
-	synchronized void checkSeek() {
-		if (seeked > 0) {
-			if (NBUFFERS > 1)
-				ready.drainTo(buffers);
-			seeked = 0;
-		}
 	}
 
 	// When finishing off, indicates no more work to be done
@@ -385,31 +374,6 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 		return n;
 	}
 
-	public synchronized void setAudioLocation(long ms) {
-		// This stuff is to try to compensate for a poor implementation
-		// of audio.getPlayPosition() and/or System.currentTimeMillis()
-		long now = System.currentTimeMillis();
-		long diff = Math.abs(getClock(now) - ms);
-
-		if (diff < 50)
-			return;
-
-		if (diff > 10) {
-			System.out.println("audio clock jitter/drift: " + (getClock(now) - ms));
-		}
-
-		audioms = ms;
-		audiosetms = System.currentTimeMillis();
-	}
-
-	public synchronized long getClock(long now) {
-		return (audioms + (now - audiosetms));
-	}
-
-	public synchronized long getDelay(long now, long pts) {
-		return pts - (audioms + (now - audiosetms));
-	}
-
 	public synchronized void setVideoSize(int w, int h) {
 		int tw = roundUp(w);
 		int th = roundUp(h);
@@ -423,22 +387,26 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 		this.vwidth = w;
 		this.vheight = h;
 	}
+
+	public void setVideoAspect(float aspect) {
+		this.aspect = aspect;
+		updateView = true;
+	}
+	float aspect = 1;
 	boolean direct = false;
-	long startms = -1;
 	GLTextureFrame display;
-	long audioms = 0;
-	long audiosetms = 0;
 	long lag;
 
 	public void onDrawFrame(GL10 glUnused) {
-		if (stopped || paused)
+		if (stopped)
+			return;
+
+		if (clock.isPaused())
 			return;
 
 		if (thread == 0)
 			thread = Debug.threadCpuTimeNanos();
 		GLTextureFrame displayNew = null;
-
-		checkSeek();
 
 		// Find a frame that's ready for display
 		// TODO: mess ...
@@ -449,27 +417,24 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 				peek = ready.peek();
 
 				if (peek != null) {
-					long pts = peek.pts;
-					long targetms = pts + startms;
-					long now = System.currentTimeMillis();
-
-					now = getClock(now);
-
-					if (startms == -1) {
-						startms = now - pts;
-						//startms = now - seekoffset;
-						delay = 0;
-					} else {
-						delay = targetms - now;
+					if (peek.sequence != clock.getSequence()) {
+						ready.poll();
+						if (displayNew != null)
+							displayNew.recycle();
+						displayNew = peek;
+						delay = -1;
+						continue;
 					}
 
+					long pts = peek.pts;
+
+					delay = clock.getVideoDelay(pts);
 					// max speed
 					//delay = -1;
 
-					if (delay > 150) {
-						System.out.println("weird delay " + delay + " pts " + peek.pts + " now = " + (now - startms));
-						startms = -1;
-					}
+					//if (delay > 150) {
+					//	System.out.println("weird delay " + delay + " pts " + peek.pts);
+					//}
 
 					if (delay <= 0) {
 						lag = -delay;
@@ -495,7 +460,7 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 
 			float rw = 1;
 			float rh = 1;
-			float pw = (float) vwidth / pwidth;
+			float pw = (float) vwidth * aspect / pwidth;
 			float ph = (float) vheight / pheight;
 			if (vwidth != 0 && vheight != 0 && pwidth != 0 && pheight != 0) {
 				if (pw > ph) {
@@ -504,7 +469,7 @@ public class GLESVideoRenderer implements GLSurfaceView.Renderer {
 					rw = ph / pw;
 				}
 			}
-			System.out.printf("pw %f ph %f rw %f rh %f  vsize %dx%d psize %dx%d\n", pw, ph, rw, rh, vwidth, vheight, pwidth, pheight);
+			System.out.printf("pw %f ph %f rw %f rh %f  vsize %dx%d psize %dx%d aspect %f\n", pw, ph, rw, rh, vwidth, vheight, pwidth, pheight, aspect);
 
 			// -1 just makes sure the texture fits over to avoid flickering crap
 			Matrix.scaleM(stMatrix, 0, (float) (vwidth - 1) / twidth, (float) (vheight - 1) / theight, 1);

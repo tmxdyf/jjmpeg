@@ -39,6 +39,7 @@ import java.util.concurrent.LinkedBlockingQueue;
  *       like release.
  * TODO: Some way of determining the overall rendered position - sound or video
  * TODO: resume vs play - don't need resume
+ * TODO: interface or abstract class for video/audio renderers?
  */
 /**
  * Low Level Media Player
@@ -53,10 +54,11 @@ public class MediaReader extends CancellableThread implements MediaPlayer {
 	String file;
 	MediaSink dest;
 	// for recycling packets
-	JJQueue<AVPacket> packetQueue = new JJQueue<AVPacket>(packetLimit + 5);
+	JJQueue<MediaPacket> packetQueue = new JJQueue<MediaPacket>(packetLimit + 5);
 	// for commands to the player thread
 	LinkedBlockingQueue<PlayerCMD> cmdQueue = new LinkedBlockingQueue<PlayerCMD>();
 	long duration;
+	MediaClock clock = new MediaClock();
 	MediaListener listener;
 	MediaState state = MediaState.Idle;
 
@@ -81,6 +83,10 @@ public class MediaReader extends CancellableThread implements MediaPlayer {
 		return file;
 	}
 
+	public MediaClock getMediaClock() {
+		return clock;
+	}
+
 	/**
 	 * May only be called in the paused/playing state.
 	 * @return
@@ -101,7 +107,7 @@ public class MediaReader extends CancellableThread implements MediaPlayer {
 
 	@Override
 	public long getPosition() {
-		throw new UnsupportedOperationException("Not supported yet.");
+		return clock.getMediaPosition();
 	}
 
 	@Override
@@ -292,27 +298,29 @@ public class MediaReader extends CancellableThread implements MediaPlayer {
 	}
 	int created;
 
-	AVPacket createPacket() throws InterruptedException {
+	MediaPacket createPacket() throws InterruptedException {
+		MediaPacket mp;
+
 		if (created >= packetLimit) {
-			return packetQueue.take();
-		}
+			mp = packetQueue.take();
+		} else {
+			mp = packetQueue.poll();
 
-		AVPacket packet = packetQueue.poll();
-
-		if (packet == null) {
-			packet = AVPacket.create();
-			created++;
-			//System.out.println("creating new avpacket: " + created);
+			if (mp == null) {
+				mp = new MediaPacket();
+				created++;
+				//System.out.println("creating new avpacket: " + created);
+			}
 		}
-		return packet;
+		return mp;
 	}
 
-	public void recyclePacket(AVPacket packet) {
+	public void recyclePacket(MediaPacket packet) {
 		packet.freePacket();
 		packetQueue.offer(packet);
 	}
 
-	void postSeek() {
+	void postSeek() throws InterruptedException {
 		for (MediaDecoder dec : streamMap.values()) {
 			dec.postSeek();
 		}
@@ -433,8 +441,9 @@ public class MediaReader extends CancellableThread implements MediaPlayer {
 	 * Above READY state - play the media, handle pause, etc.
 	 */
 	void runMedia() {
-		AVPacket packet = null;
-		boolean paused = false;
+		MediaPacket packet = null;
+
+		clock.reset();
 
 		setMediaState(MediaState.Playing);
 
@@ -443,13 +452,14 @@ public class MediaReader extends CancellableThread implements MediaPlayer {
 			packet = createPacket();
 
 			out:
-			while (!cancelled && format.readFrame(packet) >= 0) {
+			while (!cancelled && format.readFrame(packet.packet) >= 0) {
 				try {
 					// map to stream
 					MediaDecoder md = streamMap.get(packet.getStreamIndex());
 					if (md != null) {
 						//System.out.println("sending packet to decoder " + packet.getStreamIndex() + " + " + packet.getSize());
 						packet.dupPacket();
+						packet.sequence = clock.getSequence();
 						md.enqueuePacket(packet);
 						packet = null;
 					}
@@ -464,7 +474,7 @@ public class MediaReader extends CancellableThread implements MediaPlayer {
 					do {
 						// Collapse commands to fixed sequence
 						do {
-							if (paused)
+							if (clock.isPaused())
 								cmd = cmdQueue.take();
 							else
 								cmd = cmdQueue.poll();
@@ -500,25 +510,30 @@ public class MediaReader extends CancellableThread implements MediaPlayer {
 						} while (cmd != null);
 
 						if (seekcmd != null) {
-							long ts = seekcmd.whence.getPosition(dest.getMediaPosition(), seekcmd.stamp);
+							long ts = clock.getMediaPosition();
+
+							clock.seekStart();
+
+							ts = seekcmd.whence.getPosition(ts, seekcmd.stamp);
 							ts = Math.min(ts, getDuration());
 							ts = Math.max(ts, 0);
-							System.out.println("seeking, current pos = " + dest.getMediaPosition() + " to " + ts);
+							System.out.println("seeking, current pos = " + clock.getMediaPosition() + " to " + ts);
 							format.seekFile(-1, 0, ts * 1000, ts * 1000, 0);
 							postSeek();
-							dest.postSeek(ts);
+							clock.seekFinish(ts);
+							//dest.postSeek(ts);
 						}
 						if (pausecmd != null) {
-							if (!paused) {
+							if (!clock.isPaused()) {
 								System.out.println("MediaReader: pause");
 								dest.postPause();
-								paused = true;
+								clock.pause();
 								setMediaState(MediaState.Paused);
 							}
 						} else if (playcmd != null) {
-							if (paused) {
+							if (clock.isPaused()) {
 								System.out.println("MediaReader: un-pause");
-								paused = false;
+								clock.resume();
 								dest.postUnpause();
 								setMediaState(MediaState.Playing);
 							} else {
@@ -526,7 +541,7 @@ public class MediaReader extends CancellableThread implements MediaPlayer {
 								dest.postPlay();
 							}
 						}
-					} while (!cancelled && paused);
+					} while (!cancelled && clock.isPaused());
 				} catch (InterruptedException x) {
 					if (cancelled)
 						setMediaState(MediaState.Quit);
@@ -544,7 +559,8 @@ public class MediaReader extends CancellableThread implements MediaPlayer {
 				System.out.println("Send final empty packet");
 				for (MediaDecoder md : streamMap.values()) {
 					packet = createPacket();
-					packet.setData(null, 0);
+					packet.sequence = clock.getSequence();
+					packet.packet.setData(null, 0);
 					md.enqueuePacket(packet);
 				}
 				for (MediaDecoder md : streamMap.values()) {

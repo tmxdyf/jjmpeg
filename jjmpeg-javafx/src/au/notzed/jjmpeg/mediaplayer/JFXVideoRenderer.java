@@ -20,6 +20,7 @@ package au.notzed.jjmpeg.mediaplayer;
 
 import au.notzed.jjmpeg.AVFrame;
 import au.notzed.jjmpeg.SwsContext;
+import au.notzed.jjmpeg.mediaplayer.MediaClock.MediaClockListener;
 import au.notzed.jjmpeg.util.CancellableThread;
 import au.notzed.jjmpeg.util.JJQueue;
 import java.nio.IntBuffer;
@@ -27,7 +28,6 @@ import javafx.application.Platform;
 import javafx.scene.image.ImageView;
 import javafx.scene.image.PixelFormat;
 import javafx.scene.image.WritableImage;
-import javafx.scene.layout.Pane;
 
 /**
  *
@@ -57,6 +57,7 @@ public class JFXVideoRenderer extends ImageView {
 	//
 	VideoScheduler scheduler;
 	DeinterlaceMode deinterlaceMode = DeinterlaceMode.Fields;
+	private final MediaClock clock;
 
 	enum DeinterlaceMode {
 
@@ -74,17 +75,18 @@ public class JFXVideoRenderer extends ImageView {
 		Merge
 	}
 
-	public JFXVideoRenderer() {
+	public JFXVideoRenderer(MediaClock clock) {
 		surface = this;
 
 		//getChildren().add(surface);
+		this.clock = clock;
 	}
 
 	public void setFrameDelay(int frameDelay) {
 		if (frameDelay == -1)
 			frameDelay = 40;
 		this.frameDelay = frameDelay;
-		System.out.println("Using field delay : " + (frameDelay/2));
+		System.out.println("Using field delay : " + (frameDelay / 2));
 	}
 
 	public void start() {
@@ -99,26 +101,12 @@ public class JFXVideoRenderer extends ImageView {
 
 		scheduler = new VideoScheduler();
 		scheduler.start();
-	}
-
-	public void pause() {
-		scheduler.pause();
-	}
-
-	public void unpause() {
-		scheduler.unpause();
-	}
-
-	public long getPosition() {
-		return getVideoClock(System.currentTimeMillis());
-	}
-
-	public void postSeek(long position) {
-		scheduler.postSeek(position);
+		clock.setVideoOut(scheduler);
 	}
 
 	public void stop() {
 		if (scheduler != null) {
+			clock.setVideoOut(null);
 			scheduler.cancel();
 			scheduler = null;
 		}
@@ -238,7 +226,7 @@ public class JFXVideoRenderer extends ImageView {
 			firstField = true;
 
 			if (interlaced && deinterlaceMode == DeinterlaceMode.Merge) {
-				int a= frame.deinterlace(frame, ifmt, vwidth, vheight);
+				int a = frame.deinterlace(frame, ifmt, vwidth, vheight);
 				interlaced = false;
 			}
 
@@ -261,6 +249,7 @@ public class JFXVideoRenderer extends ImageView {
 
 		@Override
 		void enqueue() throws InterruptedException {
+			//System.out.println("Video frame enqueue: " + pts);
 			ready.offer(this);
 		}
 
@@ -271,6 +260,13 @@ public class JFXVideoRenderer extends ImageView {
 
 		@Override
 		public void run() {
+			if (sequence != clock.getSequence()) {
+				System.out.println("## discard video frame render " + pts);
+				recycle();
+				return;
+			}
+
+			//System.out.println("Video frame show: " + pts);
 			// Must always be called twice on interleaved frames
 			if (interlaced) {
 				surface.setScaleY(2);
@@ -279,7 +275,7 @@ public class JFXVideoRenderer extends ImageView {
 					setVideoLocation(pts);
 					surface.setImage(field0);
 				} else {
-					setVideoLocation(pts + frameDelay/2);
+					setVideoLocation(pts + frameDelay / 2);
 					surface.setImage(field1);
 				}
 				if (firstField) {
@@ -315,44 +311,10 @@ public class JFXVideoRenderer extends ImageView {
 		return wi;
 	}
 
-	class VideoScheduler extends CancellableThread {
+	class VideoScheduler extends CancellableThread implements MediaClock.MediaClockListener {
 
 		public VideoScheduler() {
 			super("Video Scheduler");
-		}
-		boolean paused = false;
-		int seeked = 0;
-		long seekms;
-
-		public synchronized void postSeek(long ms) {
-			seeked++;
-			seekms = ms;
-		}
-
-		public synchronized void pause() {
-			paused = true;
-		}
-
-		public synchronized void unpause() {
-			paused = false;
-			notify();
-		}
-
-		synchronized boolean checkPaused(long now) throws InterruptedException {
-			// TODO: handle seeking within pause here too?
-			if (seeked > 0) {
-				seeked = 0;
-				startms = now - seekms;
-				System.out.println("post seek discard frames: " + ready.count());
-				ready.drainTo(buffers);
-			}
-
-			boolean p = paused;
-			while (paused) {
-				wait();
-			}
-
-			return p;
 		}
 
 		@Override
@@ -362,42 +324,35 @@ public class JFXVideoRenderer extends ImageView {
 					JFXVideoFrame peek;
 					long delay;
 					do {
-						long now = System.currentTimeMillis();
-
-						checkPaused(now);
-
+						if (clock.checkPauseVideo()) {
+							//System.out.println("video seeked, flushing");
+							// post seek drop frames
+							// This will not work ...
+							//ready.drainTo(buffers);
+						}
 						peek = ready.take();
 
-						long pts = peek.pts;
-						long targetms = pts + startms;
+						if (peek.sequence == clock.getSequence()) {
+							delay = clock.getVideoDelay(peek.pts);
 
-						now = getAudioClock(now);
+							// HACK: after seeking we'll usually get one 'old' frame still
+							// try to ignore the ones in the future.
+							if (delay > 500)
+								delay = 0;
 
-						if (startms == -1) {
-							System.out.println("reset startms, pts = " + pts);
-							startms = now - pts;
-							//startms = now - seekoffset;
-							delay = 0;
+							if (delay < 0) {
+								//		lag = -delay;
+								//		System.out.println(" drop display pts " + pts + ", lagged: " + lag);
+								//		// dump head
+								//		peek.recycle();
+								delay = 0;
+							} else {
+								lag = 0;
+							}
 						} else {
-							delay = targetms - now;
-						}
-
-						// max speed
-						//delay = -1;
-
-						if (delay > 500) {
-							System.out.println("weird delay " + delay + " pts " + peek.pts + " now = " + (now - startms));
-							startms = -1;
-							delay = 0;
-						}
-
-						if (delay < 0) {
-							lag = -delay;
-							System.out.println(" drop display pts " + pts + ", lagged: " + lag);
-							// dump head
+							System.out.println("## discard video frame " + peek.pts + " sequence chagned: " + peek.sequence);
+							delay = -1;
 							peek.recycle();
-						} else {
-							lag = 0;
 						}
 					} while (delay < 0);
 
@@ -408,12 +363,30 @@ public class JFXVideoRenderer extends ImageView {
 
 					// Interlaced: call it twice
 					if (peek.interlaced) {
-						sleep(frameDelay/2);
+						sleep(frameDelay / 2);
 						Platform.runLater(peek);
 					}
 				} catch (InterruptedException x) {
 				}
 			}
+		}
+
+		@Override
+		public void clockPause() {
+		}
+
+		@Override
+		public void clockResume() {
+		}
+
+		@Override
+		public void clockSeekStart() {
+			// Mark discard everything?
+		}
+
+		@Override
+		public void clockSeekFinish(long pos) {
+			// Resync clock?
 		}
 	}
 }

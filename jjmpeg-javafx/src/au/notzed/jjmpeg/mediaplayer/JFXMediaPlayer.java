@@ -62,17 +62,19 @@ public class JFXMediaPlayer extends Application implements MediaSink, MediaPlaye
 	int index = 0;
 	String[] paths;
 	Timeline autoUpdate;
+	MediaClock clock;
 
 	@Override
 	public void start(Stage primaryStage) {
 		// Delay main view until we're ready and sized
 		this.primaryStage = primaryStage;
 
-		vout = new JFXVideoRenderer();
-		aout = new JavaAudioRenderer();
-
 		reader = new MediaReader();
 		reader.setListener(this);
+
+		clock = reader.getMediaClock();
+		vout = new JFXVideoRenderer(clock);
+		aout = new JavaAudioRenderer(clock);
 
 		paths = getParameters().getUnnamed().toArray(new String[0]);
 
@@ -107,37 +109,23 @@ public class JFXMediaPlayer extends Application implements MediaSink, MediaPlaye
 
 	@Override
 	public void postSeek(long stampms) {
-		if (haveVideo)
-			vout.postSeek(stampms);
-		if (haveAudio)
-			aout.postSeek(stampms);
 	}
 
 	@Override
 	public void postPlay() {
-		System.out.println(" post play");
-		if (haveAudio)
-			aout.start();
-		if (haveVideo)
-			vout.unpause();
+	//	System.out.println(" post play");
+	//	if (haveAudio)
+	//		aout.play();
+	//	if (haveVideo)
+	//		vout.play();
 	}
 
 	@Override
 	public void postPause() {
-		System.out.println(" post pause");
-		if (haveVideo)
-			vout.pause();
-		if (haveAudio)
-			aout.stop();
 	}
 
 	@Override
 	public void postUnpause() {
-		System.out.println(" post unpause");
-		if (haveVideo)
-			vout.unpause();
-		if (haveAudio)
-			aout.start();
 	}
 
 	@Override
@@ -333,7 +321,7 @@ public class JFXMediaPlayer extends Application implements MediaSink, MediaPlaye
 					if (haveVideo) {
 						WritableImage img = vout.getCurrentFrame();
 						if (img != null)
-							EOFXView.showImage(img, reader.getPath() + " " + controls.msToString(getMediaPosition()));
+							EOFXView.showImage(img, reader.getPath() + " " + controls.msToString(reader.getPosition()));
 					}
 				}
 			});
@@ -385,7 +373,7 @@ public class JFXMediaPlayer extends Application implements MediaSink, MediaPlaye
 		@Override
 		public void handle(ActionEvent t) {
 			if (reader != null && controls != null) {
-				long position = getMediaPosition();
+				long position = reader.getPosition();
 
 				controls.setLocation(position);
 			}
@@ -414,7 +402,7 @@ public class JFXMediaPlayer extends Application implements MediaSink, MediaPlaye
 				});
 				break;
 			case Ready:
-				// Just start it playing right away
+				// Just play it playing right away
 				player.play();
 				break;
 		}
@@ -449,7 +437,6 @@ public class JFXMediaPlayer extends Application implements MediaSink, MediaPlaye
 	Timeline mouseHide = new Timeline(new KeyFrame(Duration.seconds(2), hideHandler));
 
 	void userActive() {
-
 		// can probably just use one fade transition
 		// and use playFrom + setdirection to manage it.
 
@@ -478,17 +465,5 @@ public class JFXMediaPlayer extends Application implements MediaSink, MediaPlaye
 			mouseHide.stop();
 			mouseHide.play();
 		}
-	}
-
-	@Override
-	public long getMediaPosition() {
-		long position = 0;
-
-		if (haveAudio)
-			position = aout.getPosition();
-		else if (haveVideo)
-			position = vout.getPosition();
-
-		return position;
 	}
 }

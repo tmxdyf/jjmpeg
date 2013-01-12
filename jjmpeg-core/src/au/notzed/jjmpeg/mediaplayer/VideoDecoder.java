@@ -40,9 +40,14 @@ public class VideoDecoder extends MediaDecoder {
 	double dar;
 	PixelFormat format;
 	AVFrame frame;
-	// FIXME: depends on impelementation
+	// FIXME: depends on impelementation, is for 'direct rendering' support,
+	// but it is broken atm
 	final static boolean enqueueFrames = false;
 	long decodeTime;
+	/**
+	 * Fixed throttle rate, only output 1 in this many frames
+	 */
+	int throttleRate = 1;
 
 	/**
 	 * Create a new video decoder for a given stream.
@@ -80,6 +85,10 @@ public class VideoDecoder extends MediaDecoder {
 		return dar;
 	}
 
+	public void setThrottleRate(int throttleRate) {
+		this.throttleRate = throttleRate;
+	}
+
 	/**
 	 * Get the average frame delay in mS.
 	 *
@@ -91,7 +100,7 @@ public class VideoDecoder extends MediaDecoder {
 		int d = stream.getAvgFrameRateDen();
 
 		if (n != 0)
-			return (int)(1000L * d / n);
+			return (int) (1000L * d / n);
 		else
 			return -1;
 	}
@@ -104,7 +113,7 @@ public class VideoDecoder extends MediaDecoder {
 	VideoFrame videoFrame;
 
 	@Override
-	public synchronized void postSeek() {
+	public synchronized void postSeek() throws InterruptedException {
 		super.postSeek();
 	}
 
@@ -137,26 +146,24 @@ public class VideoDecoder extends MediaDecoder {
 	int throttleThreshold = 200;
 	int frameCount;
 
-	void decodePacket(AVPacket packet) throws AVDecodingError, InterruptedException {
+	// Experimental alternative - just queue up AVFrames and load textures in display callback
+	// This is for direct rendering ... but is totally broken atm.
+	void decodePacketDirect(AVPacket packet) throws AVDecodingError, InterruptedException {
 		//System.out.println("video decode packet()");
 		boolean frameFinished;
 		do {
-			// Experimental alternative - just queue up AVFrames and load textures in display callback
-			if (enqueueFrames) {
+			if (videoFrame == null) {
+				videoFrame = dest.getVideoFrame();
+
+				// This doesn't make sense - we want to drop frames by not decoding them when
+				// too busy, not when not busy enough.
 				if (videoFrame == null) {
-					videoFrame = dest.getVideoFrame();
-
-					// This doesn't make sense - we want to drop frames by not decoding them when
-					// too busy, not when not busy enough.
-					if (videoFrame == null) {
-						System.out.println("frame dropped");
-						return;
-					}
-
-					frame = videoFrame.getFrame();
+					System.out.println("frame dropped");
+					return;
 				}
-			}
 
+				frame = videoFrame.getFrame();
+			}
 
 			long now = System.nanoTime();
 
@@ -165,32 +172,6 @@ public class VideoDecoder extends MediaDecoder {
 			decodeTime += (System.nanoTime() - now) / 1000;
 
 			if (frameFinished) {
-				if (!enqueueFrames) {
-					videoFrame = dest.getVideoFrame();
-					// Allow for throttling
-					if (videoFrame == null) {
-
-						// Experiemental: try dropping decoding too if we can't keep up
-						// It looks ugly but there's no alternative.
-						throttleMiss++;
-						if (throttleMiss > throttleThreshold
-								&& throttleState < AVDiscard.values.length - 2) {
-							throttleState += 1;
-							throttleMiss = 0;
-							cc.setSkipFrame(AVDiscard.values[throttleState]);
-							System.out.println("CPU too slow, jumping throttle state: " + throttleState);
-						}
-						frameCount = 0;
-						return;
-					}
-					// Need a couple of frames in a row to count as a reset
-					if (frameCount > 0)
-						throttleMiss = 0;
-					frameCount += 1;
-					videoFrame.setFrame(frame);
-				}
-
-				//videoFrame.pts = convertPTS(packet.getDTS());
 				videoFrame.pts = convertPTS(frame.getBestEffortTimestamp());
 				videoFrame.decodeTime = decodeTime;
 				videoFrame.enqueue();
@@ -201,5 +182,72 @@ public class VideoDecoder extends MediaDecoder {
 				decodeTime = 0;
 			}
 		} while (packet.getSize() == 0 && frameFinished);
+	}
+
+	@Override
+	void decodePacket(MediaPacket packet) throws AVDecodingError, InterruptedException {
+		//System.out.println("video decode packet()");
+		boolean frameFinished;
+		do {
+			long now = System.nanoTime();
+
+			frameFinished = cc.decodeVideo(frame, packet.packet);
+
+			decodeTime += (System.nanoTime() - now) / 1000;
+
+			//if (isFlushing())
+			//	return;
+
+			if (packet.sequence != src.getMediaClock().getSequence())
+				return;
+
+			if (frameFinished) {
+				long pts = convertPTS(frame.getBestEffortTimestamp());
+
+				// Make sure the pts is >= seek before letting it proceed
+				if (pts < src.clock.getSeek()) {
+					//	System.out.println("discard video too early after seek " + pts);
+					continue;
+				}
+
+				// Check for user throttling
+				if (throttleMiss + 1 < throttleRate) {
+					throttleMiss++;
+					continue;
+				}
+
+				VideoFrame videoFrame;
+
+				videoFrame = dest.getVideoFrame();
+				// Allow for throttling
+				if (videoFrame == null) {
+
+					// Experiemental: try dropping decoding too if we can't keep up
+					// It looks ugly but there's no alternative.
+					throttleMiss++;
+					if (throttleMiss > throttleThreshold
+							&& throttleState < AVDiscard.values.length - 2) {
+						throttleState += 1;
+						throttleMiss = 0;
+						cc.setSkipFrame(AVDiscard.values[throttleState]);
+						System.out.println("CPU too slow, jumping throttle state: " + throttleState);
+					}
+					frameCount = 0;
+					continue;
+				}
+				// Need a couple of frames in a row to count as a reset
+				if (frameCount > 0)
+					throttleMiss = 0;
+				frameCount += 1;
+				videoFrame.setFrame(frame);
+
+				videoFrame.sequence = packet.sequence;
+				videoFrame.pts = pts;
+				videoFrame.decodeTime = decodeTime;
+				videoFrame.enqueue();
+
+				decodeTime = 0;
+			}
+		} while (packet.packet.getSize() == 0 && frameFinished);
 	}
 }

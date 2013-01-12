@@ -18,24 +18,33 @@
  */
 package au.notzed.jjmpeg.mediaplayer;
 
+import au.notzed.jjmpeg.AVPacket;
+
 /**
- * Interface to a player that takes the audio/video frames and synchronises them.
- *
+ * Holds an AVPacket and associates it with a playing sequence.
  * @author notzed
  */
-public interface MediaSink {
+class MediaPacket {
 
-	public AudioFrame getAudioFrame() throws InterruptedException;
+	int sequence;
+	AVPacket packet;
 
-	public VideoFrame getVideoFrame() throws InterruptedException;
+	MediaPacket() {
+		this.packet = AVPacket.create();
+	}
 
-	public void postSeek(long stampms);
+	static final MediaPacket flush = new MediaPacket();
+	static final MediaPacket cancel = new MediaPacket();
 
-	public void postPlay();
+	void dupPacket() {
+		packet.dupPacket();
+	}
 
-	public void postPause();
+	int getStreamIndex() {
+		return packet.getStreamIndex();
+	}
 
-	public void postUnpause();
-
-	public void postFinished();
+	void freePacket() {
+		packet.freePacket();
+	}
 }
