@@ -21,7 +21,6 @@ package au.notzed.jjmpeg.mediaplayer;
 import au.notzed.jjmpeg.util.CancellableThread;
 import au.notzed.jjmpeg.AVCodec;
 import au.notzed.jjmpeg.AVCodecContext;
-import au.notzed.jjmpeg.AVPacket;
 import au.notzed.jjmpeg.AVRational;
 import au.notzed.jjmpeg.AVStream;
 import au.notzed.jjmpeg.exception.AVDecodingError;
@@ -51,12 +50,9 @@ public abstract class MediaDecoder extends CancellableThread {
 	final long startpts;
 	final long duration;
 	// packet input queue
-	JJQueue<AVPacket> queue;
+	JJQueue<MediaPacket> queue;
 	//ArrayBlockingQueue<AVPacket> queue;
-	JJQueue<AVPacket> syncQueue = new JJQueue<AVPacket>(1);
-	//
-	final static AVPacket flush = AVPacket.create();
-	final static AVPacket cancel = AVPacket.create();
+	JJQueue<MediaPacket> syncQueue = new JJQueue<MediaPacket>(1);
 
 	/**
 	 * Initialise a media decoder.
@@ -72,7 +68,7 @@ public abstract class MediaDecoder extends CancellableThread {
 	MediaDecoder(String name, MediaReader src, MediaSink dest, AVStream stream, int streamid) throws IOException {
 		super(name);
 
-		queue = new JJQueue<AVPacket>(MediaReader.packetLimit + 1);
+		queue = new JJQueue<MediaPacket>(MediaReader.packetLimit + 1);
 		//queue = new ArrayBlockingQueue<AVPacket>(MediaReader.packetLimit + 1);
 		try {
 			this.src = src;
@@ -103,22 +99,29 @@ public abstract class MediaDecoder extends CancellableThread {
 			throw new IOException("Unable to open video decoder", ex);
 		}
 	}
+	int flushcount;
 
 	/**
 	 * Called after the reader has seeked to a new position.
 	 *
 	 * Tells the codec to flush, waits for it to flush.
 	 */
-	public void postSeek() {
+	public synchronized void postSeek() throws InterruptedException {
+		// Don't need this: handled by sequence numbers
+		if (true)
+			return;
+
+		flushcount++;
 		clearQueue();
-		queue.offer(flush);
+		queue.offer(MediaPacket.flush);
+		//wait();
 	}
 
 	void clearQueue() {
-		AVPacket p;
+		MediaPacket p;
 
 		while ((p = queue.poll()) != null) {
-			if (p != flush) {
+			if (p != MediaPacket.flush) {
 				src.recyclePacket(p);
 			} else {
 				System.out.println("** discarding flush");
@@ -132,7 +135,7 @@ public abstract class MediaDecoder extends CancellableThread {
 	 * @param packet
 	 * @throws InterruptedException
 	 */
-	public void enqueuePacket(AVPacket packet) throws InterruptedException {
+	public void enqueuePacket(MediaPacket packet) throws InterruptedException {
 		queue.offer(packet);
 	}
 
@@ -144,20 +147,57 @@ public abstract class MediaDecoder extends CancellableThread {
 		cc.flushBuffers();
 	}
 
+	/**
+	 * Decoders call this to find out if flushing is in progress,
+	 * if so they should stop decoding and not output any frames.
+	 *
+	 * Must be called with the this monitor held.
+	 * @return
+	 */
+	protected boolean isFlushing() {
+		return flushcount > 0;
+	}
+
+	/**
+	 * Main decoder thread, take packets from demux thread
+	 * and send them to be decoded.
+	 *
+	 * It's getting a bit messy handling flush and so on.
+	 */
 	@Override
 	public void run() {
+		int lastSequence = 0;
 		while (!cancelled) {
-			AVPacket packet = null;
+			MediaPacket packet = null;
 			try {
+				if (cancelled)
+					break;
+
 				packet = queue.take();
 
-				if (packet == flush) {
+				if (packet == MediaPacket.flush) {
+					System.out.println("loop got flush packet");
 					packet = null;
 					flushCodec();
-				} else if (packet == cancel) {
+					synchronized (this) {
+						flushcount--;
+						notify();
+					}
+				} else if (packet == MediaPacket.cancel) {
 					packet = null;
 					cancelled = true;
 				} else {
+					if (packet.sequence != src.getMediaClock().getSequence()) {
+						System.out.println(getName() + " sequence changed, flushing packet");
+						continue;
+					}
+
+					if (packet.sequence != lastSequence) {
+						System.out.println(getName() + "sequence changed, flushing codec");
+						flushCodec();
+						lastSequence = packet.sequence;
+					}
+
 					decodePacket(packet);
 				}
 			} catch (AVDecodingError ex) {
@@ -197,7 +237,7 @@ public abstract class MediaDecoder extends CancellableThread {
 	 * Flush cleanly and close
 	 */
 	public void complete() {
-		queue.offer(cancel);
+		queue.offer(MediaPacket.cancel);
 		try {
 			join();
 		} catch (InterruptedException ex) {
@@ -222,7 +262,7 @@ public abstract class MediaDecoder extends CancellableThread {
 	 * @throws AVDecodingError
 	 * @throws InterruptedException
 	 */
-	abstract void decodePacket(AVPacket packet) throws AVDecodingError, InterruptedException;
+	abstract void decodePacket(MediaPacket packet) throws AVDecodingError, InterruptedException;
 
 	static public String timeToString(long time) {
 		return String.format("%02d:%02d:%02d.%03d",

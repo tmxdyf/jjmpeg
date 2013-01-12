@@ -67,11 +67,12 @@ public class AudioDecoder extends MediaDecoder {
 	}
 
 	@Override
-	void decodePacket(AVPacket packet) throws AVDecodingError, InterruptedException {
+	void decodePacket(MediaPacket packet) throws AVDecodingError, InterruptedException {
 		boolean go = true;
+
 		//System.out.println("audio decode packet()");
 		//if (true)return;
-		apacket.setSrc(packet);
+		apacket.setSrc(packet.packet);
 		//apacket = AVAudioPacket.create(packet);
 
 		while (go) {
@@ -80,6 +81,8 @@ public class AudioDecoder extends MediaDecoder {
 				int samples = cc.decodeAudio(frame, apacket);
 
 				if (samples > 0) {
+					long pts;
+
 					if (resample != null) {
 						//System.out.println("resampling audio input samples: " + frame.getNbSamples());
 						resampledFrame.fillAudioFrame(dstChannels, dstFormat, samples);
@@ -87,10 +90,19 @@ public class AudioDecoder extends MediaDecoder {
 						data = resampledFrame;
 					}
 
+					pts = convertPTS(frame.getBestEffortTimestamp());
+
+					// Make sure the pts is >= seek before letting it proceed
+					if (pts < src.clock.getSeek()) {
+					//	System.out.println("discard audio too early after seek " + pts);
+						continue;
+					}
+
 					AudioFrame af = dest.getAudioFrame();
 					try {
 						//af.pts = convertPTS(packet.getDTS());
-						af.pts = convertPTS(frame.getBestEffortTimestamp());
+						af.pts = pts;
+						af.sequence = packet.sequence;
 						af.setSamples(data, dstChannels, dstFormat, samples);
 						af.enqueue();
 						af = null;
@@ -102,12 +114,12 @@ public class AudioDecoder extends MediaDecoder {
 					go = false;
 				}
 			} catch (AVDecodingError ex) {
-				System.out.println("decode audio failed " + ex + " packet size " + packet.getSize());
+				System.out.println("decode audio failed " + ex + " packet size " + packet.packet.getSize());
 				throw ex;
 			} catch (InterruptedException ex) {
 				throw ex;
 			} catch (Exception ex) {
-				System.out.println("decode audio failed " + ex + " packet size " + packet.getSize());
+				System.out.println("decode audio failed " + ex + " packet size " + packet.packet.getSize());
 			}
 		}
 	}

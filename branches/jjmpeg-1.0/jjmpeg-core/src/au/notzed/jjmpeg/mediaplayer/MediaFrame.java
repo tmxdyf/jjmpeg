@@ -31,6 +31,11 @@ package au.notzed.jjmpeg.mediaplayer;
  */
 public abstract class MediaFrame implements Comparable<MediaFrame> {
 
+	/**
+	 * Sequence number, if it doesn't match clock.getSequence(), throw it away when you see it.
+	 */
+	int sequence;
+
 	abstract long getPTS();
 
 	abstract void dispose();

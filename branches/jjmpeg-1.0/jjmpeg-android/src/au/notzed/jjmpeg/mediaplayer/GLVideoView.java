@@ -38,7 +38,7 @@ public class GLVideoView extends GLSurfaceView implements EGLContextFactory {
 	EGLConfig cfg;
 	public static boolean useShared = false;
 
-	public GLVideoView(Context context) {
+	public GLVideoView(Context context, MediaClock clock) {
 		super(context);
 
 		if (useShared) {
@@ -50,7 +50,7 @@ public class GLVideoView extends GLSurfaceView implements EGLContextFactory {
 		} else {
 			setEGLContextClientVersion(2);
 		}
-		renderer = new GLESVideoRenderer(context, this);
+		renderer = new GLESVideoRenderer(context, this, clock);
 		setRenderer(renderer);
 
 		//setRenderMode(RENDERMODE_WHEN_DIRTY);
