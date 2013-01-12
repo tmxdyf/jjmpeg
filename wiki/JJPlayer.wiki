@@ -26,11 +26,11 @@ This is seriously alpha software, so far from complete and chock-a-block full of
 
  * For audio-only streams the progress bar doesn't update.
  * Audio-only streams do not play as a service (not in the background).
- * For some videos the progress bar doesn't progress cleanly but jumps back and forth.
- * Square pixel aspect ratio is assumed.
+ * ~~For some videos the progress bar doesn't progress cleanly but jumps back and forth.~~
+ * ~~Square pixel aspect ratio is assumed.~~
  * UI is somewhat lacking, no pause/resume/etc.
  * Switching to/from full-screen display is jarring.
- * Audio sometimes loses sync on seek, but should not drift.
+ * ~~Audio sometimes loses sync on seek, but should not drift.~~
  * The code is a complete mess.
 
 = License =
