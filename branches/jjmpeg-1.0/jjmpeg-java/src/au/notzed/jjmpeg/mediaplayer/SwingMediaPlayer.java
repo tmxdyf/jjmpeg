@@ -199,11 +199,6 @@ public class SwingMediaPlayer extends JPanel implements MediaSink, MediaPlayer {
 		throw new UnsupportedOperationException("Not supported yet.");
 	}
 
-	@Override
-	public long getMediaPosition() {
-		return clock;
-	}
-
 	class AudioRenderThread extends CancellableThread {
 
 		public AudioRenderThread() {
