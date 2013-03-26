@@ -44,7 +44,8 @@ JJMPEG_CLASSES=au.notzed.jjmpeg.AVFormatContextNative	\
  au.notzed.jjmpeg.AVPacketNative			\
  au.notzed.jjmpeg.AVStreamNative			\
  au.notzed.jjmpeg.AVNative				\
- au.notzed.jjmpeg.SwsContextNative
+ au.notzed.jjmpeg.SwsContextNative			\
+ au.notzed.jjmpeg.AVFormatContextNativeAbstract
 
 JJMPEG_HEADERS=$(patsubst %,%.h,$(subst .,_,$(JJMPEG_CLASSES)))
 

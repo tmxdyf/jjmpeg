@@ -64,20 +64,15 @@ public class JJMediaReader {
 		this(name, null, true);
 	}
 
-	/**
-	 *
-	 * @param name
-	 * @param scanStreams if true, scan for streams on open, if false, then streams are discovered as they are read. This is broken, and probably will never
-	 * work.
-	 * @throws AVInvalidStreamException
-	 * @throws AVIOException
-	 * @throws AVInvalidCodecException
-	 * @deprecated This is experimental, and I might not keep it
-	 */
-	@Deprecated
-	public JJMediaReader(String name, AVInputFormat fmt, boolean scanStreams) throws AVInvalidStreamException, AVIOException, AVInvalidCodecException {
-		format = AVFormatContext.openInputFile(name, fmt, 0, null);
+	public JJMediaReader(AVIOContext pb, String name, AVInputFormat fmt, AVFormatParameters ap) throws AVInvalidStreamException, AVInvalidCodecException, AVIOException {
+		this(AVFormatContext.openInputStream(pb, name, fmt, ap), true);
+	}
 
+	public JJMediaReader(AVFormatContext format, boolean scanStreams) throws AVInvalidStreamException, AVInvalidCodecException, AVIOException {
+		this.format = format;
+		//System.out.println("scan streams");
+		//format.setProbesize(1024 * 64);
+		//format.setMaxAnalyzeDuration(500000);
 		if (scanStreams) {
 			if (format.findStreamInfo() < 0) {
 				throw new AVInvalidStreamException("No streams found");
@@ -115,6 +110,21 @@ public class JJMediaReader {
 			autoScan = true;
 		}
 		packet = AVPacket.create();
+	}
+
+	/**
+	 *
+	 * @param name
+	 * @param scanStreams if true, scan for streams on open, if false, then streams are discovered as they are read. This is broken, and probably will never
+	 * work.
+	 * @throws AVInvalidStreamException
+	 * @throws AVIOException
+	 * @throws AVInvalidCodecException
+	 * @deprecated This is experimental, and I might not keep it
+	 */
+	@Deprecated
+	public JJMediaReader(String name, AVInputFormat fmt, boolean scanStreams) throws AVInvalidStreamException, AVIOException, AVInvalidCodecException {
+		this(AVFormatContext.openInputFile(name, fmt, 0, null), scanStreams);
 	}
 
 	/**
@@ -274,9 +284,13 @@ public class JJMediaReader {
 						rs.open();
 						break;
 					case AVCodecContext.AVMEDIA_TYPE_VIDEO:
-						System.out.println("opening discovered video stream\n");
-						rs = new JJReaderVideo(stream);
-						rs.open();
+						if (stream.getCodec().getPixFmt() == PixelFormat.PIX_FMT_NONE) {
+							System.out.println("Unknown pixel format (?yet?), can't open");
+						} else {
+							System.out.println("opening discovered video stream\n");
+							rs = new JJReaderVideo(stream);
+							rs.open();
+						}
 						break;
 				}
 			} catch (Exception x) {
@@ -307,7 +321,7 @@ public class JJMediaReader {
 				int index = packet.getStreamIndex();
 				JJReaderStream ms = streamsByID.get(index);
 
-				// Experimental auto-scan stuff
+				// Experimental auto-scan stuff, it doesn't work
 				if (autoScan && ms == null) {
 					ms = discovered.get(index);
 					if (ms == null) {
@@ -338,6 +352,14 @@ public class JJMediaReader {
 						seekms = -1;
 						freePacket = true;
 						return ms;
+					}
+				} else {
+					if (dump) {
+						AVStream stream = format.getStreamAt(index);
+
+						System.out.println("ignoring unknown stream: type " + stream.getCodec().getCodecType());
+
+						stream.dispose();
 					}
 				}
 			} catch (AVDecodingError x) {
@@ -521,7 +543,8 @@ public class JJMediaReader {
 
 		@Override
 		public boolean decode(AVPacket packet) throws AVDecodingError {
-			throw new UnsupportedOperationException("Not supported yet.");
+			//throw new UnsupportedOperationException("Not supported yet.");
+			return false;
 		}
 
 		@Override

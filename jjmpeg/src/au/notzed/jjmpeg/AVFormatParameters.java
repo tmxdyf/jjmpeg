@@ -20,7 +20,6 @@ package au.notzed.jjmpeg;
 
 import java.nio.ByteBuffer;
 
-
 /**
  *
  * @author notzed
@@ -31,6 +30,16 @@ public class AVFormatParameters extends AVFormatParametersAbstract {
 		setNative(new AVFormatParametersNative(this, p));
 	}
 
+	public static AVFormatParameters create() {
+		// HACK: This should be enough for this.
+		ByteBuffer bb = ByteBuffer.allocateDirect(128);
+
+		for (int i = 0; i < 128; i++)
+			bb.put(i, (byte) 0);
+
+		return create(bb);
+	}
+
 	static AVFormatParameters create(ByteBuffer p) {
 		if (p == null) {
 			return null;
@@ -38,6 +47,7 @@ public class AVFormatParameters extends AVFormatParametersAbstract {
 		return new AVFormatParameters(p);
 	}
 }
+
 class AVFormatParametersNative extends AVFormatParametersNativeAbstract {
 
 	AVFormatParametersNative(AVObject o, ByteBuffer p) {

@@ -91,6 +91,10 @@ public class DMX extends DMXAbstract {
 		dmx_ioctl(DMX_ADD_PID, pid);
 	}
 
+	public void removePID(short pid) {
+		dmx_ioctl(DMX_REMOVE_PID, pid);
+	}
+
 	public void setBufferSize(long size) {
 		int res;
 

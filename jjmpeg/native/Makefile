@@ -8,7 +8,7 @@
 #  Will only attempt to build the specified targets.
 #
 # All targets supported
-TARGETS_ALL=linux-amd64 linux-i386 mswin-amd64 mswin-i386 darwin-amd64 darwin-i386
+TARGETS_ALL=linux-amd64 linux-i386 mswin-amd64 mswin-i386 darwin-amd64 darwin-i386 android-arm
 
 TARGETS ?= $(TARGETS_ALL)
 
