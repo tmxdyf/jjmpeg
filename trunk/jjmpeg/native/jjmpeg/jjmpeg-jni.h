@@ -20,9 +20,30 @@
  * Global includes
  */
 
-#include <jni.h>
+#include "au_notzed_jjmpeg_AVCodecContext.h"
+#include "au_notzed_jjmpeg_AVCodecNative.h"
+#include "au_notzed_jjmpeg_AVFormatContextNative.h"
+#include "au_notzed_jjmpeg_AVFrameNative.h"
+#include "au_notzed_jjmpeg_AVNative.h"
+#include "au_notzed_jjmpeg_AVPacketNative.h"
+#include "au_notzed_jjmpeg_AVStreamNative.h"
+#include "au_notzed_jjmpeg_SwsContextNative.h"
+#include "au_notzed_jjmpeg_AVFormatContextNativeAbstract.h"
 
-// If any more of these added: time to move it to a per-arch file
+// This is a mess, but that's what you get.
+
+#if defined(ANDROID)
+#include <android/log.h>
+#define LOG(...) __android_log_print(ANDROID_LOG_INFO, "jjmpeg", __VA_ARGS__)
+#else
+#define LOG(...) do { fprint(stderr, __VA_ARGS__); fflush(stderr); } while (0)
+#endif
+
+#if defined(ANDROID)
+#define LIBPREFIX  "/data/data/au.swordfish.enhance/lib/"
+#else
+#define LIBPREFIX ""
+#endif
 
 #if defined(WIN64) || defined(WIN32)
 #  include <windows.h>
@@ -30,21 +51,21 @@
 #  define _TOSTR(x) #x
 #  define TOSTR(x) _TOSTR(x)
 
-#  define DLOPEN(x, lib, ver) do { x = LoadLibrary(lib "-"  _TOSTR(ver) ".dll"); if (x == NULL) { fprintf(stderr, "cannot open %s\n",  lib "-" TOSTR(ver) ".dll"); fflush(stderr); return 0; } } while(0)
+#  define DLOPEN(x, lib, ver) do { x = LoadLibrary(lib "-"  _TOSTR(ver) ".dll"); if (x == NULL) { LOG("cannot open %s\n",  lib "-" TOSTR(ver) ".dll"); return 0; } } while(0)
 #  define CALLDL(x) (*d ## x)
-#  define MAPDL(x, lib) do { if ((d ## x = (void *)GetProcAddress(lib, #x)) == NULL) { fprintf(stderr, "cannot resolve %s\n", #x); fflush(stderr); return 0; } } while(0)
+#  define MAPDL(x, lib) do { if ((d ## x = (void *)GetProcAddress(lib, #x)) == NULL) { LOG("cannot resolve %s\n", #x); return 0; } } while(0)
 #else
 #  include <dlfcn.h>
 
 #  if (defined (__APPLE__) && defined (__MACH__))
-#    define SO ".dylib"
+#    define LIBEXT ".dylib"
 #  else
-#    define SO ".so"
+#    define LIBEXT ".so"
 #  endif
 
-#  define DLOPEN(x, lib, ver) x = dlopen("lib" lib SO, RTLD_LAZY|RTLD_GLOBAL); do { if (x == NULL) { fprintf(stderr, "cannot open %s\n", lib ".so"); fflush(stderr); return 0; } } while (0)
+#  define DLOPEN(x, lib, ver) x = dlopen(LIBPREFIX "lib" lib LIBEXT, RTLD_LAZY|RTLD_GLOBAL); do { if (x == NULL) { LOG("cannot open %s\n", LIBPREFIX lib LIBEXT); return 0; } } while (0)
 #  define CALLDL(x) (*d ## x)
-#  define MAPDL(x, lib) do { if ((d ## x = dlsym(lib, #x)) == NULL) { fprintf(stderr, "cannot resolve %s\n", #x); fflush(stderr); return 0; } } while (0)
+#  define MAPDL(x, lib) do { if ((d ## x = dlsym(lib, #x)) == NULL) { LOG("cannot resolve %s\n", #x); return 0; } } while (0)
 #endif
 
 #define ADDR(jp) (jp != NULL ? (*env)->GetDirectBufferAddress(env, jp) : NULL)

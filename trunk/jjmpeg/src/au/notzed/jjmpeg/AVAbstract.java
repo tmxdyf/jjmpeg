@@ -13,51 +13,51 @@ abstract class AVCodecContextNativeAbstract extends AVNative {
 	}
 	// Fields
 	static native int getBitRate(ByteBuffer p);
-	static native int setBitRate(ByteBuffer p, int val);
+	static native void setBitRate(ByteBuffer p, int val);
 	static native int getFlags(ByteBuffer p);
-	static native int setFlags(ByteBuffer p, int val);
+	static native void setFlags(ByteBuffer p, int val);
 	static native int getWidth(ByteBuffer p);
-	static native int setWidth(ByteBuffer p, int val);
+	static native void setWidth(ByteBuffer p, int val);
 	static native int getHeight(ByteBuffer p);
-	static native int setHeight(ByteBuffer p, int val);
+	static native void setHeight(ByteBuffer p, int val);
 	static native int getPixFmt(ByteBuffer p);
-	static native int setPixFmt(ByteBuffer p, int val);
+	static native void setPixFmt(ByteBuffer p, int val);
 	static native int getSampleRate(ByteBuffer p);
-	static native int setSampleRate(ByteBuffer p, int val);
+	static native void setSampleRate(ByteBuffer p, int val);
 	static native int getChannels(ByteBuffer p);
-	static native int setChannels(ByteBuffer p, int val);
+	static native void setChannels(ByteBuffer p, int val);
 	static native int getChannelLayout(ByteBuffer p);
-	static native int setChannelLayout(ByteBuffer p, int val);
+	static native void setChannelLayout(ByteBuffer p, int val);
 	static native int getSampleFmt(ByteBuffer p);
-	static native int setSampleFmt(ByteBuffer p, int val);
+	static native void setSampleFmt(ByteBuffer p, int val);
 	static native int getFrameSize(ByteBuffer p);
-	static native int setFrameSize(ByteBuffer p, int val);
+	static native void setFrameSize(ByteBuffer p, int val);
 	static native int getFrameNumber(ByteBuffer p);
 	static native int getCodecType(ByteBuffer p);
-	static native int setCodecType(ByteBuffer p, int val);
+	static native void setCodecType(ByteBuffer p, int val);
 	static native int getCodecID(ByteBuffer p);
-	static native int setCodecID(ByteBuffer p, int val);
+	static native void setCodecID(ByteBuffer p, int val);
 	static native int getGOPSize(ByteBuffer p);
-	static native int setGOPSize(ByteBuffer p, int val);
+	static native void setGOPSize(ByteBuffer p, int val);
 	static native int getMaxBFrames(ByteBuffer p);
-	static native int setMaxBFrames(ByteBuffer p, int val);
+	static native void setMaxBFrames(ByteBuffer p, int val);
 	static native ByteBuffer getTimeBase(ByteBuffer p);
 	static native int getTimeBaseNum(ByteBuffer p);
-	static native int setTimeBaseNum(ByteBuffer p, int val);
+	static native void setTimeBaseNum(ByteBuffer p, int val);
 	static native int getTimeBaseDen(ByteBuffer p);
-	static native int setTimeBaseDen(ByteBuffer p, int val);
+	static native void setTimeBaseDen(ByteBuffer p, int val);
 	static native int getStrictStdCompliance(ByteBuffer p);
-	static native int setStrictStdCompliance(ByteBuffer p, int val);
+	static native void setStrictStdCompliance(ByteBuffer p, int val);
 	static native int getErrorRecognition(ByteBuffer p);
-	static native int setErrorRecognition(ByteBuffer p, int val);
+	static native void setErrorRecognition(ByteBuffer p, int val);
 	static native int getIdctAlgo(ByteBuffer p);
-	static native int setIdctAlgo(ByteBuffer p, int val);
+	static native void setIdctAlgo(ByteBuffer p, int val);
 	static native int getErrorConcealment(ByteBuffer p);
-	static native int setErrorConcealment(ByteBuffer p, int val);
+	static native void setErrorConcealment(ByteBuffer p, int val);
 	static native int getGlobalQuality(ByteBuffer p);
-	static native int setGlobalQuality(ByteBuffer p, int val);
+	static native void setGlobalQuality(ByteBuffer p, int val);
 	static native int getMbDecision(ByteBuffer p);
-	static native int setMbDecision(ByteBuffer p, int val);
+	static native void setMbDecision(ByteBuffer p, int val);
 	static native ByteBuffer getCodedFrame(ByteBuffer p);
 	// Native Methods
 	static native int open(ByteBuffer p, ByteBuffer codec);
@@ -274,11 +274,11 @@ abstract class AVFormatContextNativeAbstract extends AVNative {
 	}
 	// Fields
 	static native ByteBuffer getInputFormat(ByteBuffer p);
-	static native ByteBuffer setInputFormat(ByteBuffer p, ByteBuffer val);
+	static native void setInputFormat(ByteBuffer p, ByteBuffer val);
 	static native ByteBuffer getOutputFormat(ByteBuffer p);
-	static native ByteBuffer setOutputFormat(ByteBuffer p, ByteBuffer val);
+	static native void setOutputFormat(ByteBuffer p, ByteBuffer val);
 	static native ByteBuffer getIOContext(ByteBuffer p);
-	static native ByteBuffer setIOContext(ByteBuffer p, ByteBuffer val);
+	static native void setIOContext(ByteBuffer p, ByteBuffer val);
 	static native int getNBStreams(ByteBuffer p);
 	static native ByteBuffer getStreamAt(ByteBuffer p, int index);
 	static native long getStartTime(ByteBuffer p);
@@ -286,7 +286,11 @@ abstract class AVFormatContextNativeAbstract extends AVNative {
 	static native long getFileSize(ByteBuffer p);
 	static native int getBitRate(ByteBuffer p);
 	static native int getFlags(ByteBuffer p);
-	static native int setFlags(ByteBuffer p, int val);
+	static native void setFlags(ByteBuffer p, int val);
+	static native int getProbesize(ByteBuffer p);
+	static native void setProbesize(ByteBuffer p, int val);
+	static native int getMaxAnalyzeDuration(ByteBuffer p);
+	static native void setMaxAnalyzeDuration(ByteBuffer p, int val);
 	// Native Methods
 	static native void close_input_file(ByteBuffer p);
 	static native void close_input_stream(ByteBuffer p);
@@ -348,6 +352,18 @@ abstract class AVFormatContextAbstract extends AVObject {
 	}
 	public  void setFlags(int val) {
 		AVFormatContextNativeAbstract.setFlags(n.p, val);
+	}
+	public  int getProbesize() {
+		return AVFormatContextNativeAbstract.getProbesize(n.p);
+	}
+	public  void setProbesize(int val) {
+		AVFormatContextNativeAbstract.setProbesize(n.p, val);
+	}
+	public  int getMaxAnalyzeDuration() {
+		return AVFormatContextNativeAbstract.getMaxAnalyzeDuration(n.p);
+	}
+	public  void setMaxAnalyzeDuration(int val) {
+		AVFormatContextNativeAbstract.setMaxAnalyzeDuration(n.p, val);
 	}
 	// Public Methods
 	public void closeInputFile() {
@@ -433,7 +449,7 @@ abstract class AVOutputFormatNativeAbstract extends AVNative {
 	static native int getAudioCodec(ByteBuffer p);
 	static native int getSubtitleCodec(ByteBuffer p);
 	static native int getFlags(ByteBuffer p);
-	static native int setFlags(ByteBuffer p, int val);
+	static native void setFlags(ByteBuffer p, int val);
 	// Native Methods
 	static native ByteBuffer guess_format(String short_name, String filename, String mime_type);
 }
@@ -477,11 +493,19 @@ abstract class AVFormatParametersNativeAbstract extends AVNative {
 		super(o, p);
 	}
 	// Fields
+	static native int getChannel(ByteBuffer p);
+	static native void setChannel(ByteBuffer p, int val);
 	// Native Methods
 }
 
 abstract class AVFormatParametersAbstract extends AVObject {
 	// Fields
+	public  int getChannel() {
+		return AVFormatParametersNativeAbstract.getChannel(n.p);
+	}
+	public  void setChannel(int val) {
+		AVFormatParametersNativeAbstract.setChannel(n.p, val);
+	}
 	// Public Methods
 }
 abstract class AVPacketNativeAbstract extends AVNative {
@@ -490,15 +514,15 @@ abstract class AVPacketNativeAbstract extends AVNative {
 	}
 	// Fields
 	static native long getPTS(ByteBuffer p);
-	static native long setPTS(ByteBuffer p, long val);
+	static native void setPTS(ByteBuffer p, long val);
 	static native long getDTS(ByteBuffer p);
-	static native long setDTS(ByteBuffer p, long val);
+	static native void setDTS(ByteBuffer p, long val);
 	static native int getSize(ByteBuffer p);
 	static native int getStreamIndex(ByteBuffer p);
-	static native int setStreamIndex(ByteBuffer p, int val);
+	static native void setStreamIndex(ByteBuffer p, int val);
 	static native long getPos(ByteBuffer p);
 	static native int getFlags(ByteBuffer p);
-	static native int setFlags(ByteBuffer p, int val);
+	static native void setFlags(ByteBuffer p, int val);
 	// Native Methods
 	static native void free_packet(ByteBuffer p);
 	static native void init_packet(ByteBuffer p);
@@ -552,7 +576,7 @@ abstract class AVFrameNativeAbstract extends AVNative {
 	static native int getLineSizeAt(ByteBuffer p, int index);
 	static native int getKeyFrame(ByteBuffer p);
 	static native long getPTS(ByteBuffer p);
-	static native long setPTS(ByteBuffer p, long val);
+	static native void setPTS(ByteBuffer p, long val);
 	static native int getDisplayPictureNumber(ByteBuffer p);
 	static native int getCodedPictureNumber(ByteBuffer p);
 	// Native Methods
@@ -601,18 +625,18 @@ abstract class AVStreamNativeAbstract extends AVNative {
 	static native ByteBuffer getCodec(ByteBuffer p);
 	static native long getNBFrames(ByteBuffer p);
 	static native float getQuality(ByteBuffer p);
-	static native float setQuality(ByteBuffer p, float val);
+	static native void setQuality(ByteBuffer p, float val);
 	static native long getStartTime(ByteBuffer p);
-	static native long setStartTime(ByteBuffer p, long val);
+	static native void setStartTime(ByteBuffer p, long val);
 	static native long getDuration(ByteBuffer p);
-	static native long setDuration(ByteBuffer p, long val);
+	static native void setDuration(ByteBuffer p, long val);
 	static native ByteBuffer getRFrameRate(ByteBuffer p);
 	static native ByteBuffer getTimeBase(ByteBuffer p);
 	static native ByteBuffer getSampleAspectRatio(ByteBuffer p);
 	static native int getSampleAspectRatioNum(ByteBuffer p);
-	static native int setSampleAspectRatioNum(ByteBuffer p, int val);
+	static native void setSampleAspectRatioNum(ByteBuffer p, int val);
 	static native int getSampleAspectRatioDen(ByteBuffer p);
-	static native int setSampleAspectRatioDen(ByteBuffer p, int val);
+	static native void setSampleAspectRatioDen(ByteBuffer p, int val);
 	// Native Methods
 }
 
@@ -674,9 +698,9 @@ abstract class AVRationalNativeAbstract extends AVNative {
 	}
 	// Fields
 	static native int getNum(ByteBuffer p);
-	static native int setNum(ByteBuffer p, int val);
+	static native void setNum(ByteBuffer p, int val);
 	static native int getDen(ByteBuffer p);
-	static native int setDen(ByteBuffer p, int val);
+	static native void setDen(ByteBuffer p, int val);
 	// Native Methods
 }
 

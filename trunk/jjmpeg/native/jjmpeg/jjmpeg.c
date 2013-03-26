@@ -423,12 +423,18 @@ JNIEXPORT jlong JNICALL Java_au_notzed_jjmpeg_AVRationalNative_jjRescaleQ
 
 /* ********************************************************************** */
 
-//JavaVM *vm = NULL;
+JavaVM *vm;
+
+jint JNI_OnLoad(JavaVM *vmi, void *reserved) {
+	vm = vmi;
+
+	return JNI_VERSION_1_4;
+}
 
 // This assumes we only get called from threads which invoked the ffmpeg libraries.
 // If not, things are a (tad) more complex.
 struct avio_data {
-	JNIEnv *env;
+	//JNIEnv *env;
 	jobject jo;
 };
 
@@ -436,15 +442,18 @@ struct avio_data {
 
 static int AVIOContext_readPacket(void *opaque, uint8_t *buf, int buf_size) {
 	struct avio_data *bd = opaque;
+	JNIEnv *env;
 
 	d(printf("iocontext.readPacket()\n"));
 
 	if (bd == NULL)
 		return -1;
 
-	JNIEnv *env = bd->env;
+	if ((*vm)->AttachCurrentThread(vm, &env, NULL) != 0)
+		return -1;
+
 	jobject byteBuffer = WRAP(buf, buf_size);
-	int res = (*bd->env)->CallIntMethod(env, bd->jo, byteio_readPacket, byteBuffer);
+	int res = (*env)->CallIntMethod(env, bd->jo, byteio_readPacket, byteBuffer);
 
 	d(printf("readpacket returned %d\n", res));
 
@@ -453,29 +462,35 @@ static int AVIOContext_readPacket(void *opaque, uint8_t *buf, int buf_size) {
 
 static int AVIOContext_writePacket(void *opaque, uint8_t *buf, int buf_size) {
 	struct avio_data *bd = opaque;
+	JNIEnv *env;
 
 	d(printf("iocontext.writePacket()\n"));
 
 	if (bd == NULL)
 		return -1;
 
-	JNIEnv *env = bd->env;
+	if ((*vm)->AttachCurrentThread(vm, &env, NULL) != 0)
+		return -1;
+
 	jobject byteBuffer = WRAP(buf, buf_size);
-	int res = (*bd->env)->CallIntMethod(env, bd->jo, byteio_writePacket, byteBuffer);
+	int res = (*env)->CallIntMethod(env, bd->jo, byteio_writePacket, byteBuffer);
 
 	return res;
 }
 
 static int64_t AVIOContext_seek(void *opaque, int64_t offset, int whence) {
 	struct avio_data *bd = opaque;
+	JNIEnv *env;
 
 	d(printf("iocontext.seek()\n"));
 
 	if (bd == NULL)
 		return -1;
 
-	JNIEnv *env = bd->env;
-	int64_t res = (*bd->env)->CallLongMethod(env, bd->jo, byteio_seek, (jlong)offset, (jint)whence);
+	if ((*vm)->AttachCurrentThread(vm, &env, NULL) != 0)
+		return -1;
+
+	int64_t res = (*env)->CallLongMethod(env, bd->jo, byteio_seek, (jlong)offset, (jint)whence);
 
 	return res;
 }
@@ -544,8 +559,9 @@ JNIEXPORT void JNICALL Java_au_notzed_jjmpeg_AVIOContextNative_bind
 	if (bd == NULL) {
 		// throw new ...
 	}
-
-	bd->env = env;
+	
+	// no good if multiple threads used, and i want that available
+	//bd->env = env;
 	bd->jo = (*env)->NewGlobalRef(env, jo);
 
 	cptr->opaque = bd;

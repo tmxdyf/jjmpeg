@@ -7,7 +7,7 @@
  * it under the terms of the GNU Lesser General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * jjmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -67,19 +67,16 @@ public class AVFormatContext extends AVFormatContextAbstract {
 		return create(context, 1);
 	}
 
-	// TODO: this stuff has been deprecated in newer libavformat
 	/**
-	 * Open an input stream from a byteiocontext.
-	 * 
-	 * THIS IS BROKEN AND WILL NOT WORK
-	 * 
+	 * Open an input stream from an AVIOContext
+	 *
 	 * @param ioc
 	 * @param name
 	 * @param fmt
 	 * @param ap
-	 * @return 
+	 * @return
 	 */
-	static AVFormatContext openInputStream(AVIOContext ioc, String name, AVInputFormat fmt, AVFormatParameters ap) {
+	public static AVFormatContext openInputStream(AVIOContext ioc, String name, AVInputFormat fmt, AVFormatParameters ap) {
 		ByteBuffer res = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder());
 		ByteBuffer context;
 

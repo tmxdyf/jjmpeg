@@ -637,7 +637,7 @@ foreach $classinfo (@classes) {
 	    print ";\n";
 	}
 	if ($opt =~ m/s/) {
-	    print "\tstatic native $fi{jtype} $fi{prefix}set$fi{jname}$fi{suffix}(";
+	    print "\tstatic native void $fi{prefix}set$fi{jname}$fi{suffix}(";
 	    print "ByteBuffer p, ";
 	    if ($ind) {
 		print "int index, ";

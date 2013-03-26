@@ -33,10 +33,11 @@ import java.io.IOException;
  *
  * TODO: decide whether the C object is wrapped for each instance
  * or just set when required.
- * 
+ *
  * @author notzed
  */
 public class DVBChannel {
+
 	public String name;
 	public DVBFrontendParameters params;
 	public int vpid;
@@ -59,7 +60,7 @@ public class DVBChannel {
 
 		name = s[0];
 		params = DVBFrontendParameters.create();
-		params.setFrequency((int)Long.parseLong(s[1]));
+		params.setFrequency((int) Long.parseLong(s[1]));
 		params.setInversion(FESpectralInversion.valueOf(s[2]));
 		params.setofdmBandwidth(FEBandwidth.valueOf(s[3]));
 		params.setofdmCodeRateHP(FECodeRate.valueOf(s[4]));
@@ -71,5 +72,10 @@ public class DVBChannel {
 		vpid = Integer.parseInt(s[10]);
 		apid = Integer.parseInt(s[11]);
 		sid = Integer.parseInt(s[12]);
+	}
+
+	@Override
+	public String toString() {
+		return name;
 	}
 }
