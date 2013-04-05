@@ -583,6 +583,7 @@ abstract class AVFrameNativeAbstract extends AVNative {
 	static native ByteBuffer alloc_frame();
 	static native int alloc(ByteBuffer p, int pix_fmt, int width, int height);
 	static native void free(ByteBuffer p);
+	static native void copy(ByteBuffer p, ByteBuffer src, int pix_fmt, int width, int height);
 }
 
 abstract class AVFrameAbstract extends AVObject {
@@ -614,6 +615,9 @@ abstract class AVFrameAbstract extends AVObject {
 	}
 	public void free() {
 		AVFrameNativeAbstract.free(n.p);
+	}
+	public void copy(AVFrame src, PixelFormat pix_fmt, int width, int height) {
+		AVFrameNativeAbstract.copy(n.p, src != null ? src.n.p : null, pix_fmt.toC(), width, height);
 	}
 }
 abstract class AVStreamNativeAbstract extends AVNative {
