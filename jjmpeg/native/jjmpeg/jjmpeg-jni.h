@@ -36,7 +36,7 @@
 #include <android/log.h>
 #define LOG(...) __android_log_print(ANDROID_LOG_INFO, "jjmpeg", __VA_ARGS__)
 #else
-#define LOG(...) do { fprint(stderr, __VA_ARGS__); fflush(stderr); } while (0)
+#define LOG(...) do { fprintf(stderr, __VA_ARGS__); fflush(stderr); } while (0)
 #endif
 
 #if defined(ANDROID)
